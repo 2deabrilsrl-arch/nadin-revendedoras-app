@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String
+  name           String
+  dni            String          @unique
+  telefono       String
+  handle         String          @unique
+  margen         Float           @default(60)
+  cbu            String?
+  alias          String?
+  cvu            String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  pedidos        Pedido[]
+  consolidaciones Consolidacion[]
+}
+
+model Pedido {
+  id        String   @id @default(cuid())
+  userId    String
+  cliente   String
+  telefono  String?
+  nota      String?
+  estado    String   @default("pendiente")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  lineas    Linea[]
+  @@index([userId])
+  @@index([estado])
+}
+
+model Linea {
+  id         String  @id @default(cuid())
+  pedidoId   String
+  productId  String
+  variantId  String
+  sku        String?
+  brand      String?
+  name       String
+  talle      String?
+  color      String?
+  qty        Int
+  mayorista  Float
+  venta      Float
+  pedido     Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  @@index([pedidoId])
+}
+
+model Consolidacion {
+  id              String   @id @default(cuid())
+  userId          String
+  pedidoIds       String
+  formaPago       String
+  tipoEnvio       String
+  transporteNombre String?
+  totalMayorista  Float
+  totalVenta      Float
+  ganancia        Float
+  descuentoTotal  Float    @default(0)
+  costoReal       Float?
+  gananciaNeta    Float?
+  csvPath         String?
+  enviadoAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([enviadoAt])
+}
+
+model CatalogoCache {
+  id          String   @id @default(cuid())
+  productId   String   @unique
+  data        String
+  brand       String?
+  category    String?
+  sex         String?
+  salesCount  Int      @default(0)
+  updatedAt   DateTime @default(now())
+  
+  @@index([brand])
+  @@index([sex])
+  @@index([salesCount])
+  @@index([updatedAt])
+}
