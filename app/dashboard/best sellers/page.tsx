@@ -59,9 +59,9 @@ export default function BestSellersPage() {
   useEffect(() => {
     // Extraer opciones únicas cuando cambian los productos
     if (allProducts.length > 0) {
-      const uniqueBrands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort();
-      const uniqueSexes = [...new Set(allProducts.map(p => p.sex).filter(Boolean))].sort();
-      const uniqueCategories = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+      const uniqueBrands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort() as string[];
+      const uniqueSexes = [...new Set(allProducts.map(p => p.sex).filter((s): s is string => !!s))].sort();
+      const uniqueCategories = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort() as string[];
       
       setBrands(uniqueBrands);
       setSexes(uniqueSexes);

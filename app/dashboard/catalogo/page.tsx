@@ -54,9 +54,9 @@ export default function CatalogoPage() {
   useEffect(() => {
     // Extraer opciones únicas cuando cambian los productos
     if (products.length > 0) {
-      const uniqueBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
-      const uniqueSexes = [...new Set(products.map(p => p.sex).filter(Boolean))].sort();
-      const uniqueCategories = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
+      const uniqueBrands = [...new Set(products.map(p => p.brand).filter((b): b is string => !!b))].sort();
+      const uniqueSexes = [...new Set(products.map(p => p.sex).filter((s): s is string => !!s))].sort();
+      const uniqueCategories = [...new Set(products.map(p => p.category).filter((c): c is string => !!c))].sort();
       
       setBrands(uniqueBrands);
       setSexes(uniqueSexes);
