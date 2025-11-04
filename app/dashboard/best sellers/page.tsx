@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { TrendingUp, Eye, EyeOff, Package, X } from 'lucide-react';
+import { Eye, EyeOff, X, TrendingUp } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
+import ProductModal, { CartItem } from '@/components/ProductModal';
+import { useCart } from '@/components/CartContext';
 
 interface Variant {
   id: number;
@@ -19,130 +21,152 @@ interface Product {
   category: string;
   image: string;
   variants: Variant[];
-  sex?: string;
 }
 
 export default function BestSellersPage() {
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showCosts, setShowCosts] = useState(false);
   const [userMargen, setUserMargen] = useState(60);
-  
-  // Estados de filtros simplificados
+  const [showCosts, setShowCosts] = useState(false);
+
+  // Estados de filtros
   const [selectedBrand, setSelectedBrand] = useState('');
-  const [selectedSex, setSelectedSex] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [topCount, setTopCount] = useState(10);
+  const [selectedMainCategory, setSelectedMainCategory] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [selectedProductType, setSelectedProductType] = useState('');
 
   // Opciones únicas de filtros
   const [brands, setBrands] = useState<string[]>([]);
-  const [sexes, setSexes] = useState<string[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [mainCategories, setMainCategories] = useState<string[]>([]);
+  const [subcategories, setSubcategories] = useState<string[]>([]);
+  const [productTypes, setProductTypes] = useState<string[]>([]);
 
-  // Modal de detalle
-  const [showProductDetail, setShowProductDetail] = useState(false);
+  // Estados para el modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Hook del carrito
+  const { addToCart } = useCart();
 
   useEffect(() => {
-    // Obtener margen del usuario
     const userStr = localStorage.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
       setUserMargen(user.margen || 60);
     }
 
-    loadData();
+    loadBestSellers();
   }, []);
 
   useEffect(() => {
-    // Extraer opciones únicas cuando cambian los productos
-    if (allProducts.length > 0) {
-      const uniqueBrands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort() as string[];
-      const uniqueSexes = [...new Set(allProducts.map(p => p.sex).filter((s): s is string => !!s))].sort();
-      const uniqueCategories = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort() as string[];
-      
-      setBrands(uniqueBrands);
-      setSexes(uniqueSexes);
-      setCategories(uniqueCategories);
+    if (products.length > 0) {
+      extractFilterOptions();
     }
-  }, [allProducts]);
+  }, [products, selectedMainCategory, selectedSubcategory]);
 
-  useEffect(() => {
-    applyFilters();
-  }, [allProducts, selectedBrand, selectedSex, selectedCategory, topCount]);
-
-  const loadData = async () => {
+  const loadBestSellers = async () => {
     try {
       setLoading(true);
       setError('');
+      const res = await fetch('/api/best-sellers?limit=100');
       
-      const res = await fetch('/api/catalogo/best-sellers?limit=100');
-      
-      if (!res.ok) {
-        throw new Error('Error al cargar datos');
-      }
+      if (!res.ok) throw new Error('Error al cargar productos');
 
       const data = await res.json();
-      const products = Array.isArray(data) ? data : (data.products || []);
-      
-      setAllProducts(products);
-      setFilteredProducts(products.slice(0, topCount));
+      setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Error cargando datos:', err);
-      setError('Error al cargar datos. Intenta nuevamente.');
+      console.error('Error cargando más vendidos:', err);
+      setError('Error al cargar los productos más vendidos');
     } finally {
       setLoading(false);
     }
   };
 
-  const applyFilters = () => {
-    let filtered = [...allProducts];
+  const extractFilterOptions = () => {
+    const uniqueBrands = [...new Set(
+      products
+        .map(p => p.brand)
+        .filter(b => b && b !== 'Sin marca')
+    )].sort();
+    setBrands(uniqueBrands);
 
-    // Filtro por marca
-    if (selectedBrand) {
-      filtered = filtered.filter(p => p.brand === selectedBrand);
+    const mainCatsSet = new Set<string>();
+    products.forEach(p => {
+      if (p.category) {
+        const parts = p.category.split(' > ');
+        if (parts[0] && parts[0].trim() !== 'MARCAS') {
+          mainCatsSet.add(parts[0].trim());
+        }
+      }
+    });
+    setMainCategories([...mainCatsSet].sort());
+
+    if (selectedMainCategory) {
+      const subcatsSet = new Set<string>();
+      products.forEach(p => {
+        if (p.category && p.category.startsWith(selectedMainCategory)) {
+          const parts = p.category.split(' > ');
+          if (parts[1]) {
+            subcatsSet.add(parts[1].trim());
+          }
+        }
+      });
+      setSubcategories([...subcatsSet].sort());
+    } else {
+      setSubcategories([]);
     }
 
-    // Filtro por sexo
-    if (selectedSex) {
-      filtered = filtered.filter(p => p.sex === selectedSex);
+    if (selectedMainCategory && selectedSubcategory) {
+      const typesSet = new Set<string>();
+      products.forEach(p => {
+        if (p.category && 
+            p.category.startsWith(selectedMainCategory) && 
+            p.category.includes(selectedSubcategory)) {
+          const parts = p.category.split(' > ');
+          if (parts[2]) {
+            typesSet.add(parts[2].trim());
+          }
+        }
+      });
+      setProductTypes([...typesSet].sort());
+    } else {
+      setProductTypes([]);
     }
-
-    // Filtro por categoría
-    if (selectedCategory) {
-      filtered = filtered.filter(p => p.category === selectedCategory);
-    }
-
-    // Limitar al top N
-    setFilteredProducts(filtered.slice(0, topCount));
   };
+
+  // Handler para agregar al carrito
+  const handleAddToCart = (item: CartItem) => {
+    addToCart(item);
+    alert('✅ Producto agregado al pedido');
+  };
+
+  const filteredProducts = products.filter(p => {
+    if (selectedBrand && p.brand !== selectedBrand) return false;
+
+    if (selectedMainCategory) {
+      if (!p.category || !p.category.startsWith(selectedMainCategory)) return false;
+    }
+
+    if (selectedSubcategory) {
+      if (!p.category || !p.category.includes(selectedSubcategory)) return false;
+    }
+
+    if (selectedProductType) {
+      if (!p.category || !p.category.includes(selectedProductType)) return false;
+    }
+
+    return true;
+  });
 
   const clearFilters = () => {
     setSelectedBrand('');
-    setSelectedSex('');
-    setSelectedCategory('');
+    setSelectedMainCategory('');
+    setSelectedSubcategory('');
+    setSelectedProductType('');
   };
 
-  const hasActiveFilters = selectedBrand || selectedSex || selectedCategory;
-
-  const getMedalEmoji = (position: number) => {
-    if (position === 1) return '🥇';
-    if (position === 2) return '🥈';
-    if (position === 3) return '🥉';
-    return position;
-  };
-
-  const handleProductClick = (product: Product) => {
-    setSelectedProduct(product);
-    setShowProductDetail(true);
-  };
-
-  const closeProductDetail = () => {
-    setShowProductDetail(false);
-    setSelectedProduct(null);
-  };
+  const hasActiveFilters = selectedBrand || selectedMainCategory || selectedSubcategory || selectedProductType;
 
   if (loading) {
     return (
@@ -163,7 +187,7 @@ export default function BestSellersPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
           <p className="text-red-800">{error}</p>
           <button
-            onClick={loadData}
+            onClick={loadBestSellers}
             className="mt-4 bg-nadin-pink text-white px-6 py-2 rounded-lg"
           >
             Reintentar
@@ -174,63 +198,38 @@ export default function BestSellersPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4">
-      {/* Header con botón ojo */}
-      <div className="mb-6">
-        <div className="flex justify-between items-start">
+    <div className="max-w-7xl mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          <TrendingUp className="text-nadin-pink" size={32} />
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <TrendingUp className="text-nadin-pink" size={28} />
-              <h2 className="text-2xl font-bold">🔥 Más Vendidos</h2>
-            </div>
-            <p className="text-gray-600 text-sm">
-              Los productos con mejor rendimiento según Tiendanube
-            </p>
+            <h2 className="text-2xl font-bold">Más Vendidos</h2>
+            <p className="text-sm text-gray-600">Los productos top del catálogo</p>
           </div>
-
-          {/* Botón Ver/Ocultar Costos */}
-          <button
-            onClick={() => setShowCosts(!showCosts)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            {showCosts ? (
-              <>
-                <EyeOff size={20} />
-                <span className="hidden sm:inline">Ocultar</span>
-              </>
-            ) : (
-              <>
-                <Eye size={20} />
-                <span className="hidden sm:inline">Ver Costos</span>
-              </>
-            )}
-          </button>
         </div>
+        
+        <button
+          onClick={() => setShowCosts(!showCosts)}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+        >
+          {showCosts ? (
+            <>
+              <EyeOff size={20} />
+              <span className="hidden sm:inline">Ocultar Costos</span>
+            </>
+          ) : (
+            <>
+              <Eye size={20} />
+              <span className="hidden sm:inline">Ver Costos</span>
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Filtros simplificados */}
-      <div className="mb-6 bg-white rounded-lg shadow-md p-4">
-        <h3 className="font-bold text-gray-800 mb-4">Filtros</h3>
+      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+        <h3 className="font-semibold text-gray-800 mb-3">Filtros</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Top N */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mostrar Top
-            </label>
-            <select
-              value={topCount}
-              onChange={(e) => setTopCount(Number(e.target.value))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-            >
-              <option value={10}>Top 10</option>
-              <option value={20}>Top 20</option>
-              <option value={50}>Top 50</option>
-              <option value={100}>Top 100</option>
-            </select>
-          </div>
-
-          {/* Marca */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Marca
@@ -247,224 +246,184 @@ export default function BestSellersPage() {
             </select>
           </div>
 
-          {/* Género */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Género
-            </label>
-            <select
-              value={selectedSex}
-              onChange={(e) => setSelectedSex(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-            >
-              <option value="">Todos</option>
-              {sexes.map(sex => (
-                <option key={sex} value={sex}>{sex}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Categoría */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Categoría
             </label>
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              value={selectedMainCategory}
+              onChange={(e) => {
+                setSelectedMainCategory(e.target.value);
+                setSelectedSubcategory('');
+                setSelectedProductType('');
+              }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             >
-              <option value="">Todas</option>
-              {categories.map(cat => (
+              <option value="">Todas las categorías</option>
+              {mainCategories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Subcategoría
+            </label>
+            <select
+              value={selectedSubcategory}
+              onChange={(e) => {
+                setSelectedSubcategory(e.target.value);
+                setSelectedProductType('');
+              }}
+              disabled={!selectedMainCategory}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">Todas las subcategorías</option>
+              {subcategories.map(subcat => (
+                <option key={subcat} value={subcat}>{subcat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Producto
+            </label>
+            <select
+              value={selectedProductType}
+              onChange={(e) => setSelectedProductType(e.target.value)}
+              disabled={!selectedSubcategory}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">Todos los tipos</option>
+              {productTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Filtros activos y botón limpiar */}
         {hasActiveFilters && (
-          <div className="mt-4 flex items-center gap-2">
-            <span className="text-sm text-gray-600">Filtrando por:</span>
-            {selectedBrand && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                {selectedBrand}
-              </span>
-            )}
-            {selectedSex && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                {selectedSex}
-              </span>
-            )}
-            {selectedCategory && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                {selectedCategory}
-              </span>
-            )}
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 text-sm text-nadin-pink hover:text-nadin-pink-dark font-medium"
-            >
-              <X size={14} />
-              Limpiar
-            </button>
-          </div>
+          <button
+            onClick={clearFilters}
+            className="mt-4 flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark font-medium text-sm"
+          >
+            <X size={16} />
+            Limpiar filtros
+          </button>
         )}
       </div>
 
-      {/* Contador */}
-      <div className="mb-4 text-sm text-gray-600">
-        Mostrando {filteredProducts.length} productos
-        {hasActiveFilters && ` (filtrado de ${allProducts.length} totales)`}
+      <div className="mb-4 flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          Mostrando {filteredProducts.length} de {products.length} productos
+        </div>
+        <button
+          onClick={loadBestSellers}
+          className="text-sm text-nadin-pink hover:text-nadin-pink-dark"
+        >
+          🔄 Actualizar
+        </button>
       </div>
 
-      {/* Lista de productos */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        {filteredProducts.length > 0 ? (
-          <div className="divide-y divide-gray-100">
-            {filteredProducts.map((product, index) => (
-              <button
-                key={product.id}
-                onClick={() => handleProductClick(product)}
-                className="w-full p-4 hover:bg-gray-50 transition-colors text-left"
-              >
-                <div className="flex gap-4 items-center">
-                  {/* Ranking */}
-                  <div className="flex-shrink-0 w-12 flex items-center justify-center">
-                    <div className={`
-                      text-2xl font-bold
-                      ${index === 0 ? 'text-yellow-500' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-gray-600'}
-                    `}>
-                      {getMedalEmoji(index + 1)}
-                    </div>
+      {filteredProducts.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredProducts.map((product, index) => (
+            <div 
+              key={product.id} 
+              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow relative cursor-pointer"
+              onClick={() => {
+                setSelectedProduct(product);
+                setIsModalOpen(true);
+              }}
+            >
+              {index < 10 && (
+                <div className="absolute top-2 left-2 z-10">
+                  <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow">
+                    #{index + 1}
                   </div>
-
-                  {/* Imagen */}
-                  <div className="flex-shrink-0">
-                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
-                      {product.image && product.image !== '/placeholder.png' ? (
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                          Sin imagen
-                        </div>
-                      )}
-                    </div>
+                </div>
+              )}
+              
+              <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
+                {product.image && product.image !== '/placeholder.png' ? (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    Sin imagen
                   </div>
-
-                  {/* Info del producto */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-nadin-pink font-medium mb-1">{product.brand}</p>
-                    <h3 className="font-semibold text-base mb-1 line-clamp-2">
-                      {product.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {product.variants && product.variants.length > 0 && (
-                        <span>Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)} unidades</span>
-                      )}
+                )}
+              </div>
+              
+              <div className="p-3">
+                <p className="text-xs text-nadin-pink font-medium mb-1">{product.brand}</p>
+                <h3 className="font-semibold text-sm mb-2 line-clamp-2 min-h-[40px]">
+                  {product.name}
+                </h3>
+                
+                {product.variants && product.variants.length > 0 && (
+                  <>
+                    <p className="text-xs text-gray-600 mb-2">
+                      Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)} unidades
                     </p>
-                  </div>
-
-                  {/* Precios */}
-                  {product.variants && product.variants.length > 0 && (
-                    <div className="flex-shrink-0 text-right mr-4">
-                      <div className="text-lg font-bold text-nadin-pink mb-1">
+                    
+                    <div className="border-t pt-2 space-y-1">
+                      <p className="text-lg font-bold text-nadin-pink">
                         {formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen))}
-                      </div>
+                      </p>
+                      
                       {showCosts && (
                         <>
-                          <div className="text-xs text-gray-600">
-                            Costo: {formatCurrency(product.variants[0].price)}
-                          </div>
-                          <div className="text-xs text-green-600 font-semibold">
-                            +{formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen) - product.variants[0].price)}
-                          </div>
+                          <p className="text-xs text-gray-600">
+                            Costo: <span className="font-semibold">{formatCurrency(product.variants[0].price)}</span>
+                          </p>
+                          <p className="text-xs text-green-600">
+                            Ganancia: <span className="font-semibold">
+                              {formatCurrency(
+                                calcularPrecioVenta(product.variants[0].price, userMargen) - product.variants[0].price
+                              )}
+                            </span>
+                          </p>
                         </>
                       )}
                     </div>
-                  )}
-
-                  {/* Icono flecha */}
-                  <div className="flex-shrink-0">
-                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="p-12 text-center text-gray-500">
-            <Package className="mx-auto mb-4 text-gray-300" size={48} />
-            <p className="mb-2">No hay productos que coincidan con los filtros</p>
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-nadin-pink hover:underline text-sm font-medium"
-              >
-                Limpiar filtros
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Modal de detalle de producto */}
-      {showProductDetail && selectedProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={closeProductDetail}>
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-bold">{selectedProduct.name}</h2>
-                <button onClick={closeProductDetail} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <p className="text-nadin-pink font-medium mb-4">{selectedProduct.brand}</p>
-              
-              {selectedProduct.image && selectedProduct.image !== '/placeholder.png' && (
-                <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-64 object-cover rounded-lg mb-4" />
-              )}
-
-              {/* Precios en el modal */}
-              {selectedProduct.variants && selectedProduct.variants.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <div className="text-2xl font-bold text-nadin-pink mb-2">
-                    {formatCurrency(calcularPrecioVenta(selectedProduct.variants[0].price, userMargen))}
-                  </div>
-                  {showCosts && (
-                    <>
-                      <div className="text-sm text-gray-600">
-                        Costo: {formatCurrency(selectedProduct.variants[0].price)}
-                      </div>
-                      <div className="text-sm text-green-600 font-semibold">
-                        Ganancia: {formatCurrency(calcularPrecioVenta(selectedProduct.variants[0].price, userMargen) - selectedProduct.variants[0].price)}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                <p className="text-blue-800">
-                  💡 <strong>Funcionalidad en desarrollo</strong>
-                </p>
-                <p className="text-sm text-blue-600 mt-2">
-                  Próximamente podrás seleccionar variantes y agregar al pedido desde aquí
-                </p>
+                  </>
+                )}
               </div>
             </div>
-          </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 text-gray-500">
+          <TrendingUp size={48} className="mx-auto mb-3 opacity-50" />
+          <p className="text-lg mb-2">No se encontraron productos</p>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-nadin-pink hover:underline"
+            >
+              Limpiar filtros
+            </button>
+          )}
         </div>
       )}
+
+      {/* Modal de selección de producto */}
+      <ProductModal
+        product={selectedProduct}
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedProduct(null);
+        }}
+        userMargen={userMargen}
+        onAddToCart={handleAddToCart}
+      />
     </div>
   );
 }

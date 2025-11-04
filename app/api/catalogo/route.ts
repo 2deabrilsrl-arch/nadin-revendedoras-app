@@ -21,18 +21,47 @@ export async function GET(req: NextRequest) {
     }
 
     // Obtener filtros
-    const filters = {
-      brand: searchParams.get('brand') || undefined,
-      category: searchParams.get('category') || undefined,
-      sex: searchParams.get('sex') || undefined,
-      search: searchParams.get('search') || undefined,
-    };
+    const brand = searchParams.get('brand') || undefined;
+    const category = searchParams.get('category') || undefined;
+    const subcategory = searchParams.get('subcategory') || undefined;
+    const productType = searchParams.get('productType') || undefined;
+    const search = searchParams.get('search') || undefined;
 
-    // Obtener productos del cache (con actualización automática si es necesario)
-    const products = await getCachedProducts(filters);
+    // Obtener productos del cache
+    const allProducts = await getCachedProducts({
+      brand,
+      search
+    });
 
-    // Devolver directamente el array de productos para compatibilidad con el frontend
-    return NextResponse.json(products);
+    // Filtrar por categorías jerárquicas
+    let filteredProducts = allProducts;
+
+    if (category || subcategory || productType) {
+      filteredProducts = allProducts.filter((p: any) => {
+        if (!p.category) return false;
+
+        const categoryParts = p.category.split(' > ').map((part: string) => part.trim());
+
+        // Filtro por categoría principal (nivel 1)
+        if (category && !categoryParts[0]?.includes(category)) {
+          return false;
+        }
+
+        // Filtro por subcategoría (nivel 2)
+        if (subcategory && !categoryParts[1]?.includes(subcategory)) {
+          return false;
+        }
+
+        // Filtro por tipo de producto (nivel 3)
+        if (productType && !categoryParts[2]?.includes(productType)) {
+          return false;
+        }
+
+        return true;
+      });
+    }
+
+    return NextResponse.json(filteredProducts);
   } catch (error) {
     console.error('Error en API de catálogo:', error);
     return NextResponse.json(
