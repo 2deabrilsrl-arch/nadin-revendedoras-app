@@ -46,7 +46,7 @@ async function fetchTN(endpoint: string, params: Record<string, string> = {}) {
 /**
  * Obtiene TODOS los productos de Tiendanube con paginación automática
  */
-export async function getAllProducts(): Promise<Product[]> {
+export async function getAllProducts(sortBy?: string): Promise<Product[]> {
   let allProducts: Product[] = [];
   let page = 1;
   const perPage = 200; // Máximo permitido por Tiendanube
@@ -56,11 +56,17 @@ export async function getAllProducts(): Promise<Product[]> {
 
   while (hasMore) {
     try {
-      const products = await fetchTN('/products', {
+      const params: Record<string, string> = {
         page: page.toString(),
         per_page: perPage.toString(),
         published: 'true' // Solo productos publicados
-      });
+      };
+
+      if (sortBy) {
+        params.sort_by = sortBy;
+      }
+
+      const products = await fetchTN('/products', params);
 
       if (products && products.length > 0) {
         allProducts = allProducts.concat(products);
@@ -71,6 +77,9 @@ export async function getAllProducts(): Promise<Product[]> {
           hasMore = false;
         } else {
           page++;
+          
+          // Agregar delay entre páginas para no saturar la API
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       } else {
         hasMore = false;
@@ -83,6 +92,25 @@ export async function getAllProducts(): Promise<Product[]> {
 
   console.log(`✅ Sincronización completa: ${allProducts.length} productos obtenidos`);
   return allProducts;
+}
+
+/**
+ * Obtiene los productos más vendidos de Tiendanube
+ */
+export async function getBestSellingProducts(limit: number = 50): Promise<Product[]> {
+  try {
+    const products = await fetchTN('/products', {
+      per_page: limit.toString(),
+      published: 'true',
+      sort_by: 'best-selling'
+    });
+    
+    console.log(`✅ ${products.length} productos más vendidos obtenidos`);
+    return products;
+  } catch (error) {
+    console.error('Error obteniendo productos más vendidos:', error);
+    return [];
+  }
 }
 
 /**

@@ -43,29 +43,23 @@ export default function BestSellersPage() {
       setLoading(true);
       setError('');
       
-      // Obtener todos los productos
-      const res = await fetch('/api/catalogo');
+      // Obtener productos más vendidos desde la API
+      const res = await fetch('/api/catalogo/best-sellers');
       
       if (!res.ok) {
-        throw new Error('Error al cargar productos');
+        throw new Error('Error al cargar productos más vendidos');
       }
 
       const data = await res.json();
       
       // Verificar que sea un array
-      let allProducts: Product[] = [];
       if (Array.isArray(data)) {
-        allProducts = data;
+        setProducts(data);
       } else if (data.products && Array.isArray(data.products)) {
-        allProducts = data.products;
+        setProducts(data.products);
+      } else {
+        setError('No se pudieron cargar los productos más vendidos');
       }
-
-      // Ordenar por salesCount (descendente) y tomar los primeros 50
-      const bestSellers = allProducts
-        .sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))
-        .slice(0, 50);
-
-      setProducts(bestSellers);
     } catch (err) {
       console.error('Error cargando más vendidos:', err);
       setError('Error al cargar los productos más vendidos. Intenta nuevamente.');
@@ -190,9 +184,9 @@ export default function BestSellersPage() {
 
       {products.length === 0 && !loading && (
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">Aún no hay datos de ventas disponibles</p>
+          <p className="text-gray-500 mb-4">Los productos más vendidos aparecerán aquí</p>
           <p className="text-sm text-gray-400">
-            Los productos más vendidos aparecerán aquí una vez que se registren ventas
+            Estos datos provienen directamente de Tiendanube
           </p>
         </div>
       )}
