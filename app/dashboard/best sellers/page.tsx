@@ -1,6 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { TrendingUp, ChevronDown, Package } from 'lucide-react';
+import { TrendingUp, Eye, EyeOff, Package, X } from 'lucide-react';
+import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
+
+interface Variant {
+  id: number;
+  sku: string;
+  price: number;
+  stock: number;
+  talle: string;
+  color: string;
+}
 
 interface Product {
   id: number;
@@ -8,90 +18,77 @@ interface Product {
   brand: string;
   category: string;
   image: string;
-  variants: any[];
-}
-
-interface Category {
-  id: string;
-  name: { es: string };
-  parent?: string;
-  subcategories?: Category[];
+  variants: Variant[];
+  sex?: string;
 }
 
 export default function BestSellersPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [mainCategories, setMainCategories] = useState<Category[]>([]);
-  const [subCategories, setSubCategories] = useState<Category[]>([]);
-  const [thirdLevelCategories, setThirdLevelCategories] = useState<Category[]>([]);
-  
-  const [selectedMain, setSelectedMain] = useState<string>('');
-  const [selectedSub, setSelectedSub] = useState<string>('');
-  const [selectedThird, setSelectedThird] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showCosts, setShowCosts] = useState(false);
+  const [userMargen, setUserMargen] = useState(60);
+  
+  // Estados de filtros simplificados
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedSex, setSelectedSex] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [topCount, setTopCount] = useState(10);
+
+  // Opciones únicas de filtros
+  const [brands, setBrands] = useState<string[]>([]);
+  const [sexes, setSexes] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+
+  // Modal de detalle
   const [showProductDetail, setShowProductDetail] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
+    // Obtener margen del usuario
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setUserMargen(user.margen || 60);
+    }
+
     loadData();
   }, []);
 
   useEffect(() => {
-    if (selectedMain) {
-      const subs = categories.filter(c => c.parent === selectedMain);
-      setSubCategories(subs);
-      setSelectedSub('');
-      setSelectedThird('');
-      setThirdLevelCategories([]);
-    } else {
-      setSubCategories([]);
-      setThirdLevelCategories([]);
+    // Extraer opciones únicas cuando cambian los productos
+    if (allProducts.length > 0) {
+      const uniqueBrands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort();
+      const uniqueSexes = [...new Set(allProducts.map(p => p.sex).filter(Boolean))].sort();
+      const uniqueCategories = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+      
+      setBrands(uniqueBrands);
+      setSexes(uniqueSexes);
+      setCategories(uniqueCategories);
     }
-  }, [selectedMain, categories]);
-
-  useEffect(() => {
-    if (selectedSub) {
-      const thirds = categories.filter(c => c.parent === selectedSub);
-      setThirdLevelCategories(thirds);
-      setSelectedThird('');
-    } else {
-      setThirdLevelCategories([]);
-    }
-  }, [selectedSub, categories]);
+  }, [allProducts]);
 
   useEffect(() => {
     applyFilters();
-  }, [allProducts, selectedMain, selectedSub, selectedThird]);
+  }, [allProducts, selectedBrand, selectedSex, selectedCategory, topCount]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError('');
       
-      const [productsRes, categoriesRes] = await Promise.all([
-        fetch('/api/catalogo/best-sellers?limit=100'),
-        fetch('/api/catalogo/categories')
-      ]);
+      const res = await fetch('/api/catalogo/best-sellers?limit=100');
       
-      if (!productsRes.ok || !categoriesRes.ok) {
+      if (!res.ok) {
         throw new Error('Error al cargar datos');
       }
 
-      const productsData = await productsRes.json();
-      const categoriesData = await categoriesRes.json();
-      
-      const products = Array.isArray(productsData) ? productsData : (productsData.products || []);
-      const cats = Array.isArray(categoriesData) ? categoriesData : (categoriesData.categories || []);
+      const data = await res.json();
+      const products = Array.isArray(data) ? data : (data.products || []);
       
       setAllProducts(products);
-      setCategories(cats);
-      
-      const mains = cats.filter((c: Category) => !c.parent);
-      setMainCategories(mains);
-      
-      setFilteredProducts(products.slice(0, 10));
+      setFilteredProducts(products.slice(0, topCount));
     } catch (err) {
       console.error('Error cargando datos:', err);
       setError('Error al cargar datos. Intenta nuevamente.');
@@ -103,31 +100,32 @@ export default function BestSellersPage() {
   const applyFilters = () => {
     let filtered = [...allProducts];
 
-    if (selectedThird) {
-      const thirdCat = categories.find(c => c.id === selectedThird);
-      if (thirdCat) {
-        filtered = filtered.filter(p => 
-          p.category.toLowerCase().includes(thirdCat.name.es.toLowerCase())
-        );
-      }
-    } else if (selectedSub) {
-      const subCat = categories.find(c => c.id === selectedSub);
-      if (subCat) {
-        filtered = filtered.filter(p => 
-          p.category.toLowerCase().includes(subCat.name.es.toLowerCase())
-        );
-      }
-    } else if (selectedMain) {
-      const mainCat = categories.find(c => c.id === selectedMain);
-      if (mainCat) {
-        filtered = filtered.filter(p => 
-          p.category.toLowerCase().includes(mainCat.name.es.toLowerCase())
-        );
-      }
+    // Filtro por marca
+    if (selectedBrand) {
+      filtered = filtered.filter(p => p.brand === selectedBrand);
     }
 
-    setFilteredProducts(filtered.slice(0, 10));
+    // Filtro por sexo
+    if (selectedSex) {
+      filtered = filtered.filter(p => p.sex === selectedSex);
+    }
+
+    // Filtro por categoría
+    if (selectedCategory) {
+      filtered = filtered.filter(p => p.category === selectedCategory);
+    }
+
+    // Limitar al top N
+    setFilteredProducts(filtered.slice(0, topCount));
   };
+
+  const clearFilters = () => {
+    setSelectedBrand('');
+    setSelectedSex('');
+    setSelectedCategory('');
+  };
+
+  const hasActiveFilters = selectedBrand || selectedSex || selectedCategory;
 
   const getMedalEmoji = (position: number) => {
     if (position === 1) return '🥇';
@@ -177,122 +175,147 @@ export default function BestSellersPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-4">
-      {/* Header */}
+      {/* Header con botón ojo */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <TrendingUp className="text-nadin-pink" size={28} />
-          <h2 className="text-2xl font-bold">🔥 Más Vendidos</h2>
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <TrendingUp className="text-nadin-pink" size={28} />
+              <h2 className="text-2xl font-bold">🔥 Más Vendidos</h2>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Los productos con mejor rendimiento según Tiendanube
+            </p>
+          </div>
+
+          {/* Botón Ver/Ocultar Costos */}
+          <button
+            onClick={() => setShowCosts(!showCosts)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            {showCosts ? (
+              <>
+                <EyeOff size={20} />
+                <span className="hidden sm:inline">Ocultar</span>
+              </>
+            ) : (
+              <>
+                <Eye size={20} />
+                <span className="hidden sm:inline">Ver Costos</span>
+              </>
+            )}
+          </button>
         </div>
-        <p className="text-gray-600 text-sm">
-          Los productos con mejor rendimiento según Tiendanube
-        </p>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros simplificados */}
       <div className="mb-6 bg-white rounded-lg shadow-md p-4">
-        <h3 className="font-bold text-gray-800 mb-4">Filtrar por categoría:</h3>
+        <h3 className="font-bold text-gray-800 mb-4">Filtros</h3>
         
-        <div className="grid md:grid-cols-3 gap-4">
-          {/* Categoría Principal */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Top N */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categoría Principal
+              Mostrar Top
             </label>
-            <div className="relative">
-              <select
-                value={selectedMain}
-                onChange={(e) => setSelectedMain(e.target.value)}
-                className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-nadin-pink focus:border-transparent bg-white"
-              >
-                <option value="">Top 10 General</option>
-                {mainCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name.es}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-            </div>
+            <select
+              value={topCount}
+              onChange={(e) => setTopCount(Number(e.target.value))}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+            >
+              <option value={10}>Top 10</option>
+              <option value={20}>Top 20</option>
+              <option value={50}>Top 50</option>
+              <option value={100}>Top 100</option>
+            </select>
           </div>
 
-          {/* Subcategoría */}
+          {/* Marca */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subcategoría
+              Marca
             </label>
-            <div className="relative">
-              <select
-                value={selectedSub}
-                onChange={(e) => setSelectedSub(e.target.value)}
-                disabled={!selectedMain || subCategories.length === 0}
-                className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-nadin-pink focus:border-transparent bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">Todas</option>
-                {subCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name.es}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-            </div>
+            <select
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+            >
+              <option value="">Todas las marcas</option>
+              {brands.map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
           </div>
 
-          {/* Tipo de Producto */}
+          {/* Género */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de Producto
+              Género
             </label>
-            <div className="relative">
-              <select
-                value={selectedThird}
-                onChange={(e) => setSelectedThird(e.target.value)}
-                disabled={!selectedSub || thirdLevelCategories.length === 0}
-                className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg appearance-none focus:ring-2 focus:ring-nadin-pink focus:border-transparent bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">Todos</option>
-                {thirdLevelCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name.es}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={20} />
-            </div>
+            <select
+              value={selectedSex}
+              onChange={(e) => setSelectedSex(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+            >
+              <option value="">Todos</option>
+              {sexes.map(sex => (
+                <option key={sex} value={sex}>{sex}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Categoría */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Categoría
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+            >
+              <option value="">Todas</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Filtros activos */}
-        {(selectedMain || selectedSub || selectedThird) && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-gray-600">Mostrando:</span>
-            {selectedMain && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                {mainCategories.find(c => c.id === selectedMain)?.name.es}
+        {/* Filtros activos y botón limpiar */}
+        {hasActiveFilters && (
+          <div className="mt-4 flex items-center gap-2">
+            <span className="text-sm text-gray-600">Filtrando por:</span>
+            {selectedBrand && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {selectedBrand}
               </span>
             )}
-            {selectedSub && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
-                {subCategories.find(c => c.id === selectedSub)?.name.es}
+            {selectedSex && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                {selectedSex}
               </span>
             )}
-            {selectedThird && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-nadin-pink text-white">
-                {thirdLevelCategories.find(c => c.id === selectedThird)?.name.es}
+            {selectedCategory && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                {selectedCategory}
               </span>
             )}
             <button
-              onClick={() => {
-                setSelectedMain('');
-                setSelectedSub('');
-                setSelectedThird('');
-              }}
-              className="text-sm text-nadin-pink hover:underline"
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-sm text-nadin-pink hover:text-nadin-pink-dark font-medium"
             >
+              <X size={14} />
               Limpiar
             </button>
           </div>
         )}
+      </div>
+
+      {/* Contador */}
+      <div className="mb-4 text-sm text-gray-600">
+        Mostrando {filteredProducts.length} productos
+        {hasActiveFilters && ` (filtrado de ${allProducts.length} totales)`}
       </div>
 
       {/* Lista de productos */}
@@ -306,6 +329,7 @@ export default function BestSellersPage() {
                 className="w-full p-4 hover:bg-gray-50 transition-colors text-left"
               >
                 <div className="flex gap-4 items-center">
+                  {/* Ranking */}
                   <div className="flex-shrink-0 w-12 flex items-center justify-center">
                     <div className={`
                       text-2xl font-bold
@@ -315,6 +339,7 @@ export default function BestSellersPage() {
                     </div>
                   </div>
 
+                  {/* Imagen */}
                   <div className="flex-shrink-0">
                     <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden">
                       {product.image && product.image !== '/placeholder.png' ? (
@@ -331,18 +356,39 @@ export default function BestSellersPage() {
                     </div>
                   </div>
 
+                  {/* Info del producto */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-500 mb-1">{product.brand}</p>
+                    <p className="text-xs text-nadin-pink font-medium mb-1">{product.brand}</p>
                     <h3 className="font-semibold text-base mb-1 line-clamp-2">
                       {product.name}
                     </h3>
                     <p className="text-sm text-gray-600">
                       {product.variants && product.variants.length > 0 && (
-                        <span>Stock: {product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)} unidades</span>
+                        <span>Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)} unidades</span>
                       )}
                     </p>
                   </div>
 
+                  {/* Precios */}
+                  {product.variants && product.variants.length > 0 && (
+                    <div className="flex-shrink-0 text-right mr-4">
+                      <div className="text-lg font-bold text-nadin-pink mb-1">
+                        {formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen))}
+                      </div>
+                      {showCosts && (
+                        <>
+                          <div className="text-xs text-gray-600">
+                            Costo: {formatCurrency(product.variants[0].price)}
+                          </div>
+                          <div className="text-xs text-green-600 font-semibold">
+                            +{formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen) - product.variants[0].price)}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Icono flecha */}
                   <div className="flex-shrink-0">
                     <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -355,17 +401,15 @@ export default function BestSellersPage() {
         ) : (
           <div className="p-12 text-center text-gray-500">
             <Package className="mx-auto mb-4 text-gray-300" size={48} />
-            <p className="mb-2">No hay productos en esta categoría</p>
-            <button
-              onClick={() => {
-                setSelectedMain('');
-                setSelectedSub('');
-                setSelectedThird('');
-              }}
-              className="text-nadin-pink hover:underline text-sm"
-            >
-              Ver todos los productos
-            </button>
+            <p className="mb-2">No hay productos que coincidan con los filtros</p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-nadin-pink hover:underline text-sm font-medium"
+              >
+                Limpiar filtros
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -384,10 +428,29 @@ export default function BestSellersPage() {
                 </button>
               </div>
               
-              <p className="text-gray-600 mb-4">{selectedProduct.brand}</p>
+              <p className="text-nadin-pink font-medium mb-4">{selectedProduct.brand}</p>
               
-              {selectedProduct.image && (
+              {selectedProduct.image && selectedProduct.image !== '/placeholder.png' && (
                 <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-64 object-cover rounded-lg mb-4" />
+              )}
+
+              {/* Precios en el modal */}
+              {selectedProduct.variants && selectedProduct.variants.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <div className="text-2xl font-bold text-nadin-pink mb-2">
+                    {formatCurrency(calcularPrecioVenta(selectedProduct.variants[0].price, userMargen))}
+                  </div>
+                  {showCosts && (
+                    <>
+                      <div className="text-sm text-gray-600">
+                        Costo: {formatCurrency(selectedProduct.variants[0].price)}
+                      </div>
+                      <div className="text-sm text-green-600 font-semibold">
+                        Ganancia: {formatCurrency(calcularPrecioVenta(selectedProduct.variants[0].price, userMargen) - selectedProduct.variants[0].price)}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
               
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
