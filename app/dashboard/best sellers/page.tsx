@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
+import { TrendingUp, Award } from 'lucide-react';
 
 interface Variant {
   id: number;
@@ -21,14 +22,21 @@ interface Product {
   salesCount?: number;
 }
 
+interface RankingSection {
+  title: string;
+  subtitle?: string;
+  products: Product[];
+  emoji?: string;
+}
+
 export default function BestSellersPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [rankings, setRankings] = useState<RankingSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userMargen, setUserMargen] = useState(60);
 
   useEffect(() => {
-    // Obtener margen del usuario
     const userStr = localStorage.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
@@ -43,29 +51,183 @@ export default function BestSellersPage() {
       setLoading(true);
       setError('');
       
-      // Obtener productos más vendidos desde la API
-      const res = await fetch('/api/catalogo/best-sellers');
+      const res = await fetch('/api/catalogo/best-sellers?limit=100');
       
       if (!res.ok) {
         throw new Error('Error al cargar productos más vendidos');
       }
 
       const data = await res.json();
+      const products = Array.isArray(data) ? data : (data.products || []);
       
-      // Verificar que sea un array
-      if (Array.isArray(data)) {
-        setProducts(data);
-      } else if (data.products && Array.isArray(data.products)) {
-        setProducts(data.products);
-      } else {
-        setError('No se pudieron cargar los productos más vendidos');
-      }
+      setAllProducts(products);
+      processRankings(products);
     } catch (err) {
       console.error('Error cargando más vendidos:', err);
       setError('Error al cargar los productos más vendidos. Intenta nuevamente.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const inferSex = (category: string, name: string): string => {
+    const text = `${category} ${name}`.toLowerCase();
+    
+    if (text.includes('mujer') || text.includes('dama') || text.includes('femenin')) {
+      return 'Mujer';
+    }
+    if (text.includes('hombre') || text.includes('masculin') || text.includes('caballero')) {
+      return 'Hombre';
+    }
+    if (text.includes('niñ') || text.includes('kid') || text.includes('infant') || text.includes('bebe') || text.includes('bebé')) {
+      return 'Niños';
+    }
+    
+    return 'General';
+  };
+
+  const getSubcategory = (category: string): string => {
+    const lower = category.toLowerCase();
+    
+    if (lower.includes('ropa interior')) return 'Ropa Interior';
+    if (lower.includes('pijama')) return 'Pijamas';
+    if (lower.includes('bata')) return 'Batas';
+    if (lower.includes('corset') || lower.includes('corsé')) return 'Corsetería';
+    if (lower.includes('medias')) return 'Medias';
+    if (lower.includes('bodies') || lower.includes('body')) return 'Bodies';
+    
+    return category;
+  };
+
+  const processRankings = (products: Product[]) => {
+    const newRankings: RankingSection[] = [];
+
+    // TOP 10 GENERAL
+    newRankings.push({
+      title: '🏆 Top 10 General',
+      subtitle: 'Los productos más vendidos de toda la tienda',
+      products: products.slice(0, 10),
+      emoji: '🏆'
+    });
+
+    // Clasificar productos por género
+    const productsBySex: Record<string, Product[]> = {
+      'Mujer': [],
+      'Hombre': [],
+      'Niños': []
+    };
+
+    products.forEach(product => {
+      const sex = inferSex(product.category, product.name);
+      if (productsBySex[sex]) {
+        productsBySex[sex].push(product);
+      }
+    });
+
+    // TOP 5 POR GÉNERO
+    Object.entries(productsBySex).forEach(([sex, sexProducts]) => {
+      if (sexProducts.length > 0) {
+        const emoji = sex === 'Mujer' ? '👗' : sex === 'Hombre' ? '👔' : '👶';
+        
+        newRankings.push({
+          title: `${emoji} Top 5 ${sex}`,
+          subtitle: `Los más vendidos en ${sex.toLowerCase()}`,
+          products: sexProducts.slice(0, 5),
+          emoji
+        });
+
+        // TOP 5 POR SUBCATEGORÍA DENTRO DEL GÉNERO
+        const subcategories: Record<string, Product[]> = {};
+        
+        sexProducts.forEach(product => {
+          const subcat = getSubcategory(product.category);
+          if (!subcategories[subcat]) {
+            subcategories[subcat] = [];
+          }
+          subcategories[subcat].push(product);
+        });
+
+        // Ordenar subcategorías por cantidad de productos y tomar las top 3
+        const topSubcategories = Object.entries(subcategories)
+          .sort(([, a], [, b]) => b.length - a.length)
+          .slice(0, 3);
+
+        topSubcategories.forEach(([subcat, subcatProducts]) => {
+          if (subcatProducts.length >= 3) {
+            newRankings.push({
+              title: `${sex} - ${subcat}`,
+              subtitle: `Top 5 en ${subcat.toLowerCase()}`,
+              products: subcatProducts.slice(0, 5)
+            });
+          }
+        });
+      }
+    });
+
+    setRankings(newRankings);
+  };
+
+  const ProductCard = ({ product, rank }: { product: Product; rank: number }) => {
+    const getMedalEmoji = (position: number) => {
+      if (position === 1) return '🥇';
+      if (position === 2) return '🥈';
+      if (position === 3) return '🥉';
+      return `${position}º`;
+    };
+
+    return (
+      <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow relative">
+        {/* Badge de ranking */}
+        <div className="absolute top-2 left-2 z-10">
+          <div className={`
+            px-3 py-1 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-md
+            ${rank === 1 ? 'bg-yellow-500' : rank === 2 ? 'bg-gray-400' : rank === 3 ? 'bg-orange-600' : 'bg-nadin-pink'}
+          `}>
+            {getMedalEmoji(rank)}
+          </div>
+        </div>
+
+        <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
+          {product.image && product.image !== '/placeholder.png' ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              Sin imagen
+            </div>
+          )}
+        </div>
+        
+        <div className="p-3">
+          <p className="text-xs text-gray-500 mb-1">{product.brand}</p>
+          <h3 className="font-semibold text-sm mb-2 line-clamp-2 min-h-[40px]">
+            {product.name}
+          </h3>
+          
+          {product.variants && product.variants.length > 0 && (
+            <>
+              <p className="text-xs text-gray-600 mb-2">
+                Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)} unidades
+              </p>
+              <div className="space-y-1">
+                <p className="text-sm text-gray-700">
+                  Mayorista: <span className="font-bold">{formatCurrency(product.variants[0].price)}</span>
+                </p>
+                <p className="text-sm text-nadin-pink">
+                  Tu precio: <span className="font-bold">{formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen))}</span>
+                </p>
+                <p className="text-xs text-green-600 font-semibold">
+                  Ganancia: {formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen) - product.variants[0].price)}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -98,95 +260,51 @@ export default function BestSellersPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-2">🔥 Más Vendidos</h2>
-        <p className="text-gray-600 text-sm mb-4">
-          Los productos favoritos de nuestras revendedoras
+    <div className="max-w-7xl mx-auto p-4 pb-20">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <TrendingUp className="text-nadin-pink" size={32} />
+          <h2 className="text-3xl font-bold">Más Vendidos</h2>
+        </div>
+        <p className="text-gray-600">
+          Productos ordenados por popularidad según datos de Tiendanube
         </p>
         
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-blue-800 text-sm">
-            💡 <strong>Tip:</strong> Estos productos tienen alta rotación y son los preferidos por las clientas.
+            💡 <strong>Tip:</strong> Estos productos tienen alta demanda. Ideal para priorizar en tu inventario.
           </p>
         </div>
-
-        <div className="text-sm text-gray-600">
-          Mostrando top {products.length} productos
-        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {products.map((product, index) => (
-          <div key={product.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow relative">
-            {/* Badge de ranking */}
-            {index < 3 && (
-              <div className="absolute top-2 left-2 z-10">
-                <div className={`
-                  w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm
-                  ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-orange-600'}
-                `}>
-                  {index + 1}
-                </div>
-              </div>
+      {/* Rankings */}
+      {rankings.map((ranking, idx) => (
+        <div key={idx} className="mb-12">
+          <div className="mb-4">
+            <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              {ranking.emoji && <span>{ranking.emoji}</span>}
+              {ranking.title}
+            </h3>
+            {ranking.subtitle && (
+              <p className="text-gray-600 text-sm mt-1">{ranking.subtitle}</p>
             )}
-
-            <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
-              {product.image && product.image !== '/placeholder.png' ? (
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  Sin imagen
-                </div>
-              )}
-            </div>
-            
-            <div className="p-3">
-              <p className="text-xs text-gray-500 mb-1">{product.brand}</p>
-              <h3 className="font-semibold text-sm mb-2 line-clamp-2 min-h-[40px]">
-                {product.name}
-              </h3>
-              
-              {product.salesCount !== undefined && product.salesCount > 0 && (
-                <div className="flex items-center gap-1 mb-2">
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                    {product.salesCount} ventas
-                  </span>
-                </div>
-              )}
-              
-              {product.variants && product.variants.length > 0 && (
-                <>
-                  <p className="text-xs text-gray-600 mb-2">
-                    Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)} unidades
-                  </p>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-700">
-                      Mayorista: <span className="font-bold">{formatCurrency(product.variants[0].price)}</span>
-                    </p>
-                    <p className="text-sm text-nadin-pink">
-                      Tu precio: <span className="font-bold">{formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen))}</span>
-                    </p>
-                    <p className="text-xs text-green-600 font-semibold">
-                      Ganancia: {formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen) - product.variants[0].price)}
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
           </div>
-        ))}
-      </div>
 
-      {products.length === 0 && !loading && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {ranking.products.map((product, index) => (
+              <ProductCard key={product.id} product={product} rank={index + 1} />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {allProducts.length === 0 && !loading && (
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">Los productos más vendidos aparecerán aquí</p>
+          <Award className="mx-auto text-gray-300 mb-4" size={64} />
+          <p className="text-gray-500 mb-2">No hay datos de productos más vendidos</p>
           <p className="text-sm text-gray-400">
-            Estos datos provienen directamente de Tiendanube
+            Los rankings aparecerán automáticamente con datos de Tiendanube
           </p>
         </div>
       )}
