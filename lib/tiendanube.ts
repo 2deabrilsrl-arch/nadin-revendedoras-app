@@ -122,13 +122,39 @@ export async function getProduct(id: string): Promise<Product> {
 }
 
 /**
- * Obtiene productos desde el caché o sincroniza si es necesario
- * Esta función se usará en la API del catálogo
+ * Obtiene todas las categorías de Tiendanube
  */
-export async function getProducts() {
-  // Por ahora retornamos todos los productos directamente
-  // En el siguiente paso implementaremos el cache
-  return getAllProducts();
+export async function getCategories() {
+  try {
+    let allCategories: any[] = [];
+    let page = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const categories = await fetchTN('/categories', {
+        page: page.toString(),
+        per_page: '200'
+      });
+
+      if (categories && categories.length > 0) {
+        allCategories = allCategories.concat(categories);
+        
+        if (categories.length < 200) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    console.log(`✅ ${allCategories.length} categorías obtenidas`);
+    return allCategories;
+  } catch (error) {
+    console.error('Error obteniendo categorías:', error);
+    return [];
+  }
 }
 
 /**
