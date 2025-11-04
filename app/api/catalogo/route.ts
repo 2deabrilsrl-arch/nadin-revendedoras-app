@@ -31,11 +31,8 @@ export async function GET(req: NextRequest) {
     // Obtener productos del cache (con actualización automática si es necesario)
     const products = await getCachedProducts(filters);
 
-    return NextResponse.json({
-      products,
-      count: products.length,
-      filters
-    });
+    // Devolver directamente el array de productos para compatibilidad con el frontend
+    return NextResponse.json(products);
   } catch (error) {
     console.error('Error en API de catálogo:', error);
     return NextResponse.json(
