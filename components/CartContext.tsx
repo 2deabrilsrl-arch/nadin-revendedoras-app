@@ -13,7 +13,8 @@ export interface CartItem {
   mayorista: number;
   venta: number;
   image: string;
-  descuento?: number; // Descuento individual en pesos
+  descuentoPesos?: number; // Descuento individual en pesos
+  descuentoPorcentaje?: number; // Descuento individual en porcentaje
 }
 
 interface CartContextType {
@@ -21,7 +22,8 @@ interface CartContextType {
   addToCart: (item: CartItem) => void;
   removeFromCart: (variantId: number) => void;
   updateQuantity: (variantId: number, qty: number) => void;
-  updateDiscount: (variantId: number, descuento: number) => void;
+  updateDescuentoPesos: (variantId: number, descuento: number) => void;
+  updateDescuentoPorcentaje: (variantId: number, porcentaje: number) => void;
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalMayorista: () => number;
@@ -103,11 +105,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const updateDiscount = (variantId: number, descuento: number) => {
+  const updateDescuentoPesos = (variantId: number, descuento: number) => {
     setCart(prev =>
       prev.map(item =>
         item.variantId === variantId
-          ? { ...item, descuento: Math.max(0, descuento) }
+          ? { 
+              ...item, 
+              descuentoPesos: Math.max(0, descuento),
+              descuentoPorcentaje: undefined // Limpiar descuento por %
+            }
+          : item
+      )
+    );
+  };
+
+  const updateDescuentoPorcentaje = (variantId: number, porcentaje: number) => {
+    setCart(prev =>
+      prev.map(item =>
+        item.variantId === variantId
+          ? { 
+              ...item, 
+              descuentoPorcentaje: Math.max(0, Math.min(100, porcentaje)),
+              descuentoPesos: undefined // Limpiar descuento en pesos
+            }
           : item
       )
     );
@@ -130,7 +150,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const getTotalDescuentos = () => {
-    return cart.reduce((sum, item) => sum + ((item.descuento || 0) * item.qty), 0);
+    return cart.reduce((sum, item) => {
+      const subtotal = item.venta * item.qty;
+      
+      // Descuento por porcentaje tiene prioridad
+      if (item.descuentoPorcentaje && item.descuentoPorcentaje > 0) {
+        return sum + (subtotal * item.descuentoPorcentaje / 100);
+      }
+      
+      // Descuento en pesos
+      if (item.descuentoPesos && item.descuentoPesos > 0) {
+        return sum + (item.descuentoPesos * item.qty);
+      }
+      
+      return sum;
+    }, 0);
   };
 
   const getTotalFinal = () => {
@@ -148,7 +182,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         addToCart,
         removeFromCart,
         updateQuantity,
-        updateDiscount,
+        updateDescuentoPesos,
+        updateDescuentoPorcentaje,
         clearCart,
         getTotalItems,
         getTotalMayorista,

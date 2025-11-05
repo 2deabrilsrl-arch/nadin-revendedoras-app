@@ -5,6 +5,7 @@ import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
 import ProductModal, { CartItem } from '@/components/ProductModal';
 import { useCart } from '@/components/CartContext';
 import BackToHomeButton from '@/components/BackToHomeButton';
+import ShareWhatsAppButton from '@/components/ShareWhatsAppButton';
 
 interface Variant {
   id: number;
@@ -102,7 +103,11 @@ export default function BestSellersPage() {
     if (selectedMainCategory) {
       subcats = [...new Set(
         allProducts
-          .filter(p => p.category && p.category.startsWith(selectedMainCategory))
+          .filter(p => {
+            if (!p.category) return false;
+            const parts = p.category.split(' > ').map(part => part.trim());
+            return parts[0] === selectedMainCategory;
+          })
           .map(p => {
             const parts = p.category.split(' > ');
             return parts[1]?.trim();
@@ -116,11 +121,11 @@ export default function BestSellersPage() {
     if (selectedMainCategory && selectedSubcategory) {
       productTypes = [...new Set(
         allProducts
-          .filter(p => 
-            p.category && 
-            p.category.startsWith(selectedMainCategory) &&
-            p.category.includes(selectedSubcategory)
-          )
+          .filter(p => {
+            if (!p.category) return false;
+            const parts = p.category.split(' > ').map(part => part.trim());
+            return parts[0] === selectedMainCategory && parts[1] === selectedSubcategory;
+          })
           .map(p => {
             const parts = p.category.split(' > ');
             return parts[2]?.trim();
@@ -410,7 +415,7 @@ export default function BestSellersPage() {
                       Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)} unidades
                     </p>
                     
-                    <div className="border-t pt-2 space-y-1">
+                    <div className="border-t pt-2 space-y-1 mb-3">
                       <p className="text-lg font-bold text-nadin-pink">
                         {formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen))}
                       </p>
@@ -430,6 +435,13 @@ export default function BestSellersPage() {
                         </>
                       )}
                     </div>
+
+                    {/* Botón WhatsApp */}
+                    <ShareWhatsAppButton
+                      product={product}
+                      precioVenta={calcularPrecioVenta(product.variants[0].price, userMargen)}
+                      className="w-full py-2 px-3"
+                    />
                   </>
                 )}
               </div>

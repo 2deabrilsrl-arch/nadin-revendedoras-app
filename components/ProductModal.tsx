@@ -41,6 +41,8 @@ export interface CartItem {
   mayorista: number;
   venta: number;
   image: string;
+  descuentoPesos?: number;
+  descuentoPorcentaje?: number;
 }
 
 export default function ProductModal({ product, isOpen, onClose, userMargen, onAddToCart }: ProductModalProps) {
