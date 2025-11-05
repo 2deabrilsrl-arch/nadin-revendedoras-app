@@ -24,7 +24,7 @@ interface Product {
 }
 
 export default function BestSellersPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userMargen, setUserMargen] = useState(60);
@@ -35,12 +35,6 @@ export default function BestSellersPage() {
   const [selectedMainCategory, setSelectedMainCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [selectedProductType, setSelectedProductType] = useState('');
-
-  // Opciones únicas de filtros
-  const [brands, setBrands] = useState<string[]>([]);
-  const [mainCategories, setMainCategories] = useState<string[]>([]);
-  const [subcategories, setSubcategories] = useState<string[]>([]);
-  const [productTypes, setProductTypes] = useState<string[]>([]);
 
   // Estados para el modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -59,12 +53,6 @@ export default function BestSellersPage() {
     loadBestSellers();
   }, []);
 
-  useEffect(() => {
-    if (products.length > 0) {
-      extractFilterOptions();
-    }
-  }, [products, selectedMainCategory, selectedSubcategory]);
-
   const loadBestSellers = async () => {
     try {
       setLoading(true);
@@ -74,7 +62,7 @@ export default function BestSellersPage() {
       if (!res.ok) throw new Error('Error al cargar productos');
 
       const data = await res.json();
-      setProducts(Array.isArray(data) ? data : []);
+      setAllProducts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error cargando más vendidos:', err);
       setError('Error al cargar los productos más vendidos');
@@ -83,57 +71,94 @@ export default function BestSellersPage() {
     }
   };
 
-  const extractFilterOptions = () => {
-    const uniqueBrands = [...new Set(
-      products
+  // Extraer opciones de filtros basado en productos actuales
+  const getFilterOptions = () => {
+    // Brands
+    const brands = [...new Set(
+      allProducts
         .map(p => p.brand)
         .filter(b => b && b !== 'Sin marca')
     )].sort();
-    setBrands(uniqueBrands);
 
-    const mainCatsSet = new Set<string>();
-    products.forEach(p => {
-      if (p.category) {
-        const parts = p.category.split(' > ');
-        if (parts[0] && parts[0].trim() !== 'MARCAS') {
-          mainCatsSet.add(parts[0].trim());
-        }
-      }
-    });
-    setMainCategories([...mainCatsSet].sort());
+    // Main categories (excluyendo MARCAS)
+    const mainCats = [...new Set(
+      allProducts
+        .map(p => {
+          if (p.category) {
+            const parts = p.category.split(' > ');
+            return parts[0]?.trim();
+          }
+          return null;
+        })
+        .filter(c => c && c !== 'MARCAS')
+    )].sort();
 
+    // Subcategories (basado en la categoría principal seleccionada)
+    let subcats: string[] = [];
     if (selectedMainCategory) {
-      const subcatsSet = new Set<string>();
-      products.forEach(p => {
-        if (p.category && p.category.startsWith(selectedMainCategory)) {
-          const parts = p.category.split(' > ');
-          if (parts[1]) {
-            subcatsSet.add(parts[1].trim());
-          }
-        }
-      });
-      setSubcategories([...subcatsSet].sort());
-    } else {
-      setSubcategories([]);
+      subcats = [...new Set(
+        allProducts
+          .filter(p => p.category && p.category.startsWith(selectedMainCategory))
+          .map(p => {
+            const parts = p.category.split(' > ');
+            return parts[1]?.trim();
+          })
+          .filter(Boolean)
+      )].sort();
     }
 
+    // Product types (basado en la subcategoría seleccionada)
+    let productTypes: string[] = [];
     if (selectedMainCategory && selectedSubcategory) {
-      const typesSet = new Set<string>();
-      products.forEach(p => {
-        if (p.category && 
-            p.category.startsWith(selectedMainCategory) && 
-            p.category.includes(selectedSubcategory)) {
-          const parts = p.category.split(' > ');
-          if (parts[2]) {
-            typesSet.add(parts[2].trim());
-          }
-        }
-      });
-      setProductTypes([...typesSet].sort());
-    } else {
-      setProductTypes([]);
+      productTypes = [...new Set(
+        allProducts
+          .filter(p => 
+            p.category && 
+            p.category.startsWith(selectedMainCategory) &&
+            p.category.includes(selectedSubcategory)
+          )
+          .map(p => {
+            const parts = p.category.split(' > ');
+            return parts[2]?.trim();
+          })
+          .filter(Boolean)
+      )].sort();
     }
+
+    return { brands, mainCats, subcats, productTypes };
   };
+
+  const { brands, mainCats, subcats, productTypes } = getFilterOptions();
+
+  // Filtrar productos
+  const filteredProducts = allProducts.filter(p => {
+    // Filtro por marca
+    if (selectedBrand && p.brand !== selectedBrand) return false;
+
+    // Filtros por categoría jerárquica
+    if (selectedMainCategory || selectedSubcategory || selectedProductType) {
+      if (!p.category) return false;
+
+      const categoryParts = p.category.split(' > ').map(part => part.trim());
+
+      // Categoría principal
+      if (selectedMainCategory && categoryParts[0] !== selectedMainCategory) {
+        return false;
+      }
+
+      // Subcategoría
+      if (selectedSubcategory && categoryParts[1] !== selectedSubcategory) {
+        return false;
+      }
+
+      // Tipo de producto
+      if (selectedProductType && categoryParts[2] !== selectedProductType) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 
   // Handler para agregar al carrito
   const handleAddToCart = (item: CartItem) => {
@@ -141,29 +166,24 @@ export default function BestSellersPage() {
     alert('✅ Producto agregado al pedido');
   };
 
-  const filteredProducts = products.filter(p => {
-    if (selectedBrand && p.brand !== selectedBrand) return false;
-
-    if (selectedMainCategory) {
-      if (!p.category || !p.category.startsWith(selectedMainCategory)) return false;
-    }
-
-    if (selectedSubcategory) {
-      if (!p.category || !p.category.includes(selectedSubcategory)) return false;
-    }
-
-    if (selectedProductType) {
-      if (!p.category || !p.category.includes(selectedProductType)) return false;
-    }
-
-    return true;
-  });
-
   const clearFilters = () => {
     setSelectedBrand('');
     setSelectedMainCategory('');
     setSelectedSubcategory('');
     setSelectedProductType('');
+  };
+
+  // Handler para cambio de categoría principal
+  const handleMainCategoryChange = (value: string) => {
+    setSelectedMainCategory(value);
+    setSelectedSubcategory(''); // Reset subcategory
+    setSelectedProductType(''); // Reset product type
+  };
+
+  // Handler para cambio de subcategoría
+  const handleSubcategoryChange = (value: string) => {
+    setSelectedSubcategory(value);
+    setSelectedProductType(''); // Reset product type
   };
 
   const hasActiveFilters = selectedBrand || selectedMainCategory || selectedSubcategory || selectedProductType;
@@ -230,6 +250,7 @@ export default function BestSellersPage() {
         <h3 className="font-semibold text-gray-800 mb-3">Filtros</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Marca */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Marca
@@ -246,46 +267,46 @@ export default function BestSellersPage() {
             </select>
           </div>
 
+          {/* Categoría Principal */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Categoría
             </label>
             <select
               value={selectedMainCategory}
-              onChange={(e) => {
-                setSelectedMainCategory(e.target.value);
-                setSelectedSubcategory('');
-                setSelectedProductType('');
-              }}
+              onChange={(e) => handleMainCategoryChange(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             >
               <option value="">Todas las categorías</option>
-              {mainCategories.map(cat => (
+              {mainCats.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
           </div>
 
+          {/* Subcategoría */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Subcategoría
             </label>
             <select
               value={selectedSubcategory}
-              onChange={(e) => {
-                setSelectedSubcategory(e.target.value);
-                setSelectedProductType('');
-              }}
-              disabled={!selectedMainCategory}
+              onChange={(e) => handleSubcategoryChange(e.target.value)}
+              disabled={!selectedMainCategory || subcats.length === 0}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
-              <option value="">Todas las subcategorías</option>
-              {subcategories.map(subcat => (
+              <option value="">
+                {selectedMainCategory 
+                  ? (subcats.length > 0 ? 'Todas las subcategorías' : 'No hay subcategorías')
+                  : 'Selecciona categoría primero'}
+              </option>
+              {subcats.map(subcat => (
                 <option key={subcat} value={subcat}>{subcat}</option>
               ))}
             </select>
           </div>
 
+          {/* Tipo de Producto */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tipo de Producto
@@ -293,10 +314,14 @@ export default function BestSellersPage() {
             <select
               value={selectedProductType}
               onChange={(e) => setSelectedProductType(e.target.value)}
-              disabled={!selectedSubcategory}
+              disabled={!selectedSubcategory || productTypes.length === 0}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
-              <option value="">Todos los tipos</option>
+              <option value="">
+                {selectedSubcategory
+                  ? (productTypes.length > 0 ? 'Todos los tipos' : 'No hay tipos')
+                  : 'Selecciona subcategoría primero'}
+              </option>
               {productTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
@@ -317,7 +342,7 @@ export default function BestSellersPage() {
 
       <div className="mb-4 flex justify-between items-center">
         <div className="text-sm text-gray-600">
-          Mostrando {filteredProducts.length} de {products.length} productos
+          Mostrando {filteredProducts.length} de {allProducts.length} productos
         </div>
         <button
           onClick={loadBestSellers}

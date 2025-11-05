@@ -1,18 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, Search, X, ArrowLeft, Package } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Search, Package } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
 import ProductModal, { CartItem } from '@/components/ProductModal';
 import { useCart } from '@/components/CartContext';
 
-interface Variant {
-  id: number;
-  sku: string;
-  price: number;
-  stock: number;
-  talle: string;
-  color: string;
-}
+type ViewMode = 'initial' | 'brands' | 'categories' | 'subcategories' | 'producttypes' | 'products';
 
 interface Product {
   id: number;
@@ -20,38 +13,30 @@ interface Product {
   brand: string;
   category: string;
   image: string;
-  variants: Variant[];
-  sex?: string;
+  variants: any[];
 }
-
-type ViewMode = 'initial' | 'by-brand' | 'by-category' | 'products' | 'all-products';
 
 export default function CatalogoPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('initial');
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [userMargen, setUserMargen] = useState(60);
-  const [showCosts, setShowCosts] = useState(false);
-
-  // Filtros de navegación
-  const [selectedBrand, setSelectedBrand] = useState('');
-  const [selectedMainCategory, setSelectedMainCategory] = useState('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
-  const [selectedProductType, setSelectedProductType] = useState('');
-
-  // Listas únicas
   const [brands, setBrands] = useState<string[]>([]);
-  const [mainCategories, setMainCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<string[]>([]);
   const [productTypes, setProductTypes] = useState<string[]>([]);
-
-  // Estados para el modal
+  
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('');
+  const [selectedProductType, setSelectedProductType] = useState('');
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [userMargen, setUserMargen] = useState(60);
+  const [showCosts, setShowCosts] = useState(false);
+  
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Hook del carrito
+  
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -62,226 +47,221 @@ export default function CatalogoPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (products.length > 0) {
-      extractUniqueValues();
-    }
-  }, [products]);
-
-  const extractUniqueValues = () => {
-    const uniqueBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
-    setBrands(uniqueBrands);
-
-    const categoriesSet = new Set<string>();
-    products.forEach(p => {
-      if (p.category) {
-        const parts = p.category.split(' > ');
-        if (parts[0] && parts[0] !== 'MARCAS') {
-          categoriesSet.add(parts[0].trim());
-        }
-      }
-    });
-    setMainCategories([...categoriesSet].sort());
-  };
-
-  const loadAllProducts = async () => {
+  // Cargar marcas
+  const loadBrands = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
       const res = await fetch('/api/catalogo');
-      
-      if (!res.ok) throw new Error('Error al cargar productos');
-
       const data = await res.json();
-      setProducts(Array.isArray(data) ? data : data.products || []);
-    } catch (err) {
-      console.error('Error cargando productos:', err);
-      setError('Error al cargar el catálogo');
+      
+      const uniqueBrands = [...new Set(
+        data
+          .map((p: Product) => p.brand)
+          .filter((b: string) => b && b !== 'Sin marca')
+      )].sort();
+      
+      setBrands(uniqueBrands);
+    } catch (error) {
+      console.error('Error cargando marcas:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadProductsByBrand = async (brand: string) => {
+  // Cargar categorías principales
+  const loadCategories = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
-      const res = await fetch(`/api/catalogo?brand=${encodeURIComponent(brand)}`);
-      
-      if (!res.ok) throw new Error('Error al cargar productos');
-
+      const res = await fetch('/api/catalogo');
       const data = await res.json();
-      setProducts(Array.isArray(data) ? data : data.products || []);
-      setViewMode('products');
-    } catch (err) {
-      console.error('Error cargando productos:', err);
-      setError('Error al cargar productos');
+      
+      const mainCatsSet = new Set<string>();
+      data.forEach((p: Product) => {
+        if (p.category) {
+          const parts = p.category.split(' > ');
+          if (parts[0] && parts[0].trim() !== 'MARCAS') {
+            mainCatsSet.add(parts[0].trim());
+          }
+        }
+      });
+      
+      setCategories([...mainCatsSet].sort());
+    } catch (error) {
+      console.error('Error cargando categorías:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadProductsByCategory = async (mainCat: string, subcat?: string, prodType?: string) => {
+  // Cargar subcategorías de una categoría
+  const loadSubcategories = async (category: string) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError('');
-      
-      let url = `/api/catalogo?category=${encodeURIComponent(mainCat)}`;
-      if (subcat) url += `&subcategory=${encodeURIComponent(subcat)}`;
-      if (prodType) url += `&productType=${encodeURIComponent(prodType)}`;
-      
-      const res = await fetch(url);
-      
-      if (!res.ok) throw new Error('Error al cargar productos');
-
+      const res = await fetch(`/api/catalogo?category=${encodeURIComponent(category)}`);
       const data = await res.json();
-      const loadedProducts = Array.isArray(data) ? data : data.products || [];
-      setProducts(loadedProducts);
       
-      if (!subcat) {
-        const subcatsSet = new Set<string>();
-        loadedProducts.forEach((p: Product) => {
-          if (p.category) {
-            const parts = p.category.split(' > ');
-            if (parts[1]) {
-              subcatsSet.add(parts[1].trim());
-            }
+      const subcatsSet = new Set<string>();
+      data.forEach((p: Product) => {
+        if (p.category && p.category.startsWith(category)) {
+          const parts = p.category.split(' > ');
+          if (parts[1]) {
+            subcatsSet.add(parts[1].trim());
           }
-        });
-        setSubcategories([...subcatsSet].sort());
-      }
+        }
+      });
       
-      if (subcat && !prodType) {
-        const typesSet = new Set<string>();
-        loadedProducts.forEach((p: Product) => {
-          if (p.category) {
-            const parts = p.category.split(' > ');
-            if (parts[2]) {
-              typesSet.add(parts[2].trim());
-            }
-          }
-        });
-        setProductTypes([...typesSet].sort());
-      }
-      
-      if (prodType || (subcat && loadedProducts.length > 0)) {
-        setViewMode('products');
-      }
-    } catch (err) {
-      console.error('Error cargando productos:', err);
-      setError('Error al cargar productos');
+      setSubcategories([...subcatsSet].sort());
+    } catch (error) {
+      console.error('Error cargando subcategorías:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBackToInitial = () => {
-    setViewMode('initial');
-    setSelectedBrand('');
-    setSelectedMainCategory('');
-    setSelectedSubcategory('');
-    setSelectedProductType('');
-    setProducts([]);
-    setSearch('');
+  // Cargar tipos de producto de una subcategoría
+  const loadProductTypes = async (category: string, subcategory: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/catalogo?category=${encodeURIComponent(category)}&subcategory=${encodeURIComponent(subcategory)}`
+      );
+      const data = await res.json();
+      
+      const typesSet = new Set<string>();
+      data.forEach((p: Product) => {
+        if (p.category && p.category.includes(subcategory)) {
+          const parts = p.category.split(' > ');
+          if (parts[2]) {
+            typesSet.add(parts[2].trim());
+          }
+        }
+      });
+      
+      setProductTypes([...typesSet].sort());
+    } catch (error) {
+      console.error('Error cargando tipos:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleBrandSelect = (brand: string) => {
-    setSelectedBrand(brand);
-    loadProductsByBrand(brand);
+  // Cargar productos
+  const loadProducts = async (filters: any = {}) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.brand) params.append('brand', filters.brand);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.subcategory) params.append('subcategory', filters.subcategory);
+      if (filters.productType) params.append('productType', filters.productType);
+      if (searchTerm) params.append('search', searchTerm);
+
+      const res = await fetch(`/api/catalogo?${params.toString()}`);
+      const data = await res.json();
+      
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error cargando productos:', error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleMainCategorySelect = (category: string) => {
-    setSelectedMainCategory(category);
-    loadProductsByCategory(category);
-    setViewMode('by-category');
-  };
-
-  const handleSubcategorySelect = (subcat: string) => {
-    setSelectedSubcategory(subcat);
-    loadProductsByCategory(selectedMainCategory, subcat);
-  };
-
-  const handleProductTypeSelect = (type: string) => {
-    setSelectedProductType(type);
-    loadProductsByCategory(selectedMainCategory, selectedSubcategory, type);
-  };
-
-  const handleShowAll = () => {
-    setViewMode('all-products');
-    loadAllProducts();
-  };
-
-  // Handler para agregar al carrito
   const handleAddToCart = (item: CartItem) => {
     addToCart(item);
     alert('✅ Producto agregado al pedido');
   };
 
-  const filteredProducts = products.filter(p => {
-    if (!search) return true;
-    
-    const searchLower = search.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(searchLower) ||
-      p.brand.toLowerCase().includes(searchLower) ||
-      p.variants.some(v => v.sku?.toLowerCase().includes(searchLower))
-    );
-  });
+  const goBack = () => {
+    if (viewMode === 'products') {
+      if (selectedProductType) {
+        setSelectedProductType('');
+        setViewMode('producttypes');
+      } else if (selectedSubcategory) {
+        setSelectedSubcategory('');
+        setViewMode('subcategories');
+      } else if (selectedCategory) {
+        setSelectedCategory('');
+        setViewMode('categories');
+      } else if (selectedBrand) {
+        setSelectedBrand('');
+        setViewMode('brands');
+      } else {
+        setViewMode('initial');
+      }
+    } else if (viewMode === 'producttypes') {
+      setViewMode('subcategories');
+    } else if (viewMode === 'subcategories') {
+      setViewMode('categories');
+    } else if (viewMode === 'brands' || viewMode === 'categories') {
+      setViewMode('initial');
+    }
+  };
 
+  const resetAndGoInitial = () => {
+    setSelectedBrand('');
+    setSelectedCategory('');
+    setSelectedSubcategory('');
+    setSelectedProductType('');
+    setSearchTerm('');
+    setProducts([]);
+    setViewMode('initial');
+  };
+
+  // Vista inicial
   if (viewMode === 'initial') {
     return (
       <div className="max-w-4xl mx-auto p-4">
         <h2 className="text-2xl font-bold mb-6 text-center">¿Qué querés mostrar?</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => {
-              setViewMode('by-brand');
-              loadAllProducts();
+              setViewMode('brands');
+              loadBrands();
             }}
-            className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105 group"
+            className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
           >
-            <div className="text-6xl mb-4 text-center group-hover:scale-110 transition-transform">🏷️</div>
-            <h3 className="font-bold text-xl mb-2 text-center">Por Marca</h3>
-            <p className="text-gray-600 text-sm text-center">
-              Navegá por marcas específicas
-            </p>
+            <div className="text-6xl mb-4">🏷️</div>
+            <h3 className="text-xl font-bold mb-2">Por Marca</h3>
+            <p className="text-gray-600 text-sm">Navega por marcas específicas</p>
           </button>
 
           <button
             onClick={() => {
-              setViewMode('by-category');
-              loadAllProducts();
+              setViewMode('categories');
+              loadCategories();
             }}
-            className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105 group"
+            className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
           >
-            <div className="text-6xl mb-4 text-center group-hover:scale-110 transition-transform">📂</div>
-            <h3 className="font-bold text-xl mb-2 text-center">Por Categoría</h3>
-            <p className="text-gray-600 text-sm text-center">
-              Explorá por tipo de producto
-            </p>
+            <div className="text-6xl mb-4">📂</div>
+            <h3 className="text-xl font-bold mb-2">Por Categoría</h3>
+            <p className="text-gray-600 text-sm">Explora por tipo de producto</p>
           </button>
 
           <button
-            onClick={handleShowAll}
-            className="bg-gradient-to-br from-nadin-pink to-pink-400 text-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105 group"
+            onClick={() => {
+              setViewMode('products');
+              loadProducts();
+            }}
+            className="bg-gradient-to-br from-nadin-pink to-pink-400 text-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
           >
-            <div className="text-6xl mb-4 text-center group-hover:scale-110 transition-transform">🌟</div>
-            <h3 className="font-bold text-xl mb-2 text-center">Ver Todo</h3>
-            <p className="text-white text-opacity-90 text-sm text-center">
-              Ver catálogo completo
-            </p>
+            <div className="text-6xl mb-4">📦</div>
+            <h3 className="text-xl font-bold mb-2">Ver Todo</h3>
+            <p className="text-sm">Ver catálogo completo</p>
           </button>
         </div>
       </div>
     );
   }
 
-  if (viewMode === 'by-brand' && !selectedBrand) {
+  // Vista de marcas
+  if (viewMode === 'brands') {
     return (
-      <div className="max-w-6xl mx-auto p-4">
+      <div className="max-w-4xl mx-auto p-4">
         <button
-          onClick={handleBackToInitial}
+          onClick={resetAndGoInitial}
           className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"
         >
           <ArrowLeft size={20} />
@@ -289,20 +269,25 @@ export default function CatalogoPage() {
         </button>
 
         <h2 className="text-2xl font-bold mb-6">Seleccioná una marca</h2>
-        
+
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {brands.map((brand) => (
               <button
                 key={brand}
-                onClick={() => handleBrandSelect(brand)}
+                onClick={() => {
+                  setSelectedBrand(brand);
+                  setViewMode('products');
+                  loadProducts({ brand });
+                }}
                 className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 text-center"
               >
-                <div className="font-bold text-lg text-nadin-pink">{brand}</div>
+                <div className="text-3xl mb-2">🏷️</div>
+                <p className="font-semibold">{brand}</p>
               </button>
             ))}
           </div>
@@ -311,11 +296,12 @@ export default function CatalogoPage() {
     );
   }
 
-  if (viewMode === 'by-category' && !selectedMainCategory) {
+  // Vista de categorías
+  if (viewMode === 'categories') {
     return (
-      <div className="max-w-6xl mx-auto p-4">
+      <div className="max-w-4xl mx-auto p-4">
         <button
-          onClick={handleBackToInitial}
+          onClick={resetAndGoInitial}
           className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"
         >
           <ArrowLeft size={20} />
@@ -323,26 +309,27 @@ export default function CatalogoPage() {
         </button>
 
         <h2 className="text-2xl font-bold mb-6">Seleccioná una categoría</h2>
-        
+
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            {mainCategories.map((cat) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {categories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => handleMainCategorySelect(cat)}
-                className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
+                onClick={() => {
+                  setSelectedCategory(cat);
+                  setViewMode('subcategories');
+                  loadSubcategories(cat);
+                }}
+                className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 text-center"
               >
-                <div className="text-5xl mb-3 text-center">
-                  {cat === 'MUJER' && '👩'}
-                  {cat === 'HOMBRE' && '👨'}
-                  {cat === 'NIÑOS' && '👶'}
-                  {!['MUJER', 'HOMBRE', 'NIÑOS'].includes(cat) && '📦'}
+                <div className="text-3xl mb-2">
+                  {cat.includes('MUJER') ? '👚' : cat.includes('HOMBRE') ? '👔' : '👶'}
                 </div>
-                <div className="font-bold text-xl text-center">{cat}</div>
+                <p className="font-semibold">{cat}</p>
               </button>
             ))}
           </div>
@@ -351,168 +338,191 @@ export default function CatalogoPage() {
     );
   }
 
-  if (viewMode === 'by-category' && selectedMainCategory && !selectedSubcategory) {
+  // Vista de subcategorías
+  if (viewMode === 'subcategories') {
     return (
-      <div className="max-w-6xl mx-auto p-4">
+      <div className="max-w-4xl mx-auto p-4">
         <button
-          onClick={() => {
-            setSelectedMainCategory('');
-            setSubcategories([]);
-          }}
+          onClick={goBack}
           className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"
         >
           <ArrowLeft size={20} />
           Volver a categorías
         </button>
 
-        <h2 className="text-2xl font-bold mb-2">{selectedMainCategory}</h2>
+        <h2 className="text-2xl font-bold mb-2">{selectedCategory}</h2>
         <p className="text-gray-600 mb-6">Seleccioná una subcategoría</p>
-        
+
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {subcategories.map((subcat) => (
-              <button
-                key={subcat}
-                onClick={() => handleSubcategorySelect(subcat)}
-                className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 text-center"
-              >
-                <div className="font-bold text-lg">{subcat}</div>
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+              {subcategories.map((subcat) => (
+                <button
+                  key={subcat}
+                  onClick={() => {
+                    setSelectedSubcategory(subcat);
+                    setViewMode('producttypes');
+                    loadProductTypes(selectedCategory, subcat);
+                  }}
+                  className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 text-center"
+                >
+                  <p className="font-semibold">{subcat}</p>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setViewMode('products');
+                loadProducts({ category: selectedCategory });
+              }}
+              className="w-full bg-nadin-pink text-white p-4 rounded-lg font-semibold hover:bg-nadin-pink-dark"
+            >
+              Ver Todos los productos de {selectedCategory}
+            </button>
+          </>
         )}
       </div>
     );
   }
 
-  if (viewMode === 'by-category' && selectedSubcategory && !selectedProductType && productTypes.length > 0) {
+  // Vista de tipos de producto
+  if (viewMode === 'producttypes') {
     return (
-      <div className="max-w-6xl mx-auto p-4">
+      <div className="max-w-4xl mx-auto p-4">
         <button
-          onClick={() => {
-            setSelectedSubcategory('');
-            setProductTypes([]);
-          }}
+          onClick={goBack}
           className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"
         >
           <ArrowLeft size={20} />
           Volver a subcategorías
         </button>
 
-        <h2 className="text-2xl font-bold mb-2">{selectedMainCategory} &gt; {selectedSubcategory}</h2>
+        <h2 className="text-2xl font-bold mb-2">{selectedCategory} → {selectedSubcategory}</h2>
         <p className="text-gray-600 mb-6">Seleccioná un tipo de producto</p>
-        
+
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
           </div>
+        ) : productTypes.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+              {productTypes.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setSelectedProductType(type);
+                    setViewMode('products');
+                    loadProducts({
+                      category: selectedCategory,
+                      subcategory: selectedSubcategory,
+                      productType: type
+                    });
+                  }}
+                  className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 text-center"
+                >
+                  <p className="font-semibold">{type}</p>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                setViewMode('products');
+                loadProducts({
+                  category: selectedCategory,
+                  subcategory: selectedSubcategory
+                });
+              }}
+              className="w-full bg-nadin-pink text-white p-4 rounded-lg font-semibold hover:bg-nadin-pink-dark"
+            >
+              Ver Todos los productos de {selectedSubcategory}
+            </button>
+          </>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {productTypes.map((type) => (
-              <button
-                key={type}
-                onClick={() => handleProductTypeSelect(type)}
-                className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 text-center"
-              >
-                <div className="font-bold text-lg">{type}</div>
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => {
+              setViewMode('products');
+              loadProducts({
+                category: selectedCategory,
+                subcategory: selectedSubcategory
+              });
+            }}
+            className="w-full bg-nadin-pink text-white p-4 rounded-lg font-semibold hover:bg-nadin-pink-dark"
+          >
+            Ver Productos de {selectedSubcategory}
+          </button>
         )}
       </div>
     );
   }
 
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto p-4">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
-            <p className="mt-4 text-gray-600">Cargando productos...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Vista de productos
   return (
     <div className="max-w-7xl mx-auto p-4">
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center justify-between mb-4">
         <button
-          onClick={handleBackToInitial}
+          onClick={goBack}
           className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
         >
           <ArrowLeft size={20} />
           Volver
         </button>
-        
-        {selectedBrand && (
-          <span className="text-sm text-gray-600">Marca: <strong>{selectedBrand}</strong></span>
-        )}
-        {selectedMainCategory && (
-          <span className="text-sm text-gray-600">
-            {selectedMainCategory}
-            {selectedSubcategory && ` > ${selectedSubcategory}`}
-            {selectedProductType && ` > ${selectedProductType}`}
-          </span>
-        )}
-      </div>
 
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Productos</h2>
         <button
           onClick={() => setShowCosts(!showCosts)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
         >
-          {showCosts ? (
-            <>
-              <EyeOff size={20} />
-              <span className="hidden sm:inline">Ocultar Costos</span>
-            </>
-          ) : (
-            <>
-              <Eye size={20} />
-              <span className="hidden sm:inline">Ver Costos</span>
-            </>
-          )}
+          {showCosts ? <EyeOff size={20} /> : <Eye size={20} />}
+          <span className="hidden sm:inline">{showCosts ? 'Ocultar' : 'Ver'} Costos</span>
         </button>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Buscar por nombre, marca o código..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+            placeholder="Buscar por nombre o SKU..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                loadProducts({
+                  brand: selectedBrand,
+                  category: selectedCategory,
+                  subcategory: selectedSubcategory,
+                  productType: selectedProductType
+                });
+              }
+            }}
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
           />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={20} />
-            </button>
-          )}
         </div>
       </div>
 
       <div className="mb-4 text-sm text-gray-600">
-        {filteredProducts.length} producto{filteredProducts.length !== 1 ? 's' : ''} encontrado{filteredProducts.length !== 1 ? 's' : ''}
+        Mostrando {products.length} productos
+        {selectedBrand && ` de ${selectedBrand}`}
+        {selectedCategory && ` en ${selectedCategory}`}
+        {selectedSubcategory && ` → ${selectedSubcategory}`}
+        {selectedProductType && ` → ${selectedProductType}`}
       </div>
 
-      {filteredProducts.length > 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
+        </div>
+      ) : products.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredProducts.map((product) => (
-            <div 
-              key={product.id} 
+          {products.map((product) => (
+            <div
+              key={product.id}
               className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer"
               onClick={() => {
                 setSelectedProduct(product);
@@ -532,24 +542,24 @@ export default function CatalogoPage() {
                   </div>
                 )}
               </div>
-              
+
               <div className="p-3">
                 <p className="text-xs text-nadin-pink font-medium mb-1">{product.brand}</p>
                 <h3 className="font-semibold text-sm mb-2 line-clamp-2 min-h-[40px]">
                   {product.name}
                 </h3>
-                
+
                 {product.variants && product.variants.length > 0 && (
                   <>
                     <p className="text-xs text-gray-600 mb-2">
                       Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)} unidades
                     </p>
-                    
+
                     <div className="border-t pt-2 space-y-1">
                       <p className="text-lg font-bold text-nadin-pink">
                         {formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen))}
                       </p>
-                      
+
                       {showCosts && (
                         <>
                           <p className="text-xs text-gray-600">
@@ -578,7 +588,6 @@ export default function CatalogoPage() {
         </div>
       )}
 
-      {/* Modal de selección de producto */}
       <ProductModal
         product={selectedProduct}
         isOpen={isModalOpen}
