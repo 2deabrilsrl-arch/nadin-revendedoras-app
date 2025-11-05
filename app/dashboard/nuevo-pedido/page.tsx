@@ -7,18 +7,22 @@ import { useCart } from '@/components/CartContext';
 
 export default function NuevoPedidoPage() {
   const router = useRouter();
-  const { cartItems, updateQuantity, removeFromCart, clearCart } = useCart();
+  const { 
+    cart, 
+    updateQuantity, 
+    removeFromCart, 
+    updateDiscount,
+    clearCart,
+    getTotalVenta,
+    getTotalDescuentos,
+    getTotalFinal,
+    getTotalMayorista,
+    getGananciaEstimada
+  } = useCart();
   
   const [cliente, setCliente] = useState('');
   const [telefono, setTelefono] = useState('');
   const [nota, setNota] = useState('');
-  
-  // Descuentos por producto
-  const [descuentos, setDescuentos] = useState<Record<string, number>>({});
-  
-  // Descuento general
-  const [descuentoGeneral, setDescuentoGeneral] = useState(0);
-  const [tipoDescuentoGeneral, setTipoDescuentoGeneral] = useState<'porcentaje' | 'fijo'>('porcentaje');
   
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
@@ -31,45 +35,6 @@ export default function NuevoPedidoPage() {
     }
   }, []);
 
-  const calcularSubtotalProducto = (item: any) => {
-    const subtotal = item.venta * item.qty;
-    const descuento = descuentos[item.variantId] || 0;
-    return subtotal - (subtotal * descuento / 100);
-  };
-
-  const calcularTotales = () => {
-    const subtotalVenta = cartItems.reduce((sum, item) => {
-      return sum + calcularSubtotalProducto(item);
-    }, 0);
-    
-    let descuentoTotal = 0;
-    if (descuentoGeneral > 0) {
-      if (tipoDescuentoGeneral === 'porcentaje') {
-        descuentoTotal = subtotalVenta * (descuentoGeneral / 100);
-      } else {
-        descuentoTotal = descuentoGeneral;
-      }
-    }
-    
-    const totalVenta = subtotalVenta - descuentoTotal;
-    
-    const subtotalMayorista = cartItems.reduce((sum, item) => {
-      return sum + (item.mayorista * item.qty);
-    }, 0);
-    
-    const ganancia = totalVenta - subtotalMayorista;
-    
-    return {
-      subtotalVenta,
-      descuentoTotal,
-      totalVenta,
-      subtotalMayorista,
-      ganancia
-    };
-  };
-
-  const totales = calcularTotales();
-
   const handleFinalizarPedido = async () => {
     if (!cliente.trim()) {
       alert('Por favor ingresa el nombre del cliente');
@@ -81,7 +46,7 @@ export default function NuevoPedidoPage() {
       return;
     }
     
-    if (cartItems.length === 0) {
+    if (cart.length === 0) {
       alert('El pedido debe tener al menos un producto');
       return;
     }
@@ -98,8 +63,8 @@ export default function NuevoPedidoPage() {
           cliente,
           telefono,
           nota,
-          items: cartItems,
-          descuentoTotal: totales.descuentoTotal
+          items: cart,
+          descuentoTotal: getTotalDescuentos()
         }),
       });
 
@@ -121,7 +86,7 @@ export default function NuevoPedidoPage() {
     }
   };
 
-  if (cartItems.length === 0) {
+  if (cart.length === 0) {
     return (
       <div className="max-w-4xl mx-auto p-4">
         <button
@@ -207,23 +172,40 @@ export default function NuevoPedidoPage() {
 
       {/* Productos */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h3 className="font-bold text-lg mb-4">📦 Productos ({cartItems.length})</h3>
+        <h3 className="font-bold text-lg mb-4">📦 Productos ({cart.length})</h3>
         
         <div className="space-y-4">
-          {cartItems.map((item) => {
+          {cart.map((item) => {
             const subtotal = item.venta * item.qty;
-            const descuento = descuentos[item.variantId] || 0;
-            const subtotalConDescuento = subtotal - (subtotal * descuento / 100);
+            const descuento = item.descuento || 0;
+            const subtotalConDescuento = subtotal - (descuento * item.qty);
             
             return (
               <div key={item.variantId} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex gap-3 mb-3">
+                  {/* Imagen */}
+                  <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                    {item.image && item.image !== '/placeholder.png' ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                        Sin img
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
                   <div className="flex-1">
                     <p className="text-xs text-nadin-pink font-medium">{item.brand}</p>
                     <p className="font-semibold">{item.name}</p>
                     <p className="text-sm text-gray-600">
-                      {item.talle} - {item.color}
+                      Talle {item.talle} • {item.color}
                     </p>
+                    <p className="text-xs text-gray-500 font-mono">SKU: {item.sku}</p>
                   </div>
                   
                   <button
@@ -257,24 +239,20 @@ export default function NuevoPedidoPage() {
                   </p>
                 </div>
 
-                {/* Descuento individual */}
+                {/* Descuento individual (en pesos) */}
                 <div className="flex items-center gap-2 mb-2">
-                  <label className="text-sm text-gray-700">Descuento:</label>
+                  <label className="text-sm text-gray-700">Descuento por unidad ($):</label>
                   <input
                     type="number"
                     min="0"
-                    max="100"
                     value={descuento}
                     onChange={(e) => {
-                      const value = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
-                      setDescuentos(prev => ({
-                        ...prev,
-                        [item.variantId]: value
-                      }));
+                      const value = Math.max(0, parseFloat(e.target.value) || 0);
+                      updateDiscount(item.variantId, value);
                     }}
-                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                    className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                    placeholder="0"
                   />
-                  <span className="text-sm">%</span>
                 </div>
 
                 <div className="border-t pt-2 flex justify-between text-sm">
@@ -294,33 +272,6 @@ export default function NuevoPedidoPage() {
         </div>
       </div>
 
-      {/* Descuento General */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h3 className="font-bold text-lg mb-4">💰 Descuento General</h3>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <input
-              type="number"
-              min="0"
-              value={descuentoGeneral}
-              onChange={(e) => setDescuentoGeneral(parseFloat(e.target.value) || 0)}
-              placeholder="0"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-            />
-          </div>
-          
-          <select
-            value={tipoDescuentoGeneral}
-            onChange={(e) => setTipoDescuentoGeneral(e.target.value as 'porcentaje' | 'fijo')}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-          >
-            <option value="porcentaje">% Porcentaje</option>
-            <option value="fijo">$ Monto Fijo</option>
-          </select>
-        </div>
-      </div>
-
       {/* Resumen del Pedido */}
       <div className="bg-gradient-to-br from-nadin-pink to-pink-400 text-white rounded-lg shadow-lg p-6 mb-6">
         <h3 className="font-bold text-xl mb-4">Resumen del Pedido</h3>
@@ -328,29 +279,29 @@ export default function NuevoPedidoPage() {
         <div className="space-y-2">
           <div className="flex justify-between">
             <span>Subtotal venta:</span>
-            <span className="font-semibold">{formatCurrency(totales.subtotalVenta)}</span>
+            <span className="font-semibold">{formatCurrency(getTotalVenta())}</span>
           </div>
           
-          {totales.descuentoTotal > 0 && (
+          {getTotalDescuentos() > 0 && (
             <div className="flex justify-between text-pink-100">
-              <span>Descuento:</span>
-              <span className="font-semibold">-{formatCurrency(totales.descuentoTotal)}</span>
+              <span>Descuentos:</span>
+              <span className="font-semibold">-{formatCurrency(getTotalDescuentos())}</span>
             </div>
           )}
           
           <div className="flex justify-between text-xl font-bold border-t border-pink-300 pt-2">
             <span>Total venta:</span>
-            <span>{formatCurrency(totales.totalVenta)}</span>
+            <span>{formatCurrency(getTotalFinal())}</span>
           </div>
           
           <div className="flex justify-between text-sm opacity-90 border-t border-pink-300 pt-2">
             <span>Costo mayorista:</span>
-            <span>{formatCurrency(totales.subtotalMayorista)}</span>
+            <span>{formatCurrency(getTotalMayorista())}</span>
           </div>
           
           <div className="flex justify-between text-lg font-bold">
             <span>Tu ganancia:</span>
-            <span>{formatCurrency(totales.ganancia)}</span>
+            <span>{formatCurrency(getGananciaEstimada())}</span>
           </div>
         </div>
       </div>
