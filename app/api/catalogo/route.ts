@@ -7,10 +7,12 @@ export async function GET(req: NextRequest) {
     
     // Verificar si es una petición de sincronización forzada
     if (searchParams.get('sync') === 'true') {
+      console.log('🔄 Sincronización manual solicitada...');
       await forceSyncCatalog();
+      const stats = await getCacheStats();
       return NextResponse.json({ 
         message: 'Sincronización completada',
-        stats: await getCacheStats()
+        stats
       });
     }
 
@@ -27,11 +29,15 @@ export async function GET(req: NextRequest) {
     const productType = searchParams.get('productType') || undefined;
     const search = searchParams.get('search') || undefined;
 
+    console.log('📦 Filtros recibidos:', { brand, category, subcategory, productType, search });
+
     // Obtener productos del cache
     const allProducts = await getCachedProducts({
       brand,
       search
     });
+
+    console.log(`📊 Productos obtenidos del cache: ${allProducts.length}`);
 
     // Filtrar por categorías jerárquicas
     let filteredProducts = allProducts;
@@ -43,29 +49,50 @@ export async function GET(req: NextRequest) {
         const categoryParts = p.category.split(' > ').map((part: string) => part.trim());
 
         // Filtro por categoría principal (nivel 1)
-        if (category && !categoryParts[0]?.includes(category)) {
-          return false;
+        if (category) {
+          const matchesCategory = categoryParts[0] === category || 
+                                 categoryParts[0]?.includes(category) ||
+                                 category.includes(categoryParts[0]);
+          
+          if (!matchesCategory) return false;
         }
 
         // Filtro por subcategoría (nivel 2)
-        if (subcategory && !categoryParts[1]?.includes(subcategory)) {
-          return false;
+        if (subcategory) {
+          if (!categoryParts[1]) return false;
+          
+          const matchesSubcategory = categoryParts[1] === subcategory ||
+                                    categoryParts[1]?.includes(subcategory) ||
+                                    subcategory.includes(categoryParts[1]);
+          
+          if (!matchesSubcategory) return false;
         }
 
         // Filtro por tipo de producto (nivel 3)
-        if (productType && !categoryParts[2]?.includes(productType)) {
-          return false;
+        if (productType) {
+          if (!categoryParts[2]) return false;
+          
+          const matchesType = categoryParts[2] === productType ||
+                             categoryParts[2]?.includes(productType) ||
+                             productType.includes(categoryParts[2]);
+          
+          if (!matchesType) return false;
         }
 
         return true;
       });
     }
 
+    console.log(`✅ Productos filtrados: ${filteredProducts.length}`);
+
     return NextResponse.json(filteredProducts);
   } catch (error) {
-    console.error('Error en API de catálogo:', error);
+    console.error('❌ Error en API de catálogo:', error);
     return NextResponse.json(
-      { error: 'Error al obtener productos', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Error al obtener productos', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     );
   }
@@ -74,6 +101,7 @@ export async function GET(req: NextRequest) {
 // Endpoint para forzar sincronización
 export async function POST(req: NextRequest) {
   try {
+    console.log('🔄 POST: Sincronización forzada solicitada');
     await forceSyncCatalog();
     const stats = await getCacheStats();
     
@@ -83,7 +111,7 @@ export async function POST(req: NextRequest) {
       stats
     });
   } catch (error) {
-    console.error('Error sincronizando catálogo:', error);
+    console.error('❌ Error sincronizando catálogo:', error);
     return NextResponse.json(
       { error: 'Error al sincronizar catálogo' },
       { status: 500 }
