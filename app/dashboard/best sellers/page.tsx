@@ -57,7 +57,8 @@ export default function BestSellersPage() {
     try {
       setLoading(true);
       setError('');
-      const res = await fetch('/api/best-sellers?limit=100');
+      // Traer solo TOP 10 productos más vendidos
+      const res = await fetch('/api/best-sellers?limit=10');
       
       if (!res.ok) throw new Error('Error al cargar productos');
 
@@ -224,8 +225,8 @@ export default function BestSellersPage() {
         <div className="flex items-center gap-3">
           <TrendingUp className="text-nadin-pink" size={32} />
           <div>
-            <h2 className="text-2xl font-bold">Más Vendidos</h2>
-            <p className="text-sm text-gray-600">Los productos top del catálogo</p>
+            <h2 className="text-2xl font-bold">TOP 10 Más Vendidos</h2>
+            <p className="text-sm text-gray-600">Los 10 productos estrella de Nadin</p>
           </div>
         </div>
         
