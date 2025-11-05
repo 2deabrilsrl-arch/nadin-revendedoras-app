@@ -4,6 +4,7 @@ import { Eye, EyeOff, X, TrendingUp } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
 import ProductModal, { CartItem } from '@/components/ProductModal';
 import { useCart } from '@/components/CartContext';
+import BackToHomeButton from '@/components/BackToHomeButton';
 
 interface Variant {
   id: number;
@@ -57,8 +58,9 @@ export default function BestSellersPage() {
     try {
       setLoading(true);
       setError('');
-      // Traer solo TOP 10 productos más vendidos
-      const res = await fetch('/api/best-sellers?limit=10');
+      // Traer TODOS los productos más vendidos (sin límite)
+      // Los filtraremos en el frontend y mostraremos solo TOP 10
+      const res = await fetch('/api/best-sellers');
       
       if (!res.ok) throw new Error('Error al cargar productos');
 
@@ -162,6 +164,9 @@ export default function BestSellersPage() {
     return true;
   });
 
+  // IMPORTANTE: Mostrar solo TOP 10 después de filtrar
+  const top10Products = filteredProducts.slice(0, 10);
+
   // Handler para agregar al carrito
   const handleAddToCart = (item: CartItem) => {
     addToCart(item);
@@ -221,6 +226,8 @@ export default function BestSellersPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-4">
+      <BackToHomeButton />
+      
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           <TrendingUp className="text-nadin-pink" size={32} />
@@ -344,7 +351,11 @@ export default function BestSellersPage() {
 
       <div className="mb-4 flex justify-between items-center">
         <div className="text-sm text-gray-600">
-          Mostrando {filteredProducts.length} de {allProducts.length} productos
+          {filteredProducts.length > 10 ? (
+            <>Mostrando TOP 10 de {filteredProducts.length} productos filtrados</>
+          ) : (
+            <>Mostrando {top10Products.length} productos</>
+          )}
         </div>
         <button
           onClick={loadBestSellers}
@@ -354,9 +365,9 @@ export default function BestSellersPage() {
         </button>
       </div>
 
-      {filteredProducts.length > 0 ? (
+      {top10Products.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredProducts.map((product, index) => (
+          {top10Products.map((product, index) => (
             <div 
               key={product.id} 
               className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow relative cursor-pointer"

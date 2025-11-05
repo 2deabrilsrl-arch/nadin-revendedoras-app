@@ -3,14 +3,12 @@ import { getBestSellingProducts, formatProductsForFrontend } from '@/lib/tiendan
 
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    // Por defecto traer solo TOP 10, no 50 ni 100
-    const limit = parseInt(searchParams.get('limit') || '10');
+    console.log('🔥 Obteniendo TODOS los productos más vendidos de Tiendanube...');
 
-    console.log(`🔥 Obteniendo TOP ${limit} productos más vendidos de Tiendanube...`);
-
-    // Obtener los productos más vendidos de Tiendanube
-    const products = await getBestSellingProducts(limit);
+    // IMPORTANTE: Traer TODOS los productos (sin límite) ordenados por ventas
+    // El frontend se encargará de mostrar solo el TOP 10
+    // Pero necesitamos todos para que los filtros funcionen correctamente
+    const products = await getBestSellingProducts(200); // Traer 200 (más que suficiente)
     const formatted = formatProductsForFrontend(products);
 
     console.log(`✅ ${formatted.length} productos más vendidos formateados`);
