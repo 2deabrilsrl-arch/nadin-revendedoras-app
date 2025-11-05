@@ -22,7 +22,7 @@ function buildCategoryPath(
   const visited = new Set<number>();
   let depth = 0;
   
-  while (currentId && !visited.has(currentId) && depth < 10) {
+  while (currentId && currentId > 0 && !visited.has(currentId) && depth < 10) {
     visited.add(currentId);
     const category = categoriesMap.get(currentId);
     
@@ -32,7 +32,8 @@ function buildCategoryPath(
     }
     
     path.unshift(category.name.es);
-    currentId = category.parent;
+    // En TN, parent=0 significa "sin parent"
+    currentId = (category.parent && category.parent > 0) ? category.parent : null;
     depth++;
   }
   
@@ -53,14 +54,15 @@ async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
   let sinParent = 0;
   
   categories.forEach((cat: any) => {
-    const hasParent = cat.parent !== null && cat.parent !== undefined;
+    // En TN, parent=0 significa "sin parent" (categoría raíz)
+    const hasParent = cat.parent && cat.parent > 0;
     if (hasParent) conParent++;
     else sinParent++;
     
     map.set(cat.id, {
       id: cat.id,
       name: cat.name || { es: 'Sin nombre' },
-      parent: cat.parent || null,
+      parent: (cat.parent && cat.parent > 0) ? cat.parent : null,
       subcategories: cat.subcategories || []
     });
   });

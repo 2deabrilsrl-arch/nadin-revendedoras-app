@@ -54,8 +54,9 @@ export async function GET() {
     console.log(`✅ Total categorías obtenidas: ${allCategories.length}`);
 
     // Analizar las categorías
-    const conParent = allCategories.filter(c => c.parent !== null && c.parent !== undefined);
-    const sinParent = allCategories.filter(c => c.parent === null || c.parent === undefined);
+    // En TN, parent=0 significa "sin parent" (categoría raíz)
+    const conParent = allCategories.filter(c => c.parent && c.parent > 0);
+    const sinParent = allCategories.filter(c => !c.parent || c.parent === 0);
 
     // Construir jerarquías de ejemplo
     const ejemplosJerarquia: string[] = [];
@@ -66,11 +67,12 @@ export async function GET() {
       let depth = 0;
       
       // Construir jerarquía hacia arriba
-      while (currentId && depth < 5) {
+      // En TN, parent=0 significa "sin parent"
+      while (currentId && currentId > 0 && depth < 5) {
         const parentCat = allCategories.find(c => c.id === currentId);
         if (!parentCat) break;
         path.unshift(parentCat.name.es || parentCat.name);
-        currentId = parentCat.parent;
+        currentId = (parentCat.parent && parentCat.parent > 0) ? parentCat.parent : null;
         depth++;
       }
       
@@ -84,15 +86,19 @@ export async function GET() {
         sinParent: sinParent.length,
         porcentajeConParent: ((conParent.length / allCategories.length) * 100).toFixed(1) + '%'
       },
-      ejemplosConParent: conParent.slice(0, 5).map(c => ({
-        id: c.id,
-        nombre: c.name.es || c.name,
-        parentId: c.parent
-      })),
+      ejemplosConParent: conParent.slice(0, 5).map(c => {
+        const parentCat = allCategories.find(p => p.id === c.parent);
+        return {
+          id: c.id,
+          nombre: c.name.es || c.name,
+          parentId: c.parent,
+          parentNombre: parentCat ? (parentCat.name.es || parentCat.name) : 'desconocido'
+        };
+      }),
       ejemplosSinParent: sinParent.slice(0, 5).map(c => ({
         id: c.id,
         nombre: c.name.es || c.name,
-        parentId: null
+        parentId: c.parent || null
       })),
       ejemplosJerarquiaCompleta: ejemplosJerarquia,
       diagnostico: conParent.length === 0 
