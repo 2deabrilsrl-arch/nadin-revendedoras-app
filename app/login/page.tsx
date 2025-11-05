@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, Loader } from 'lucide-react';
 
@@ -18,28 +17,30 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn('credentials', {
-        redirect: false,
-        email,
-        password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (result?.error) {
-        setError('Email o contraseña incorrectos');
-      } else {
-        // Guardar datos del usuario en localStorage
-        const res = await fetch('/api/auth/session');
-        const session = await res.json();
-        
-        if (session?.user) {
-          localStorage.setItem('user', JSON.stringify(session.user));
-        }
+      const data = await response.json();
 
-        router.push('/dashboard');
+      if (!response.ok) {
+        setError(data.error || 'Email o contraseña incorrectos');
+        setLoading(false);
+        return;
       }
+
+      // Guardar usuario en localStorage
+      localStorage.setItem('user', JSON.stringify(data));
+      
+      // Redirigir al dashboard
+      router.push('/dashboard');
     } catch (err) {
+      console.error('Error en login:', err);
       setError('Error al iniciar sesión. Intentá nuevamente.');
-    } finally {
       setLoading(false);
     }
   };
@@ -50,7 +51,7 @@ export default function LoginPage() {
         {/* Logo/Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-nadin-pink rounded-full mb-4">
-            <span className="text-4xl text-white">👗</span>
+            <span className="text-4xl text-white">💗</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Nadin Lencería</h1>
           <p className="text-gray-600">Portal de Revendedoras</p>
