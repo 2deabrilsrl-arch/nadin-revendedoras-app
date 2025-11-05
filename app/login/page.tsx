@@ -44,7 +44,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img 
+          <img
             src="https://res.cloudinary.com/ddxd6ha6q/image/upload/v1762132027/LOGO_NADIN_-_copia_aefdz4.png"
             alt="Nadin Lencería"
             className="h-24 mx-auto mb-4"
@@ -132,10 +132,10 @@ export default function LoginPage() {
             >
               ¿Olvidaste tu contraseña?
             </a>
-            
+
             <div className="text-sm text-gray-600">
               ¿No tenés cuenta?{' '}
-              <a href="/register" className="text-nadin-pink hover:text-nadin-pink-dark font-medium">
+              <a href="/registro" className="text-nadin-pink hover:text-nadin-pink-dark font-medium">
                 Registrate
               </a>
             </div>

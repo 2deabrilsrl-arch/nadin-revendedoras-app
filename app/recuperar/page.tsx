@@ -1,23 +1,35 @@
 'use client';
 import { useState } from 'react';
-import Image from 'next/image';
 
 export default function RecuperarPage() {
   const [email, setEmail] = useState('');
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      // TODO: Implementar envío de email de recuperación
-      // Por ahora solo simulamos
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setEnviado(true);
+      const res = await fetch('/api/auth/recuperar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setEnviado(true);
+      } else {
+        setError(data.error || 'Error al enviar el email');
+      }
     } catch (err) {
-      setError('Error al enviar el email. Intenta nuevamente.');
+      setError('Error de conexión. Intentá nuevamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -25,15 +37,15 @@ export default function RecuperarPage() {
     <div className="min-h-screen bg-gradient-to-b from-nadin-pink to-nadin-pink-dark flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <img 
-            src="https://res.cloudinary.com/ddxd6ha6q/image/upload/v1762132027/LOGO_NADIN_-_copia_aefdz4.png" 
-            alt="Nadin" 
-            className="h-20 mx-auto mb-4" 
+          <img
+            src="https://res.cloudinary.com/ddxd6ha6q/image/upload/v1762132027/LOGO_NADIN_-_copia_aefdz4.png"
+            alt="Nadin"
+            className="h-20 mx-auto mb-4"
           />
           <h1 className="text-2xl font-bold text-gray-800">Recuperar Contraseña</h1>
           <p className="text-gray-600 mt-2">
-            {enviado 
-              ? 'Revisa tu email' 
+            {enviado
+              ? 'Revisa tu email'
               : 'Ingresa tu email para recibir instrucciones'
             }
           </p>
@@ -46,8 +58,8 @@ export default function RecuperarPage() {
                 📧 Te enviamos un email con instrucciones para recuperar tu contraseña.
               </p>
             </div>
-            <a 
-              href="/login" 
+            <a
+              href="/login"
               className="text-nadin-pink font-bold hover:underline"
             >
               Volver al login
@@ -77,14 +89,15 @@ export default function RecuperarPage() {
 
             <button
               type="submit"
-              className="w-full bg-nadin-pink text-white py-3 rounded-lg font-bold hover:bg-nadin-pink-dark transition-colors"
+              disabled={loading}
+              className="w-full bg-nadin-pink text-white py-3 rounded-lg font-bold hover:bg-nadin-pink-dark transition-colors disabled:opacity-50"
             >
-              Enviar instrucciones
+              {loading ? 'Enviando...' : 'Enviar instrucciones'}
             </button>
 
             <div className="text-center">
-              <a 
-                href="/login" 
+              <a
+                href="/login"
                 className="text-sm text-gray-600 hover:text-nadin-pink"
               >
                 ← Volver al login
