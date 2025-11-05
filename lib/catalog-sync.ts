@@ -20,15 +20,20 @@ function buildCategoryPath(
   
   // Evitar loops infinitos
   const visited = new Set<number>();
+  let depth = 0;
   
-  while (currentId && !visited.has(currentId)) {
+  while (currentId && !visited.has(currentId) && depth < 10) {
     visited.add(currentId);
     const category = categoriesMap.get(currentId);
     
-    if (!category) break;
+    if (!category) {
+      console.warn(`⚠️ Categoría ID ${currentId} no encontrada en el mapa`);
+      break;
+    }
     
     path.unshift(category.name.es);
     currentId = category.parent;
+    depth++;
   }
   
   return path.join(' > ');
@@ -38,10 +43,20 @@ function buildCategoryPath(
  * Obtiene todas las categorías y crea un mapa para búsqueda rápida
  */
 async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
+  console.log('📂 Obteniendo categorías de TN...');
   const categories = await getCategories();
+  console.log(`✅ ${categories.length} categorías obtenidas de TN`);
+  
   const map = new Map<number, TiendanubeCategory>();
   
+  let conParent = 0;
+  let sinParent = 0;
+  
   categories.forEach((cat: any) => {
+    const hasParent = cat.parent !== null && cat.parent !== undefined;
+    if (hasParent) conParent++;
+    else sinParent++;
+    
     map.set(cat.id, {
       id: cat.id,
       name: cat.name || { es: 'Sin nombre' },
@@ -49,6 +64,32 @@ async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
       subcategories: cat.subcategories || []
     });
   });
+  
+  console.log(`📊 Categorías CON parent: ${conParent}`);
+  console.log(`📊 Categorías SIN parent (nivel raíz): ${sinParent}`);
+  
+  // Mostrar ejemplos de categorías con parent
+  if (conParent > 0) {
+    console.log('📝 Ejemplos de categorías con parent:');
+    const ejemplosConParent = Array.from(map.values())
+      .filter(c => c.parent)
+      .slice(0, 3);
+    ejemplosConParent.forEach(cat => {
+      const parentCat = map.get(cat.parent!);
+      console.log(`  - "${cat.name.es}" (ID: ${cat.id}) → parent: "${parentCat?.name.es || 'desconocido'}" (ID: ${cat.parent})`);
+    });
+  }
+  
+  // Mostrar ejemplos de categorías raíz
+  if (sinParent > 0) {
+    console.log('📝 Ejemplos de categorías raíz (sin parent):');
+    const ejemplosSinParent = Array.from(map.values())
+      .filter(c => !c.parent)
+      .slice(0, 3);
+    ejemplosSinParent.forEach(cat => {
+      console.log(`  - "${cat.name.es}" (ID: ${cat.id})`);
+    });
+  }
   
   return map;
 }
@@ -63,7 +104,14 @@ export async function formatProductsWithFullCategories(products: any[]) {
   const categoriesMap = await getCategoriesMap();
   console.log(`✅ ${categoriesMap.size} categorías en memoria`);
   
-  return products.map(product => {
+  // Contadores para diagnóstico
+  let sinCategoria = 0;
+  let nivel1 = 0;
+  let nivel2 = 0;
+  let nivel3 = 0;
+  let nivel4Plus = 0;
+  
+  const formatted = products.map(product => {
     try {
       let fullCategoryPath = 'Sin categoría';
       
@@ -75,6 +123,17 @@ export async function formatProductsWithFullCategories(products: any[]) {
         if (categoryId) {
           fullCategoryPath = buildCategoryPath(categoryId, categoriesMap);
         }
+      }
+      
+      // Contar niveles para diagnóstico
+      if (fullCategoryPath === 'Sin categoría') {
+        sinCategoria++;
+      } else {
+        const niveles = fullCategoryPath.split(' > ').length;
+        if (niveles === 1) nivel1++;
+        else if (niveles === 2) nivel2++;
+        else if (niveles === 3) nivel3++;
+        else nivel4Plus++;
       }
       
       return {
@@ -98,6 +157,29 @@ export async function formatProductsWithFullCategories(products: any[]) {
       return null;
     }
   }).filter(p => p !== null);
+  
+  // Mostrar diagnóstico
+  console.log('\n📊 DIAGNÓSTICO DE CATEGORÍAS CONSTRUIDAS:');
+  console.log(`  Sin categoría: ${sinCategoria}`);
+  console.log(`  Nivel 1 solo: ${nivel1}`);
+  console.log(`  Nivel 2: ${nivel2}`);
+  console.log(`  Nivel 3: ${nivel3}`);
+  console.log(`  Nivel 4+: ${nivel4Plus}`);
+  
+  // Mostrar ejemplos
+  console.log('\n📝 Ejemplos de categorías construidas:');
+  formatted.slice(0, 5).forEach(p => {
+    console.log(`  - "${p.name}": "${p.category}"`);
+  });
+  
+  // ALERTA si todos están en nivel 1
+  if (nivel1 > 0 && nivel2 === 0 && nivel3 === 0) {
+    console.warn('\n⚠️  ¡ALERTA! Todos los productos tienen solo 1 nivel de categoría.');
+    console.warn('⚠️  Esto significa que las categorías en Tiendanube NO tienen parent configurado.');
+    console.warn('⚠️  O los productos solo están asignados a categorías raíz sin subcategorías.');
+  }
+  
+  return formatted;
 }
 
 /**
@@ -106,6 +188,7 @@ export async function formatProductsWithFullCategories(products: any[]) {
 export async function syncCatalogWithFullCategories() {
   try {
     console.log('🔄 Iniciando sincronización con jerarquía completa...');
+    console.log('⏰ Timestamp:', new Date().toISOString());
     
     // Obtener productos
     const products = await getAllProducts();
@@ -136,6 +219,7 @@ export async function syncCatalogWithFullCategories() {
     
     await Promise.all(createPromises);
     console.log(`✅ ${formatted.length} productos guardados con jerarquía completa`);
+    console.log('⏰ Finalizado:', new Date().toISOString());
     
     return { success: true, count: formatted.length };
   } catch (error) {
