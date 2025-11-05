@@ -390,9 +390,9 @@ export default function NuevoPedidoPage() {
                         -{item.descuentoPorcentaje}% por unidad
                       </span>
                     )}
-                    {(item.descuentoPesos || item.descuento) && (item.descuentoPesos || item.descuento) > 0 && (
+                    {((item.descuentoPesos || item.descuento) && ((item.descuentoPesos || item.descuento || 0) > 0)) && (
                       <span className="ml-3 text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
-                        -{formatCurrency((item.descuentoPesos || item.descuento) * item.qty)}
+                        -{formatCurrency((item.descuentoPesos || item.descuento || 0) * item.qty)}
                       </span>
                     )}
                   </div>
