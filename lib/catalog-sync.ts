@@ -164,14 +164,46 @@ export async function formatProductsWithFullCategories(products: any[]) {
           console.log(`\n🔍 Procesando producto ${index + 1}:`);
           console.log('  Nombre:', product.name?.es || product.name);
           console.log('  Categories:', JSON.stringify(product.categories));
+          console.log('  Total categorías:', product.categories.length);
         }
         
-        // Tomar la primera categoría (la más específica)
-        const categoryId = product.categories[0].id;
+        // CORRECCIÓN: Buscar la categoría MÁS ESPECÍFICA
+        // La más específica es la que tiene más niveles de parent
+        let categoryId = product.categories[0].id; // Default: primera
+        let maxDepth = 0;
+        
+        // Calcular profundidad de cada categoría
+        for (const cat of product.categories) {
+          if (!cat.id) continue;
+          
+          let depth = 0;
+          let currentCat = cat;
+          let visited = new Set();
+          
+          // Contar cuántos parents tiene
+          while (currentCat && currentCat.parent && currentCat.parent > 0 && depth < 10) {
+            if (visited.has(currentCat.id)) break;
+            visited.add(currentCat.id);
+            
+            depth++;
+            // Buscar el parent en el array de categorías del producto
+            currentCat = product.categories.find((c: any) => c.id === currentCat.parent);
+          }
+          
+          if (index < 3) {
+            console.log(`    - "${cat.name.es}" (ID: ${cat.id}): profundidad ${depth}`);
+          }
+          
+          // Si esta categoría es más profunda, usarla
+          if (depth > maxDepth) {
+            maxDepth = depth;
+            categoryId = cat.id;
+          }
+        }
         
         if (categoryId) {
           if (index < 3) {
-            console.log('  → CategoryID a buscar:', categoryId);
+            console.log(`  → Seleccionada: ID ${categoryId} (profundidad: ${maxDepth})`);
             console.log('  → ¿Existe en mapa?', categoriesMap.has(categoryId));
           }
           
