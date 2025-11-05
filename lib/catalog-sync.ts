@@ -145,6 +145,69 @@ export async function syncCatalogWithFullCategories() {
 }
 
 /**
+ * Obtiene productos desde el cache con filtros opcionales
+ */
+export async function getCachedProducts(filters?: {
+  brand?: string;
+  category?: string;
+  sex?: string;
+  search?: string;
+}) {
+  // Construir filtros
+  const where: any = {};
+  if (filters?.brand) where.brand = filters.brand;
+  if (filters?.category) where.category = { contains: filters.category };
+  if (filters?.sex) where.sex = filters.sex;
+
+  // Obtener productos del cache
+  const cached = await prisma.catalogoCache.findMany({
+    where,
+    orderBy: [
+      { salesCount: 'desc' }, // Primero los más vendidos
+      { updatedAt: 'desc' }
+    ]
+  });
+
+  // Parsear JSON y aplicar búsqueda si existe
+  let products = cached.map(item => JSON.parse(item.data));
+
+  if (filters?.search) {
+    const searchLower = filters.search.toLowerCase();
+    products = products.filter(p => 
+      p.name.toLowerCase().includes(searchLower) ||
+      p.brand.toLowerCase().includes(searchLower) ||
+      p.variants.some((v: any) => v.sku?.toLowerCase().includes(searchLower))
+    );
+  }
+
+  return products;
+}
+
+/**
+ * Fuerza una sincronización manual del catálogo
+ */
+export async function forceSyncCatalog() {
+  return await syncCatalogWithFullCategories();
+}
+
+/**
+ * Obtiene estadísticas del cache
+ */
+export async function getCacheStats() {
+  const count = await prisma.catalogoCache.count();
+  const lastUpdate = await prisma.catalogoCache.findFirst({
+    orderBy: { updatedAt: 'desc' },
+    select: { updatedAt: true }
+  });
+
+  return {
+    totalProducts: count,
+    lastUpdate: lastUpdate?.updatedAt,
+    cacheActive: count > 0
+  };
+}
+
+/**
  * Infiere el sexo del producto
  */
 function inferSex(category: string, name: string): string {

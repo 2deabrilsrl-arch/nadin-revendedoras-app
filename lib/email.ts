@@ -374,7 +374,7 @@ export async function sendConsolidacionEmailMejorado(data: any) {
   const html = generarHTMLEmail(data, productosAgrupados);
   
   const fecha = new Date().toISOString().slice(0, 16).replace('T', ' ');
-  const subject = `💗 Pedido Consolidado — ${revendedora.name} (@${revendedora.handle}) — ${fecha}`;
+  const subject = `💗 Pedido Consolidado – ${revendedora.name} (@${revendedora.handle}) – ${fecha}`;
 
   await transporter.sendMail({
     from: process.env.FROM_EMAIL,
@@ -390,4 +390,11 @@ export async function sendConsolidacionEmailMejorado(data: any) {
   });
   
   console.log(`✅ Email enviado con ${productosAgrupados.length} productos agrupados`);
+}
+
+/**
+ * Alias para compatibilidad con código existente
+ */
+export async function sendConsolidacionEmail(data: any) {
+  return await sendConsolidacionEmailMejorado(data);
 }
