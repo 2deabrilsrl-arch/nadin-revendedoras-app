@@ -57,7 +57,7 @@ export default function CatalogoPage() {
       const uniqueBrands = [...new Set(
         data
           .map((p: Product) => p.brand)
-          .filter((b: string) => b && b !== 'Sin marca')
+          .filter((b: string): b is string => !!b && b !== 'Sin marca')
       )].sort();
       
       setBrands(uniqueBrands);
@@ -79,8 +79,9 @@ export default function CatalogoPage() {
       data.forEach((p: Product) => {
         if (p.category) {
           const parts = p.category.split(' > ');
-          if (parts[0] && parts[0].trim() !== 'MARCAS') {
-            mainCatsSet.add(parts[0].trim());
+          const mainCat = parts[0]?.trim();
+          if (mainCat && mainCat !== 'MARCAS') {
+            mainCatsSet.add(mainCat);
           }
         }
       });
@@ -104,8 +105,9 @@ export default function CatalogoPage() {
       data.forEach((p: Product) => {
         if (p.category && p.category.startsWith(category)) {
           const parts = p.category.split(' > ');
-          if (parts[1]) {
-            subcatsSet.add(parts[1].trim());
+          const subcat = parts[1]?.trim();
+          if (subcat) {
+            subcatsSet.add(subcat);
           }
         }
       });
@@ -131,8 +133,9 @@ export default function CatalogoPage() {
       data.forEach((p: Product) => {
         if (p.category && p.category.includes(subcategory)) {
           const parts = p.category.split(' > ');
-          if (parts[2]) {
-            typesSet.add(parts[2].trim());
+          const prodType = parts[2]?.trim();
+          if (prodType) {
+            typesSet.add(prodType);
           }
         }
       });
