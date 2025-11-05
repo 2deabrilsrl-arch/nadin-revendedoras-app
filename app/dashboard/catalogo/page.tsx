@@ -52,15 +52,15 @@ export default function CatalogoPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/catalogo');
-      const data = await res.json();
+      const data: Product[] = await res.json();
       
-      const uniqueBrands = [...new Set(
+      const brandsArray: string[] = Array.from(new Set(
         data
-          .map((p: Product) => p.brand)
-          .filter((b: string): b is string => !!b && b !== 'Sin marca')
-      )].sort();
+          .map(p => p.brand)
+          .filter(b => b && b !== 'Sin marca')
+      )).sort();
       
-      setBrands(uniqueBrands);
+      setBrands(brandsArray);
     } catch (error) {
       console.error('Error cargando marcas:', error);
     } finally {
@@ -73,20 +73,21 @@ export default function CatalogoPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/catalogo');
-      const data = await res.json();
+      const data: Product[] = await res.json();
       
-      const mainCatsSet = new Set<string>();
-      data.forEach((p: Product) => {
+      const catsSet = new Set<string>();
+      data.forEach(p => {
         if (p.category) {
           const parts = p.category.split(' > ');
           const mainCat = parts[0]?.trim();
           if (mainCat && mainCat !== 'MARCAS') {
-            mainCatsSet.add(mainCat);
+            catsSet.add(mainCat);
           }
         }
       });
       
-      setCategories([...mainCatsSet].sort());
+      const catsArray: string[] = Array.from(catsSet).sort();
+      setCategories(catsArray);
     } catch (error) {
       console.error('Error cargando categorías:', error);
     } finally {
@@ -99,10 +100,10 @@ export default function CatalogoPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/catalogo?category=${encodeURIComponent(category)}`);
-      const data = await res.json();
+      const data: Product[] = await res.json();
       
       const subcatsSet = new Set<string>();
-      data.forEach((p: Product) => {
+      data.forEach(p => {
         if (p.category && p.category.startsWith(category)) {
           const parts = p.category.split(' > ');
           const subcat = parts[1]?.trim();
@@ -112,7 +113,8 @@ export default function CatalogoPage() {
         }
       });
       
-      setSubcategories([...subcatsSet].sort());
+      const subcatsArray: string[] = Array.from(subcatsSet).sort();
+      setSubcategories(subcatsArray);
     } catch (error) {
       console.error('Error cargando subcategorías:', error);
     } finally {
@@ -127,10 +129,10 @@ export default function CatalogoPage() {
       const res = await fetch(
         `/api/catalogo?category=${encodeURIComponent(category)}&subcategory=${encodeURIComponent(subcategory)}`
       );
-      const data = await res.json();
+      const data: Product[] = await res.json();
       
       const typesSet = new Set<string>();
-      data.forEach((p: Product) => {
+      data.forEach(p => {
         if (p.category && p.category.includes(subcategory)) {
           const parts = p.category.split(' > ');
           const prodType = parts[2]?.trim();
@@ -140,7 +142,8 @@ export default function CatalogoPage() {
         }
       });
       
-      setProductTypes([...typesSet].sort());
+      const typesArray: string[] = Array.from(typesSet).sort();
+      setProductTypes(typesArray);
     } catch (error) {
       console.error('Error cargando tipos:', error);
     } finally {
@@ -555,7 +558,7 @@ export default function CatalogoPage() {
                 {product.variants && product.variants.length > 0 && (
                   <>
                     <p className="text-xs text-gray-600 mb-2">
-                      Stock: {product.variants.reduce((sum, v) => sum + v.stock, 0)} unidades
+                      Stock: {product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)} unidades
                     </p>
 
                     <div className="border-t pt-2 space-y-1">
