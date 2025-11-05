@@ -13,6 +13,7 @@ export interface CartItem {
   mayorista: number;
   venta: number;
   image: string;
+  descuento?: number; // DEPRECATED: usar descuentoPesos
   descuentoPesos?: number; // Descuento individual en pesos
   descuentoPorcentaje?: number; // Descuento individual en porcentaje
 }
@@ -22,6 +23,7 @@ interface CartContextType {
   addToCart: (item: CartItem) => void;
   removeFromCart: (variantId: number) => void;
   updateQuantity: (variantId: number, qty: number) => void;
+  updateDiscount: (variantId: number, descuento: number) => void; // DEPRECATED pero mantenido para compatibilidad
   updateDescuentoPesos: (variantId: number, descuento: number) => void;
   updateDescuentoPorcentaje: (variantId: number, porcentaje: number) => void;
   clearCart: () => void;
@@ -105,12 +107,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  // DEPRECATED: Mantenido para compatibilidad con código viejo
+  const updateDiscount = (variantId: number, descuento: number) => {
+    setCart(prev =>
+      prev.map(item =>
+        item.variantId === variantId
+          ? { 
+              ...item, 
+              descuento: Math.max(0, descuento),
+              descuentoPesos: Math.max(0, descuento),
+              descuentoPorcentaje: undefined
+            }
+          : item
+      )
+    );
+  };
+
   const updateDescuentoPesos = (variantId: number, descuento: number) => {
     setCart(prev =>
       prev.map(item =>
         item.variantId === variantId
           ? { 
               ...item, 
+              descuento: Math.max(0, descuento), // Mantener para compatibilidad
               descuentoPesos: Math.max(0, descuento),
               descuentoPorcentaje: undefined // Limpiar descuento por %
             }
@@ -125,6 +144,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         item.variantId === variantId
           ? { 
               ...item, 
+              descuento: undefined, // Limpiar descuento viejo
               descuentoPorcentaje: Math.max(0, Math.min(100, porcentaje)),
               descuentoPesos: undefined // Limpiar descuento en pesos
             }
@@ -158,9 +178,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return sum + (subtotal * item.descuentoPorcentaje / 100);
       }
       
-      // Descuento en pesos
-      if (item.descuentoPesos && item.descuentoPesos > 0) {
-        return sum + (item.descuentoPesos * item.qty);
+      // Descuento en pesos (nuevo y viejo)
+      const descuentoPesos = item.descuentoPesos || item.descuento || 0;
+      if (descuentoPesos > 0) {
+        return sum + (descuentoPesos * item.qty);
       }
       
       return sum;
@@ -182,6 +203,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         addToCart,
         removeFromCart,
         updateQuantity,
+        updateDiscount, // Mantenido para compatibilidad
         updateDescuentoPesos,
         updateDescuentoPorcentaje,
         clearCart,
