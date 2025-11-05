@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Trash2, Plus, Minus } from 'lucide-react';
 import { formatCurrency } from '@/lib/precios';
 import { useCart } from '@/components/CartContext';
+import BackToHomeButton from '@/components/BackToHomeButton';
 
 export default function NuevoPedidoPage() {
   const router = useRouter();
@@ -124,6 +125,7 @@ export default function NuevoPedidoPage() {
   if (cart.length === 0) {
     return (
       <div className="max-w-4xl mx-auto p-4">
+        <BackToHomeButton />
         <button
           onClick={() => router.back()}
           className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"

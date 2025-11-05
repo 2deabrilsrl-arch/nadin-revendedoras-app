@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import BackToHomeButton from '@/components/BackToHomeButton';
 
 export default function ConsolidarPage() {
   const [formaPago, setFormaPago] = useState('');
@@ -86,6 +87,7 @@ export default function ConsolidarPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-4">
+      <BackToHomeButton />
       <h2 className="text-2xl font-bold mb-4">Consolidar Pedidos</h2>
       
       {pedidos.length > 0 ? (

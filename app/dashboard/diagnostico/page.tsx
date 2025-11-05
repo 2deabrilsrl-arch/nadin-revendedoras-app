@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import BackToHomeButton from '@/components/BackToHomeButton';
 
 export default function DiagnosticoPage() {
   const [loading, setLoading] = useState(false);
@@ -42,6 +43,7 @@ export default function DiagnosticoPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-4">
+      <BackToHomeButton />
       <h1 className="text-2xl font-bold mb-6">🔍 Diagnóstico de API</h1>
 
       <div className="space-y-4">

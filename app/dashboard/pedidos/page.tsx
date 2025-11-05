@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/precios';
 import { Package, Calendar, User, Phone, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import BackToHomeButton from '@/components/BackToHomeButton';
 
 interface PedidoLinea {
   id: number;
@@ -114,6 +115,7 @@ export default function PedidosPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
+      <BackToHomeButton />
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold">Mis Pedidos</h2>
