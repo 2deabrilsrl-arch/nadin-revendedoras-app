@@ -73,24 +73,25 @@ export default function BestSellersPage() {
 
   // Extraer opciones de filtros basado en productos actuales
   const getFilterOptions = () => {
-    // Brands
+    // Brands - filtrar nulls y vacíos
     const brands = [...new Set(
       allProducts
         .map(p => p.brand)
-        .filter(b => b && b !== 'Sin marca')
+        .filter((b): b is string => !!b && b !== 'Sin marca')
     )].sort();
 
-    // Main categories (excluyendo MARCAS)
+    // Main categories (excluyendo MARCAS) - asegurar que son strings
     const mainCats = [...new Set(
       allProducts
         .map(p => {
           if (p.category) {
             const parts = p.category.split(' > ');
-            return parts[0]?.trim();
+            const cat = parts[0]?.trim();
+            return cat && cat !== 'MARCAS' ? cat : null;
           }
           return null;
         })
-        .filter(c => c && c !== 'MARCAS')
+        .filter((c): c is string => c !== null)
     )].sort();
 
     // Subcategories (basado en la categoría principal seleccionada)
@@ -103,7 +104,7 @@ export default function BestSellersPage() {
             const parts = p.category.split(' > ');
             return parts[1]?.trim();
           })
-          .filter(Boolean)
+          .filter((s): s is string => !!s)
       )].sort();
     }
 
@@ -121,7 +122,7 @@ export default function BestSellersPage() {
             const parts = p.category.split(' > ');
             return parts[2]?.trim();
           })
-          .filter(Boolean)
+          .filter((t): t is string => !!t)
       )].sort();
     }
 
