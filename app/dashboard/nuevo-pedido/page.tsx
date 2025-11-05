@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, Minus } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Minus, Percent, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/lib/precios';
 import { useCart } from '@/components/CartContext';
 import BackToHomeButton from '@/components/BackToHomeButton';
@@ -12,7 +12,8 @@ export default function NuevoPedidoPage() {
     cart, 
     updateQuantity, 
     removeFromCart, 
-    updateDiscount,
+    updateDescuentoPesos,
+    updateDescuentoPorcentaje,
     clearCart,
     getTotalVenta,
     getTotalDescuentos,
@@ -26,6 +27,11 @@ export default function NuevoPedidoPage() {
   // Descuento general
   const [descuentoGeneral, setDescuentoGeneral] = useState(0);
   const [tipoDescuentoGeneral, setTipoDescuentoGeneral] = useState<'porcentaje' | 'fijo'>('porcentaje');
+  
+  // Control de edición de descuentos individuales
+  const [editingDiscount, setEditingDiscount] = useState<number | null>(null);
+  const [tempDiscountValue, setTempDiscountValue] = useState('');
+  const [tempDiscountType, setTempDiscountType] = useState<'pesos' | 'porcentaje'>('pesos');
   
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
@@ -68,6 +74,48 @@ export default function NuevoPedidoPage() {
   };
 
   const totales = calcularTotales();
+
+  // Calcular subtotal de un producto con descuento
+  const calcularSubtotalProducto = (item: any) => {
+    const subtotal = item.venta * item.qty;
+    
+    if (item.descuentoPorcentaje && item.descuentoPorcentaje > 0) {
+      return subtotal - (subtotal * item.descuentoPorcentaje / 100);
+    }
+    
+    const descuentoPesos = item.descuentoPesos || item.descuento || 0;
+    if (descuentoPesos > 0) {
+      return subtotal - (descuentoPesos * item.qty);
+    }
+    
+    return subtotal;
+  };
+
+  const handleOpenDiscountEdit = (variantId: number, currentItem: any) => {
+    setEditingDiscount(variantId);
+    
+    if (currentItem.descuentoPorcentaje && currentItem.descuentoPorcentaje > 0) {
+      setTempDiscountType('porcentaje');
+      setTempDiscountValue(currentItem.descuentoPorcentaje.toString());
+    } else {
+      const descuentoPesos = currentItem.descuentoPesos || currentItem.descuento || 0;
+      setTempDiscountType('pesos');
+      setTempDiscountValue(descuentoPesos > 0 ? descuentoPesos.toString() : '');
+    }
+  };
+
+  const handleApplyDiscount = (variantId: number) => {
+    const value = parseFloat(tempDiscountValue) || 0;
+    
+    if (tempDiscountType === 'porcentaje') {
+      updateDescuentoPorcentaje(variantId, value);
+    } else {
+      updateDescuentoPesos(variantId, value);
+    }
+    
+    setEditingDiscount(null);
+    setTempDiscountValue('');
+  };
 
   const handleFinalizarPedido = async () => {
     if (!cliente.trim()) {
@@ -214,11 +262,11 @@ export default function NuevoPedidoPage() {
         <div className="space-y-4">
           {cart.map((item) => {
             const subtotal = item.venta * item.qty;
-            const descuento = item.descuento || 0;
-            const subtotalConDescuento = subtotal - (descuento * item.qty);
+            const subtotalConDescuento = calcularSubtotalProducto(item);
+            const tieneDescuento = subtotal !== subtotalConDescuento;
             
             return (
-              <div key={item.variantId} className="border rounded-lg p-4">
+              <div key={item.variantId} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex gap-3 mb-3">
                   {/* Imagen */}
                   <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
@@ -276,26 +324,84 @@ export default function NuevoPedidoPage() {
                   </p>
                 </div>
 
-                {/* Descuento individual (en pesos) */}
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-sm text-gray-700">Descuento por unidad ($):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={descuento}
-                    onChange={(e) => {
-                      const value = Math.max(0, parseFloat(e.target.value) || 0);
-                      updateDiscount(item.variantId, value);
-                    }}
-                    className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
-                    placeholder="0"
-                  />
-                </div>
+                {/* Editor de descuento individual */}
+                {editingDiscount === item.variantId ? (
+                  <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={() => setTempDiscountType('pesos')}
+                        className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                          tempDiscountType === 'pesos'
+                            ? 'bg-nadin-pink text-white'
+                            : 'bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        <DollarSign size={14} /> En $
+                      </button>
+                      <button
+                        onClick={() => setTempDiscountType('porcentaje')}
+                        className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                          tempDiscountType === 'porcentaje'
+                            ? 'bg-nadin-pink text-white'
+                            : 'bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        <Percent size={14} /> En %
+                      </button>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max={tempDiscountType === 'porcentaje' ? '100' : undefined}
+                        step={tempDiscountType === 'porcentaje' ? '1' : '0.01'}
+                        value={tempDiscountValue}
+                        onChange={(e) => setTempDiscountValue(e.target.value)}
+                        placeholder={tempDiscountType === 'porcentaje' ? '% por unidad' : '$ por unidad'}
+                        className="flex-1 px-3 py-2 border rounded"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleApplyDiscount(item.variantId)}
+                        className="px-4 py-2 bg-green-500 text-white rounded font-medium hover:bg-green-600"
+                      >
+                        Aplicar
+                      </button>
+                      <button
+                        onClick={() => setEditingDiscount(null)}
+                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded font-medium hover:bg-gray-400"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-2">
+                    <button
+                      onClick={() => handleOpenDiscountEdit(item.variantId, item)}
+                      className="text-sm text-nadin-pink hover:text-nadin-pink-dark font-medium"
+                    >
+                      {tieneDescuento ? '✏️ Editar descuento' : '+ Agregar descuento'}
+                    </button>
+                    
+                    {item.descuentoPorcentaje && item.descuentoPorcentaje > 0 && (
+                      <span className="ml-3 text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
+                        -{item.descuentoPorcentaje}% por unidad
+                      </span>
+                    )}
+                    {(item.descuentoPesos || item.descuento) && (item.descuentoPesos || item.descuento) > 0 && (
+                      <span className="ml-3 text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
+                        -{formatCurrency((item.descuentoPesos || item.descuento) * item.qty)}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="border-t pt-2 flex justify-between text-sm">
                   <span>Subtotal:</span>
                   <div className="text-right">
-                    {descuento > 0 && (
+                    {tieneDescuento && (
                       <p className="text-gray-500 line-through">{formatCurrency(subtotal)}</p>
                     )}
                     <p className="font-bold text-nadin-pink">
