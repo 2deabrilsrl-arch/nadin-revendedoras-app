@@ -247,8 +247,8 @@ export function formatProductsForFrontend(products: Product[]) {
           sku: variant.sku || '',
           price: parseFloat(variant.price) || 0,
           stock: variant.stock || 0,
-          talle: variant.values?.[0]?.es || '',
-          color: variant.values?.[1]?.es || ''
+          talle: variant.values?.[1]?.es || '',  // ✅ CORREGIDO: [1] es talle
+          color: variant.values?.[0]?.es || ''   // ✅ CORREGIDO: [0] es color
         })),
         published: product.published
       };
