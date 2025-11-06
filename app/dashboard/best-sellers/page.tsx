@@ -22,6 +22,7 @@ interface Product {
   brand: string;
   category: string;
   image: string;
+  images?: string[];
   variants: Variant[];
 }
 
@@ -105,14 +106,18 @@ export default function BestSellersPage() {
     try {
       setLoading(true);
       setError('');
-      // Traer TODOS los productos más vendidos (sin límite)
-      // Los filtraremos en el frontend y mostraremos solo TOP 10
+      
       const res = await fetch('/api/best-sellers');
       
       if (!res.ok) throw new Error('Error al cargar productos');
 
       const data = await res.json();
       setAllProducts(Array.isArray(data) ? data : []);
+      
+      console.log('✅ Productos cargados:', data.length);
+      if (data.length > 0) {
+        console.log('📋 Ejemplo de categoría:', data[0].category);
+      }
     } catch (err) {
       console.error('Error cargando más vendidos:', err);
       setError('Error al cargar los productos más vendidos');
@@ -123,21 +128,18 @@ export default function BestSellersPage() {
 
   // Extraer opciones de filtros basado en productos actuales
   const getFilterOptions = () => {
-    console.log('🔍 DEBUG - Total productos:', allProducts.length);
-    
-    // Brands - filtrar nulls y vacíos
+    // Brands
     const brands = [...new Set(
       allProducts
         .map(p => p.brand)
         .filter((b): b is string => !!b && b !== 'Sin marca')
     )].sort();
-    console.log('🔍 DEBUG - Marcas encontradas:', brands.length, brands.slice(0, 3));
 
-    // Main categories (excluyendo MARCAS) - asegurar que son strings
+    // Main categories (nivel 1)
     const mainCats = [...new Set(
       allProducts
         .map(p => {
-          if (p.category) {
+          if (p.category && p.category !== 'Sin categoría') {
             const parts = p.category.split(' > ');
             const cat = parts[0]?.trim();
             return cat && cat !== 'MARCAS' ? cat : null;
@@ -146,57 +148,41 @@ export default function BestSellersPage() {
         })
         .filter((c): c is string => c !== null)
     )].sort();
-    console.log('🔍 DEBUG - Categorías principales:', mainCats.length, mainCats);
 
-    // Subcategories (basado en la categoría principal seleccionada)
+    // Subcategories (nivel 2 - basado en categoría principal seleccionada)
     let subcats: string[] = [];
     if (selectedMainCategory) {
-      console.log('🔍 DEBUG - Categoría seleccionada:', selectedMainCategory);
-      
-      const productosConCategoria = allProducts.filter(p => {
-        if (!p.category) return false;
-        const parts = p.category.split(' > ').map(part => part.trim());
-        return parts[0] === selectedMainCategory;
-      });
-      
-      console.log('🔍 DEBUG - Productos con esta categoría:', productosConCategoria.length);
-      console.log('🔍 DEBUG - Ejemplo de categorías:', productosConCategoria.slice(0, 3).map(p => p.category));
-      
       subcats = [...new Set(
-        productosConCategoria
+        allProducts
+          .filter(p => {
+            if (!p.category) return false;
+            const parts = p.category.split(' > ').map(part => part.trim());
+            return parts[0] === selectedMainCategory;
+          })
           .map(p => {
             const parts = p.category.split(' > ');
             return parts[1]?.trim();
           })
           .filter((s): s is string => !!s)
       )].sort();
-      
-      console.log('🔍 DEBUG - Subcategorías encontradas:', subcats.length, subcats);
     }
 
-    // Product types (basado en la subcategoría seleccionada)
+    // Product types (nivel 3 - basado en subcategoría seleccionada)
     let productTypes: string[] = [];
     if (selectedMainCategory && selectedSubcategory) {
-      console.log('🔍 DEBUG - Subcategoría seleccionada:', selectedSubcategory);
-      
-      const productosConSubcat = allProducts.filter(p => {
-        if (!p.category) return false;
-        const parts = p.category.split(' > ').map(part => part.trim());
-        return parts[0] === selectedMainCategory && parts[1] === selectedSubcategory;
-      });
-      
-      console.log('🔍 DEBUG - Productos con esta subcategoría:', productosConSubcat.length);
-      
       productTypes = [...new Set(
-        productosConSubcat
+        allProducts
+          .filter(p => {
+            if (!p.category) return false;
+            const parts = p.category.split(' > ').map(part => part.trim());
+            return parts[0] === selectedMainCategory && parts[1] === selectedSubcategory;
+          })
           .map(p => {
             const parts = p.category.split(' > ');
             return parts[2]?.trim();
           })
           .filter((t): t is string => !!t)
       )].sort();
-      
-      console.log('🔍 DEBUG - Tipos de producto encontrados:', productTypes.length, productTypes);
     }
 
     return { brands, mainCats, subcats, productTypes };
@@ -204,26 +190,25 @@ export default function BestSellersPage() {
 
   const { brands, mainCats, subcats, productTypes } = getFilterOptions();
 
-  // Filtrar productos
+  // Filtrar productos con lógica jerárquica
   const filteredProducts = allProducts.filter(p => {
     // Filtro por marca
     if (selectedBrand && p.brand !== selectedBrand) return false;
 
     // Filtros por categoría jerárquica
-    // Solo procesar categorías si hay al menos una categoría principal seleccionada
     if (selectedMainCategory) {
       if (!p.category) return false;
 
       const categoryParts = p.category.split(' > ').map(part => part.trim());
 
-      // Verificar categoría principal
+      // Verificar nivel 1
       if (categoryParts[0] !== selectedMainCategory) return false;
 
-      // Si hay subcategoría seleccionada, verificar nivel 2
+      // Si hay subcategoría, verificar nivel 2
       if (selectedSubcategory) {
         if (categoryParts[1] !== selectedSubcategory) return false;
 
-        // Si hay tipo de producto seleccionado, verificar nivel 3
+        // Si hay tipo de producto, verificar nivel 3
         if (selectedProductType) {
           if (categoryParts[2] !== selectedProductType) return false;
         }
