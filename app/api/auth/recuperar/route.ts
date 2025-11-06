@@ -33,18 +33,14 @@ export async function POST(request: Request) {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hora
 
-    // Aquí deberías guardar el token en la base de datos
-    // Por ahora lo enviamos directamente en el email
-    // TODO: Agregar campos resetToken y resetTokenExpiry al modelo User
-
-    // Configurar transporter de nodemailer
+    // Configurar transporter de nodemailer usando las variables SMTP_*
     const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.EMAIL_PORT || '587'),
-      secure: false,
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: process.env.SMTP_SECURE === 'true', // true para port 465
       auth: {
-        user: process.env.EMAIL_USER || 'nadinlenceria@gmail.com',
-        pass: process.env.EMAIL_PASS,
+        user: process.env.SMTP_USER || 'nadinlenceria@gmail.com',
+        pass: process.env.SMTP_PASS,
       },
     });
 
@@ -53,7 +49,7 @@ export async function POST(request: Request) {
 
     // Enviar email
     await transporter.sendMail({
-      from: `"Nadin Lencería" <${process.env.EMAIL_USER || 'nadinlenceria@gmail.com'}>`,
+      from: `"Nadin Lencería" <${process.env.SMTP_USER || 'nadinlenceria@gmail.com'}>`,
       to: email,
       subject: 'Recuperar Contraseña - Nadin Lencería',
       html: `
