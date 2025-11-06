@@ -54,8 +54,8 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // Actualizar en base de datos
-    const updatedOrder = await prisma.order.update({
+    // ✅ CORREGIDO: Usar prisma.pedido (tu modelo se llama Pedido, no Order)
+    const updatedOrder = await prisma.pedido.update({
       where: { id: orderId },
       data: updateData,
       include: {
