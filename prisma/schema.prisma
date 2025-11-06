@@ -1,96 +1,51 @@
-generator client {
-  provider = "prisma-client-js"
-}
+// Agregar estos campos al modelo Order existente en schema.prisma
 
-datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
+model Order {
+  id          String   @id @default(cuid())
+  userId      String
+  cliente     String
+  telefono    String
+  nota        String?
+  descuento   Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // ✅ NUEVO: Estados del pedido (logística)
+  orderStatus String   @default("pending")
+  // Valores: "pending" | "sent_to_nadin" | "received_nadin" | "sent_to_client" | "delivered"
+  
+  // ✅ NUEVO: Estados de pago
+  paidToNadin    Boolean  @default(false)
+  paidByClient   Boolean  @default(false)
+  
+  // ✅ NUEVO: Fechas de cambio de estado
+  sentToNadinAt      DateTime?
+  receivedNadinAt    DateTime?
+  sentToClientAt     DateTime?
+  deliveredAt        DateTime?
+  paidToNadinAt      DateTime?
+  paidByClientAt     DateTime?
+  
+  lineas      OrderLinea[]
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  password       String
-  name           String
-  dni            String          @unique
-  telefono       String
-  handle         String          @unique
-  margen         Float           @default(60)
-  cbu            String?
-  alias          String?
-  cvu            String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  pedidos        Pedido[]
-  consolidaciones Consolidacion[]
-}
-
-model Pedido {
-  id        String   @id @default(cuid())
-  userId    String
-  cliente   String
-  telefono  String?
-  nota      String?
-  estado    String   @default("pendiente")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
-  lineas    Linea[]
   @@index([userId])
-  @@index([estado])
+  @@index([createdAt])
 }
 
-model Linea {
-  id         String  @id @default(cuid())
-  pedidoId   String
-  productId  String
-  variantId  String
-  sku        String?
-  brand      String?
+model OrderLinea {
+  id         Int    @id @default(autoincrement())
+  orderId    String
+  sku        String
+  brand      String
   name       String
-  talle      String?
-  color      String?
+  talle      String
+  color      String
   qty        Int
   mayorista  Float
   venta      Float
-  pedido     Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  @@index([pedidoId])
-}
 
-model Consolidacion {
-  id              String   @id @default(cuid())
-  userId          String
-  pedidoIds       String
-  formaPago       String
-  tipoEnvio       String
-  transporteNombre String?
-  totalMayorista  Float
-  totalVenta      Float
-  ganancia        Float
-  descuentoTotal  Float    @default(0)
-  costoReal       Float?
-  gananciaNeta    Float?
-  csvPath         String?
-  enviadoAt       DateTime @default(now())
-  user            User     @relation(fields: [userId], references: [id])
-  
-  @@index([userId])
-  @@index([enviadoAt])
-}
+  order      Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-model CatalogoCache {
-  id          String   @id @default(cuid())
-  productId   String   @unique
-  data        String
-  brand       String?
-  category    String?
-  sex         String?
-  salesCount  Int      @default(0)
-  updatedAt   DateTime @default(now())
-  
-  @@index([brand])
-  @@index([sex])
-  @@index([salesCount])
-  @@index([updatedAt])
+  @@index([orderId])
 }

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/precios';
-import { Package, Calendar, User, Phone, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Package, Calendar, User, Phone, FileText, ChevronDown, ChevronUp, CheckCircle, Clock, Send, Truck, DollarSign } from 'lucide-react';
 import BackToHomeButton from '@/components/BackToHomeButton';
 
 interface PedidoLinea {
@@ -22,9 +22,21 @@ interface Pedido {
   telefono: string;
   nota: string;
   estado: string;
+  orderStatus: string;
+  paidToNadin: boolean;
+  paidByClient: boolean;
   createdAt: string;
   lineas: PedidoLinea[];
 }
+
+// Configuración de estados
+const ORDER_STATUSES = {
+  pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  sent_to_nadin: { label: 'Enviado a Nadin', color: 'bg-blue-100 text-blue-800', icon: Send },
+  received_nadin: { label: 'Recibido en Nadin', color: 'bg-green-100 text-green-800', icon: CheckCircle },
+  sent_to_client: { label: 'Enviado al Cliente', color: 'bg-purple-100 text-purple-800', icon: Truck },
+  delivered: { label: 'Entregado', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle }
+};
 
 export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -32,6 +44,7 @@ export default function PedidosPage() {
   const [error, setError] = useState('');
   const [expandedPedido, setExpandedPedido] = useState<string | null>(null);
   const [userId, setUserId] = useState('');
+  const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -64,6 +77,38 @@ export default function PedidosPage() {
     }
   };
 
+  const updateOrderStatus = async (orderId: string, updates: any) => {
+    try {
+      setUpdatingOrder(orderId);
+      
+      const response = await fetch('/api/pedidos/update-status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, ...updates })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar estado');
+      }
+
+      const updatedOrder = await response.json();
+      
+      // Actualizar el pedido en el estado local
+      setPedidos(prev => prev.map(p => 
+        p.id === orderId 
+          ? { ...p, ...updatedOrder }
+          : p
+      ));
+
+      console.log('✅ Estado actualizado correctamente');
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Error al actualizar el estado del pedido');
+    } finally {
+      setUpdatingOrder(null);
+    }
+  };
+
   const calcularTotalPedido = (lineas: PedidoLinea[]) => {
     return lineas.reduce((sum, linea) => sum + (linea.venta * linea.qty), 0);
   };
@@ -82,6 +127,18 @@ export default function PedidosPage() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const StatusBadge = ({ status }: { status: string }) => {
+    const config = ORDER_STATUSES[status as keyof typeof ORDER_STATUSES] || ORDER_STATUSES.pending;
+    const Icon = config.icon;
+    
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
+        <Icon size={14} />
+        {config.label}
+      </span>
+    );
   };
 
   if (loading) {
@@ -114,7 +171,7 @@ export default function PedidosPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4">
+    <div className="max-w-6xl mx-auto p-4 pb-24">
       <BackToHomeButton />
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -139,63 +196,155 @@ export default function PedidosPage() {
         <div className="space-y-4">
           {pedidos.map((pedido) => (
             <div key={pedido.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-              {/* Header del pedido */}
-              <div 
-                className="p-4 cursor-pointer"
-                onClick={() => setExpandedPedido(expandedPedido === pedido.id ? null : pedido.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="inline-flex items-center gap-2 bg-nadin-pink text-white px-3 py-1 rounded-full text-sm font-medium">
-                        <Package size={16} />
-                        Pedido #{pedido.id.slice(0, 8)}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {formatearFecha(pedido.createdAt)}
-                      </span>
-                    </div>
+              {/* Header del pedido con estados */}
+              <div className="p-4">
+                {/* Badges de estado superiores */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <StatusBadge status={pedido.orderStatus || 'pending'} />
+                  
+                  {/* Badge de pago a Nadin */}
+                  {pedido.paidToNadin ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <CheckCircle size={14} />
+                      Pagado a Nadin
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      <Clock size={14} />
+                      Debe pagar a Nadin
+                    </span>
+                  )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <User size={16} />
-                        <span className="font-medium">{pedido.cliente}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Phone size={16} />
-                        <span>{pedido.telefono}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <FileText size={16} />
-                        <span>{pedido.lineas.length} producto{pedido.lineas.length !== 1 ? 's' : ''}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right ml-4">
-                    <p className="text-2xl font-bold text-nadin-pink">
-                      {formatCurrency(calcularTotalPedido(pedido.lineas))}
-                    </p>
-                    <p className="text-sm text-green-600">
-                      Ganancia: {formatCurrency(calcularGananciaPedido(pedido.lineas))}
-                    </p>
-                    <div className="mt-2">
-                      {expandedPedido === pedido.id ? (
-                        <ChevronUp size={20} className="text-gray-400" />
-                      ) : (
-                        <ChevronDown size={20} className="text-gray-400" />
-                      )}
-                    </div>
-                  </div>
+                  {/* Badge de pago del cliente */}
+                  {pedido.paidByClient ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <DollarSign size={14} />
+                      Cliente pagó
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      <Clock size={14} />
+                      Cliente debe pagar
+                    </span>
+                  )}
                 </div>
 
-                {pedido.nota && (
-                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-gray-700">
-                      <strong>Nota:</strong> {pedido.nota}
-                    </p>
+                {/* Info del pedido */}
+                <div 
+                  className="cursor-pointer"
+                  onClick={() => setExpandedPedido(expandedPedido === pedido.id ? null : pedido.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="inline-flex items-center gap-2 bg-nadin-pink text-white px-3 py-1 rounded-full text-sm font-medium">
+                          <Package size={16} />
+                          Pedido #{pedido.id.slice(0, 8)}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {formatearFecha(pedido.createdAt)}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <User size={16} />
+                          <span className="font-medium">{pedido.cliente}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Phone size={16} />
+                          <span>{pedido.telefono}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <FileText size={16} />
+                          <span>{pedido.lineas.length} producto{pedido.lineas.length !== 1 ? 's' : ''}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right ml-4">
+                      <p className="text-2xl font-bold text-nadin-pink">
+                        {formatCurrency(calcularTotalPedido(pedido.lineas))}
+                      </p>
+                      <p className="text-sm text-green-600">
+                        Ganancia: {formatCurrency(calcularGananciaPedido(pedido.lineas))}
+                      </p>
+                      <div className="mt-2">
+                        {expandedPedido === pedido.id ? (
+                          <ChevronUp size={20} className="text-gray-400" />
+                        ) : (
+                          <ChevronDown size={20} className="text-gray-400" />
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
+
+                  {pedido.nota && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-gray-700">
+                        <strong>Nota:</strong> {pedido.nota}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Gestión de estados */}
+                <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Cambiar estado del pedido */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Estado del Pedido
+                    </label>
+                    <select
+                      value={pedido.orderStatus || 'pending'}
+                      onChange={(e) => updateOrderStatus(pedido.id, { orderStatus: e.target.value })}
+                      disabled={updatingOrder === pedido.id}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-wait"
+                    >
+                      {Object.entries(ORDER_STATUSES).map(([key, value]) => (
+                        <option key={key} value={key}>{value.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Estado de pago a Nadin */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pago a Nadin
+                    </label>
+                    <label className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={pedido.paidToNadin}
+                        onChange={(e) => updateOrderStatus(pedido.id, { paidToNadin: e.target.checked })}
+                        disabled={updatingOrder === pedido.id}
+                        className="w-4 h-4 text-nadin-pink border-gray-300 rounded focus:ring-nadin-pink disabled:cursor-wait"
+                      />
+                      <span className="text-sm">
+                        {pedido.paidToNadin ? '✅ Pagado' : '⏳ Pendiente'}
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Estado de pago del cliente */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cobro al Cliente
+                    </label>
+                    <label className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={pedido.paidByClient}
+                        onChange={(e) => updateOrderStatus(pedido.id, { paidByClient: e.target.checked })}
+                        disabled={updatingOrder === pedido.id}
+                        className="w-4 h-4 text-nadin-pink border-gray-300 rounded focus:ring-nadin-pink disabled:cursor-wait"
+                      />
+                      <span className="text-sm">
+                        {pedido.paidByClient ? '✅ Cobrado' : '⏳ Pendiente'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               {/* Detalle del pedido (expandible) */}
