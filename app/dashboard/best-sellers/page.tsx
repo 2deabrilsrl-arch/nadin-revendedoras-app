@@ -191,24 +191,23 @@ export default function BestSellersPage() {
     if (selectedBrand && p.brand !== selectedBrand) return false;
 
     // Filtros por categoría jerárquica
-    if (selectedMainCategory || selectedSubcategory || selectedProductType) {
+    // Solo procesar categorías si hay al menos una categoría principal seleccionada
+    if (selectedMainCategory) {
       if (!p.category) return false;
 
       const categoryParts = p.category.split(' > ').map(part => part.trim());
 
-      // Categoría principal
-      if (selectedMainCategory && categoryParts[0] !== selectedMainCategory) {
-        return false;
-      }
+      // Verificar categoría principal
+      if (categoryParts[0] !== selectedMainCategory) return false;
 
-      // Subcategoría
-      if (selectedSubcategory && categoryParts[1] !== selectedSubcategory) {
-        return false;
-      }
+      // Si hay subcategoría seleccionada, verificar nivel 2
+      if (selectedSubcategory) {
+        if (categoryParts[1] !== selectedSubcategory) return false;
 
-      // Tipo de producto
-      if (selectedProductType && categoryParts[2] !== selectedProductType) {
-        return false;
+        // Si hay tipo de producto seleccionado, verificar nivel 3
+        if (selectedProductType) {
+          if (categoryParts[2] !== selectedProductType) return false;
+        }
       }
     }
 
