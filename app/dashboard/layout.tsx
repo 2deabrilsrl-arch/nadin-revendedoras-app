@@ -50,7 +50,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
 
                 <Link 
-                  href="/dashboard/best sellers" 
+                  href="/dashboard/best-sellers" 
                   className="flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg transition-colors"
                   onClick={() => setShowMenu(false)}
                 >

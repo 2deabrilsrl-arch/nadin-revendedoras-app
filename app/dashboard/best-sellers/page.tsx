@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, X, TrendingUp } from 'lucide-react';
+import { Eye, EyeOff, X, TrendingUp, Crown, Award, Medal, Star } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
 import ProductModal, { CartItem } from '@/components/ProductModal';
 import { useCart } from '@/components/CartContext';
@@ -24,6 +24,52 @@ interface Product {
   image: string;
   variants: Variant[];
 }
+
+// Componente para el badge de ranking
+const RankingBadge = ({ position }: { position: number }) => {
+  if (position === 1) {
+    return (
+      <div className="absolute top-2 left-2 z-10">
+        <div className="flex items-center gap-1 bg-gradient-to-br from-yellow-300 via-yellow-400 to-yellow-600 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-yellow-200">
+          <Crown size={16} className="fill-yellow-100" />
+          <span className="text-sm font-bold">1°</span>
+        </div>
+      </div>
+    );
+  }
+  
+  if (position === 2) {
+    return (
+      <div className="absolute top-2 left-2 z-10">
+        <div className="flex items-center gap-1 bg-gradient-to-br from-gray-300 via-gray-400 to-gray-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-gray-200">
+          <Award size={16} className="fill-gray-100" />
+          <span className="text-sm font-bold">2°</span>
+        </div>
+      </div>
+    );
+  }
+  
+  if (position === 3) {
+    return (
+      <div className="absolute top-2 left-2 z-10">
+        <div className="flex items-center gap-1 bg-gradient-to-br from-orange-400 via-orange-500 to-orange-700 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-orange-200">
+          <Medal size={16} className="fill-orange-100" />
+          <span className="text-sm font-bold">3°</span>
+        </div>
+      </div>
+    );
+  }
+  
+  // Del 4 al 10 - Rosa de Nadin
+  return (
+    <div className="absolute top-2 left-2 z-10">
+      <div className="flex items-center gap-1 bg-gradient-to-br from-pink-400 via-pink-500 to-pink-600 text-white px-2.5 py-1 rounded-full shadow-md border-2 border-pink-200">
+        <Star size={14} className="fill-pink-100" />
+        <span className="text-xs font-bold">{position}°</span>
+      </div>
+    </div>
+  );
+};
 
 export default function BestSellersPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -230,21 +276,18 @@ export default function BestSellersPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4">
+    <div className="max-w-7xl mx-auto p-4 pb-24">
       <BackToHomeButton />
       
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <TrendingUp className="text-nadin-pink" size={32} />
-          <div>
-            <h2 className="text-2xl font-bold">TOP 10 Más Vendidos</h2>
-            <p className="text-sm text-gray-600">Los 10 productos estrella de Nadin</p>
-          </div>
+          <TrendingUp size={32} className="text-nadin-pink" />
+          <h1 className="text-3xl font-bold text-gray-800">TOP 10 Más Vendidos</h1>
         </div>
         
         <button
           onClick={() => setShowCosts(!showCosts)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className="flex items-center gap-2 bg-nadin-pink text-white px-4 py-2 rounded-lg hover:bg-nadin-pink-dark transition-colors"
         >
           {showCosts ? (
             <>
@@ -381,13 +424,8 @@ export default function BestSellersPage() {
                 setIsModalOpen(true);
               }}
             >
-              {index < 10 && (
-                <div className="absolute top-2 left-2 z-10">
-                  <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow">
-                    #{index + 1}
-                  </div>
-                </div>
-              )}
+              {/* Badge de ranking con sistema de medallas */}
+              <RankingBadge position={index + 1} />
               
               <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
                 {product.image && product.image !== '/placeholder.png' ? (
