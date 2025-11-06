@@ -61,7 +61,7 @@ const RankingBadge = ({ position }: { position: number }) => {
     );
   }
   
-  // Del 4 al 10 - Rosa de Nadin
+  // Del 4 en adelante - Rosa de Nadin
   return (
     <div className="absolute top-2 left-2 z-10">
       <div className="flex items-center gap-1 bg-gradient-to-br from-pink-400 via-pink-500 to-pink-600 text-white px-2.5 py-1 rounded-full shadow-md border-2 border-pink-200">
@@ -107,6 +107,7 @@ export default function BestSellersPage() {
       setLoading(true);
       setError('');
       
+      console.log('🔥 Cargando productos más vendidos de Tiendanube...');
       const res = await fetch('/api/best-sellers');
       
       if (!res.ok) throw new Error('Error al cargar productos');
@@ -114,10 +115,7 @@ export default function BestSellersPage() {
       const data = await res.json();
       setAllProducts(Array.isArray(data) ? data : []);
       
-      console.log('✅ Productos cargados:', data.length);
-      if (data.length > 0) {
-        console.log('📋 Ejemplo de categoría:', data[0].category);
-      }
+      console.log('✅ Productos más vendidos cargados:', data.length);
     } catch (err) {
       console.error('Error cargando más vendidos:', err);
       setError('Error al cargar los productos más vendidos');
@@ -126,16 +124,14 @@ export default function BestSellersPage() {
     }
   };
 
-  // Extraer opciones de filtros basado en productos actuales
+  // Extraer opciones de filtros
   const getFilterOptions = () => {
-    // Brands
     const brands = [...new Set(
       allProducts
         .map(p => p.brand)
         .filter((b): b is string => !!b && b !== 'Sin marca')
     )].sort();
 
-    // Main categories (nivel 1)
     const mainCats = [...new Set(
       allProducts
         .map(p => {
@@ -149,7 +145,6 @@ export default function BestSellersPage() {
         .filter((c): c is string => c !== null)
     )].sort();
 
-    // Subcategories (nivel 2 - basado en categoría principal seleccionada)
     let subcats: string[] = [];
     if (selectedMainCategory) {
       subcats = [...new Set(
@@ -167,7 +162,6 @@ export default function BestSellersPage() {
       )].sort();
     }
 
-    // Product types (nivel 3 - basado en subcategoría seleccionada)
     let productTypes: string[] = [];
     if (selectedMainCategory && selectedSubcategory) {
       productTypes = [...new Set(
@@ -192,23 +186,15 @@ export default function BestSellersPage() {
 
   // Filtrar productos con lógica jerárquica
   const filteredProducts = allProducts.filter(p => {
-    // Filtro por marca
     if (selectedBrand && p.brand !== selectedBrand) return false;
 
-    // Filtros por categoría jerárquica
     if (selectedMainCategory) {
       if (!p.category) return false;
-
       const categoryParts = p.category.split(' > ').map(part => part.trim());
-
-      // Verificar nivel 1
       if (categoryParts[0] !== selectedMainCategory) return false;
 
-      // Si hay subcategoría, verificar nivel 2
       if (selectedSubcategory) {
         if (categoryParts[1] !== selectedSubcategory) return false;
-
-        // Si hay tipo de producto, verificar nivel 3
         if (selectedProductType) {
           if (categoryParts[2] !== selectedProductType) return false;
         }
@@ -218,10 +204,23 @@ export default function BestSellersPage() {
     return true;
   });
 
-  // IMPORTANTE: Mostrar solo TOP 10 después de filtrar
-  const top10Products = filteredProducts.slice(0, 10);
+  // Determinar cuántos productos mostrar según filtros activos
+  const getMaxProducts = () => {
+    // Si hay tipo de producto o subcategoría: 5 (o todos si hay menos)
+    if (selectedProductType || selectedSubcategory) {
+      return Math.min(filteredProducts.length, 5);
+    }
+    // Si hay marca o categoría: 10 (o todos si hay menos)
+    if (selectedBrand || selectedMainCategory) {
+      return Math.min(filteredProducts.length, 10);
+    }
+    // Sin filtros (catálogo completo): 10
+    return Math.min(filteredProducts.length, 10);
+  };
 
-  // Handler para agregar al carrito
+  const maxProductsToShow = getMaxProducts();
+  const topProducts = filteredProducts.slice(0, maxProductsToShow);
+
   const handleAddToCart = (item: CartItem) => {
     addToCart(item);
     alert('✅ Producto agregado al pedido');
@@ -234,17 +233,15 @@ export default function BestSellersPage() {
     setSelectedProductType('');
   };
 
-  // Handler para cambio de categoría principal
   const handleMainCategoryChange = (value: string) => {
     setSelectedMainCategory(value);
-    setSelectedSubcategory(''); // Reset subcategory
-    setSelectedProductType(''); // Reset product type
+    setSelectedSubcategory('');
+    setSelectedProductType('');
   };
 
-  // Handler para cambio de subcategoría
   const handleSubcategoryChange = (value: string) => {
     setSelectedSubcategory(value);
-    setSelectedProductType(''); // Reset product type
+    setSelectedProductType('');
   };
 
   const hasActiveFilters = selectedBrand || selectedMainCategory || selectedSubcategory || selectedProductType;
@@ -255,7 +252,7 @@ export default function BestSellersPage() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
-            <p className="mt-4 text-gray-600">Cargando productos más vendidos...</p>
+            <p className="mt-4 text-gray-600">Cargando productos más vendidos desde Tiendanube...</p>
           </div>
         </div>
       </div>
@@ -285,7 +282,9 @@ export default function BestSellersPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <TrendingUp size={32} className="text-nadin-pink" />
-          <h1 className="text-3xl font-bold text-gray-800">TOP 10 Más Vendidos</h1>
+          <h1 className="text-3xl font-bold text-gray-800">
+            TOP {maxProductsToShow} Más Vendidos
+          </h1>
         </div>
         
         <button
@@ -402,23 +401,23 @@ export default function BestSellersPage() {
 
       <div className="mb-4 flex justify-between items-center">
         <div className="text-sm text-gray-600">
-          {filteredProducts.length > 10 ? (
-            <>Mostrando TOP 10 de {filteredProducts.length} productos filtrados</>
+          {filteredProducts.length > maxProductsToShow ? (
+            <>Mostrando TOP {maxProductsToShow} de {filteredProducts.length} productos filtrados</>
           ) : (
-            <>Mostrando {top10Products.length} productos</>
+            <>Mostrando {topProducts.length} productos</>
           )}
         </div>
         <button
           onClick={loadBestSellers}
           className="text-sm text-nadin-pink hover:text-nadin-pink-dark"
         >
-          🔄 Actualizar
+          🔄 Actualizar desde Tiendanube
         </button>
       </div>
 
-      {top10Products.length > 0 ? (
+      {topProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {top10Products.map((product, index) => (
+          {topProducts.map((product, index) => (
             <div 
               key={product.id} 
               className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow relative cursor-pointer"
@@ -427,7 +426,6 @@ export default function BestSellersPage() {
                 setIsModalOpen(true);
               }}
             >
-              {/* Badge de ranking con sistema de medallas */}
               <RankingBadge position={index + 1} />
               
               <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
@@ -477,7 +475,6 @@ export default function BestSellersPage() {
                       )}
                     </div>
 
-                    {/* Botón WhatsApp */}
                     <ShareWhatsAppButton
                       product={product}
                       precioVenta={calcularPrecioVenta(product.variants[0].price, userMargen)}
@@ -504,7 +501,6 @@ export default function BestSellersPage() {
         </div>
       )}
 
-      {/* Modal de selección de producto */}
       <ProductModal
         product={selectedProduct}
         isOpen={isModalOpen}

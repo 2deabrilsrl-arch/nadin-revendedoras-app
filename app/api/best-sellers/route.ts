@@ -1,33 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getBestSellingProducts } from '@/lib/tiendanube';
+import { formatProductsWithFullCategories } from '@/lib/catalog-sync';
 
 export async function GET(req: NextRequest) {
   try {
-    console.log('🔥 Obteniendo productos más vendidos desde el cache...');
+    console.log('🔥 Obteniendo productos más vendidos directamente de Tiendanube...');
 
-    // Obtener productos del cache ordenados por ventas
-    const cached = await prisma.catalogoCache.findMany({
-      orderBy: [
-        { salesCount: 'desc' }, // Más vendidos primero
-        { updatedAt: 'desc' }
-      ],
-      take: 200 // Traer suficientes para filtrado
-    });
+    // Traer productos de TN con sort_by: 'best-selling'
+    // La API de TN usa su propio algoritmo (probablemente trimestral/anual)
+    const products = await getBestSellingProducts(200);
+    
+    if (!products || products.length === 0) {
+      console.log('⚠️ No se obtuvieron productos de Tiendanube');
+      return NextResponse.json([]);
+    }
 
-    // Parsear los productos
-    const products = cached.map(item => JSON.parse(item.data));
+    console.log(`📦 ${products.length} productos más vendidos obtenidos de TN`);
 
-    console.log(`✅ ${products.length} productos más vendidos obtenidos del cache`);
+    // Formatear con categorías completas para que funcionen los filtros
+    const formatted = await formatProductsWithFullCategories(products);
+    
+    console.log(`✅ ${formatted.length} productos formateados con categorías completas`);
 
-    // Mostrar algunos ejemplos de categorías para debug
-    if (products.length > 0) {
-      console.log('📋 Ejemplos de categorías en best-sellers:');
-      products.slice(0, 5).forEach(p => {
-        console.log(`  - "${p.name}": "${p.category}"`);
+    // Mostrar algunos ejemplos
+    if (formatted.length > 0) {
+      console.log('📋 Ejemplos de productos más vendidos:');
+      formatted.slice(0, 5).forEach((p, idx) => {
+        console.log(`  ${idx + 1}. "${p.name}" - ${p.category}`);
       });
     }
 
-    return NextResponse.json(products);
+    return NextResponse.json(formatted);
   } catch (error) {
     console.error('❌ Error en API de más vendidos:', error);
     return NextResponse.json(
