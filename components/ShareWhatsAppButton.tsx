@@ -16,6 +16,7 @@ interface Product {
   brand: string;
   category: string;
   image: string;
+  images?: string[]; // ✅ NUEVO: Array de múltiples imágenes
   variants: Variant[];
 }
 
@@ -27,7 +28,7 @@ interface ShareWhatsAppButtonProps {
 
 export default function ShareWhatsAppButton({ product, precioVenta, className = '' }: ShareWhatsAppButtonProps) {
   const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Evitar que abra el modal del producto
+    e.stopPropagation();
 
     // Extraer talles y colores únicos
     const tallesUnicos = [...new Set(product.variants.map(v => v.talle).filter(Boolean))].sort();
@@ -41,25 +42,37 @@ export default function ShareWhatsAppButton({ product, precioVenta, className = 
       maximumFractionDigits: 0,
     }).format(precioVenta);
 
+    // ✅ MEJORADO: Obtener TODAS las imágenes
+    const imagenesProducto = product.images && product.images.length > 0 
+      ? product.images.filter(img => img && img !== '/placeholder.png')
+      : (product.image && product.image !== '/placeholder.png' ? [product.image] : []);
+
     // Construir mensaje de WhatsApp
     let mensaje = `✨ *${product.name}*\n\n`;
     mensaje += `🏷️ ${product.brand}\n\n`;
     mensaje += `💰 Precio: *${precioFormateado}*\n\n`;
-    
+
     if (tallesUnicos.length > 0) {
       mensaje += `📏 Talles disponibles: ${tallesUnicos.join(', ')}\n`;
     }
-    
+
     if (coloresUnicos.length > 0) {
       mensaje += `🎨 Colores: ${coloresUnicos.join(', ')}\n`;
     }
-    
-    mensaje += `\n📸 Ver foto: ${product.image}\n\n`;
-    mensaje += `¿Te interesa? ¡Consultame! 💕`;
+
+    // ✅ NUEVO: Incluir TODAS las fotos
+    if (imagenesProducto.length > 0) {
+      mensaje += `\n📸 *Fotos del producto (${imagenesProducto.length}):*\n`;
+      imagenesProducto.forEach((img, index) => {
+        mensaje += `${index + 1}. ${img}\n`;
+      });
+    }
+
+    mensaje += `\n¿Te interesa? ¡Consultame! 💕`;
 
     // Codificar mensaje para URL
     const mensajeCodificado = encodeURIComponent(mensaje);
-    
+
     // Abrir WhatsApp
     const urlWhatsApp = `https://wa.me/?text=${mensajeCodificado}`;
     window.open(urlWhatsApp, '_blank');

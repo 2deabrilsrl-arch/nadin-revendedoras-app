@@ -12,25 +12,25 @@ interface TiendanubeCategory {
  * Construye la ruta completa de una categoría (ej: "MUJER > MEDIAS > SOQUETES")
  */
 function buildCategoryPath(
-  categoryId: number, 
+  categoryId: number,
   categoriesMap: Map<number, TiendanubeCategory>,
   debug: boolean = false
 ): string {
   const path: string[] = [];
   let currentId: number | null | undefined = categoryId;
-  
+
   // Evitar loops infinitos
   const visited = new Set<number>();
   let depth = 0;
-  
+
   if (debug) {
     console.log(`\n  🔍 buildCategoryPath(${categoryId}):`);
   }
-  
+
   while (currentId && currentId > 0 && !visited.has(currentId) && depth < 10) {
     visited.add(currentId);
     const category = categoriesMap.get(currentId);
-    
+
     if (!category) {
       if (debug) {
         console.log(`    ❌ Categoría ID ${currentId} NO encontrada en mapa`);
@@ -38,23 +38,23 @@ function buildCategoryPath(
       console.warn(`⚠️ Categoría ID ${currentId} no encontrada en el mapa`);
       break;
     }
-    
+
     if (debug) {
       console.log(`    ✅ ID ${currentId}: "${category.name.es}" (parent: ${category.parent || 'null'})`);
     }
-    
+
     path.unshift(category.name.es);
     // En TN, parent=0 significa "sin parent"
     currentId = (category.parent && category.parent > 0) ? category.parent : null;
     depth++;
   }
-  
+
   const result = path.join(' > ');
-  
+
   if (debug) {
     console.log(`    → Resultado: "${result}"`);
   }
-  
+
   return result;
 }
 
@@ -65,18 +65,18 @@ async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
   console.log('📂 Obteniendo categorías de TN...');
   const categories = await getCategories();
   console.log(`✅ ${categories.length} categorías obtenidas de TN`);
-  
+
   const map = new Map<number, TiendanubeCategory>();
-  
+
   let conParent = 0;
   let sinParent = 0;
-  
+
   categories.forEach((cat: any) => {
     // En TN, parent=0 significa "sin parent" (categoría raíz)
     const hasParent = cat.parent && cat.parent > 0;
     if (hasParent) conParent++;
     else sinParent++;
-    
+
     map.set(cat.id, {
       id: cat.id,
       name: cat.name || { es: 'Sin nombre' },
@@ -84,13 +84,13 @@ async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
       subcategories: cat.subcategories || []
     });
   });
-  
+
   console.log(`📊 Categorías CON parent: ${conParent}`);
   console.log(`📊 Categorías SIN parent (nivel raíz): ${sinParent}`);
-  
+
   // Mostrar ejemplos de categorías con parent
   if (conParent > 0) {
-    console.log('📝 Ejemplos de categorías con parent:');
+    console.log('🔎 Ejemplos de categorías con parent:');
     const ejemplosConParent = Array.from(map.values())
       .filter(c => c.parent)
       .slice(0, 3);
@@ -99,10 +99,10 @@ async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
       console.log(`  - "${cat.name.es}" (ID: ${cat.id}) → parent: "${parentCat?.name.es || 'desconocido'}" (ID: ${cat.parent})`);
     });
   }
-  
+
   // Mostrar ejemplos de categorías raíz
   if (sinParent > 0) {
-    console.log('📝 Ejemplos de categorías raíz (sin parent):');
+    console.log('🔎 Ejemplos de categorías raíz (sin parent):');
     const ejemplosSinParent = Array.from(map.values())
       .filter(c => !c.parent)
       .slice(0, 3);
@@ -110,7 +110,7 @@ async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
       console.log(`  - "${cat.name.es}" (ID: ${cat.id})`);
     });
   }
-  
+
   return map;
 }
 
@@ -120,7 +120,7 @@ async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
 export async function formatProductsWithFullCategories(products: any[]) {
   console.log('📂 Construyendo jerarquía de categorías...');
   console.log(`📦 Productos recibidos: ${products.length}`);
-  
+
   // Ver formato de los primeros productos
   if (products.length > 0) {
     console.log('\n🔍 FORMATO DE PRODUCTOS RECIBIDOS (primeros 3):');
@@ -131,11 +131,11 @@ export async function formatProductsWithFullCategories(products: any[]) {
       console.log('Categories field:', JSON.stringify(p.categories, null, 2));
     });
   }
-  
+
   // Obtener todas las categorías
   const categoriesMap = await getCategoriesMap();
   console.log(`✅ ${categoriesMap.size} categorías en memoria`);
-  
+
   // Mostrar el mapa de categorías
   console.log('\n🗺️ MAPA DE CATEGORÍAS (primeras 10):');
   let count = 0;
@@ -144,7 +144,7 @@ export async function formatProductsWithFullCategories(products: any[]) {
       console.log(`  ID ${id}: "${cat.name.es}" → parent: ${cat.parent || 'null'}`);
     }
   }
-  
+
   // Contadores para diagnóstico
   let sinCategoria = 0;
   let nivel1 = 0;
@@ -152,11 +152,11 @@ export async function formatProductsWithFullCategories(products: any[]) {
   let nivel3 = 0;
   let nivel4Plus = 0;
   let erroresEnConstruccion = 0;
-  
+
   const formatted = products.map((product, index) => {
     try {
       let fullCategoryPath = 'Sin categoría';
-      
+
       // Si el producto tiene categorías
       if (product.categories && product.categories.length > 0) {
         // Ver qué formato tiene
@@ -166,49 +166,49 @@ export async function formatProductsWithFullCategories(products: any[]) {
           console.log('  Categories:', JSON.stringify(product.categories));
           console.log('  Total categorías:', product.categories.length);
         }
-        
+
         // CORRECCIÓN: Buscar la categoría MÁS ESPECÍFICA
         // La más específica es la que tiene más niveles de parent
         let categoryId = product.categories[0].id; // Default: primera
         let maxDepth = 0;
-        
+
         // Calcular profundidad de cada categoría
         for (const cat of product.categories) {
           if (!cat.id) continue;
-          
+
           let depth = 0;
           let currentCat = cat;
           let visited = new Set();
-          
+
           // Contar cuántos parents tiene
           while (currentCat && currentCat.parent && currentCat.parent > 0 && depth < 10) {
             if (visited.has(currentCat.id)) break;
             visited.add(currentCat.id);
-            
+
             depth++;
             // Buscar el parent en el array de categorías del producto
             currentCat = product.categories.find((c: any) => c.id === currentCat.parent);
           }
-          
+
           if (index < 3) {
             console.log(`    - "${cat.name.es}" (ID: ${cat.id}): profundidad ${depth}`);
           }
-          
+
           // Si esta categoría es más profunda, usarla
           if (depth > maxDepth) {
             maxDepth = depth;
             categoryId = cat.id;
           }
         }
-        
+
         if (categoryId) {
           if (index < 3) {
             console.log(`  → Seleccionada: ID ${categoryId} (profundidad: ${maxDepth})`);
             console.log('  → ¿Existe en mapa?', categoriesMap.has(categoryId));
           }
-          
+
           fullCategoryPath = buildCategoryPath(categoryId, categoriesMap, index < 3);
-          
+
           if (index < 3) {
             console.log('  → Path construido:', fullCategoryPath);
           }
@@ -222,7 +222,7 @@ export async function formatProductsWithFullCategories(products: any[]) {
           console.log(`\n⚠️ Producto ${index + 1} SIN categories field`);
         }
       }
-      
+
       // Contar niveles para diagnóstico
       if (fullCategoryPath === 'Sin categoría') {
         sinCategoria++;
@@ -233,13 +233,16 @@ export async function formatProductsWithFullCategories(products: any[]) {
         else if (niveles === 3) nivel3++;
         else nivel4Plus++;
       }
-      
+
       return {
         id: product.id,
         name: product.name?.es || 'Sin nombre',
         brand: product.brand || 'Sin marca',
         category: fullCategoryPath, // AHORA CON JERARQUÍA COMPLETA
-        image: product.images?.[0]?.src || '/placeholder.png',
+        image: product.images?.[0]?.src || '/placeholder.png', // Primera imagen (compatibilidad)
+        images: (product.images || [])  // ✅ NUEVO: Array con TODAS las imágenes
+          .map((img: any) => img.src)
+          .filter((src: string) => src && src !== '/placeholder.png'),
         variants: (product.variants || []).map((variant: any) => ({
           id: variant.id,
           sku: variant.sku || '',
@@ -256,7 +259,7 @@ export async function formatProductsWithFullCategories(products: any[]) {
       return null;
     }
   }).filter(p => p !== null);
-  
+
   // Mostrar diagnóstico
   console.log('\n📊 DIAGNÓSTICO DE CATEGORÍAS CONSTRUIDAS:');
   console.log(`  Sin categoría: ${sinCategoria}`);
@@ -265,13 +268,13 @@ export async function formatProductsWithFullCategories(products: any[]) {
   console.log(`  Nivel 3: ${nivel3}`);
   console.log(`  Nivel 4+: ${nivel4Plus}`);
   console.log(`  Errores: ${erroresEnConstruccion}`);
-  
+
   // Mostrar ejemplos
-  console.log('\n📝 Ejemplos de categorías construidas (primeros 10):');
+  console.log('\n🔎 Ejemplos de categorías construidas (primeros 10):');
   formatted.slice(0, 10).forEach(p => {
     console.log(`  - "${p.name}": "${p.category}"`);
   });
-  
+
   // ALERTA si todos están en nivel 1
   if (nivel1 > 0 && nivel2 === 0 && nivel3 === 0) {
     console.warn('\n⚠️  ¡ALERTA! Todos los productos tienen solo 1 nivel de categoría.');
@@ -280,7 +283,7 @@ export async function formatProductsWithFullCategories(products: any[]) {
     console.warn('⚠️  2. El field "categories" no tiene el formato esperado');
     console.warn('⚠️  3. buildCategoryPath() no está funcionando');
   }
-  
+
   return formatted;
 }
 
@@ -291,21 +294,21 @@ export async function syncCatalogWithFullCategories() {
   try {
     console.log('🔄 Iniciando sincronización con jerarquía completa...');
     console.log('⏰ Timestamp:', new Date().toISOString());
-    
+
     // Obtener productos
     const products = await getAllProducts();
     console.log(`📦 ${products.length} productos obtenidos de TN`);
-    
+
     // Formatear con jerarquía completa
     const formatted = await formatProductsWithFullCategories(products);
     console.log(`✅ ${formatted.length} productos formateados`);
-    
+
     // Limpiar cache anterior
     await prisma.catalogoCache.deleteMany({});
     console.log('🗑️  Cache antiguo eliminado');
-    
+
     // Guardar con nuevas categorías
-    const createPromises = formatted.map(product => 
+    const createPromises = formatted.map(product =>
       prisma.catalogoCache.create({
         data: {
           productId: product.id.toString(),
@@ -318,11 +321,11 @@ export async function syncCatalogWithFullCategories() {
         }
       })
     );
-    
+
     await Promise.all(createPromises);
     console.log(`✅ ${formatted.length} productos guardados con jerarquía completa`);
     console.log('⏰ Finalizado:', new Date().toISOString());
-    
+
     return { success: true, count: formatted.length };
   } catch (error) {
     console.error('❌ Error en sincronización:', error);
@@ -359,7 +362,7 @@ export async function getCachedProducts(filters?: {
 
   if (filters?.search) {
     const searchLower = filters.search.toLowerCase();
-    products = products.filter(p => 
+    products = products.filter(p =>
       p.name.toLowerCase().includes(searchLower) ||
       p.brand.toLowerCase().includes(searchLower) ||
       p.variants.some((v: any) => v.sku?.toLowerCase().includes(searchLower))
@@ -398,7 +401,7 @@ export async function getCacheStats() {
  */
 function inferSex(category: string, name: string): string {
   const text = `${category} ${name}`.toLowerCase();
-  
+
   if (text.includes('mujer') || text.includes('dama') || text.includes('femenin')) {
     return 'Mujer';
   }
@@ -408,6 +411,6 @@ function inferSex(category: string, name: string): string {
   if (text.includes('niñ') || text.includes('kid') || text.includes('infant')) {
     return 'Niños';
   }
-  
+
   return 'Unisex';
 }

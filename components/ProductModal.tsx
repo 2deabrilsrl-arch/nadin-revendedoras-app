@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
+import ShareWhatsAppButton from './ShareWhatsAppButton';
 
 interface Variant {
   id: number;
@@ -18,6 +19,7 @@ interface Product {
   brand: string;
   category: string;
   image: string;
+  images?: string[];
   variants: Variant[];
 }
 
@@ -52,26 +54,33 @@ export default function ProductModal({ product, isOpen, onClose, userMargen, onA
   const [colores, setColores] = useState<string[]>([]);
   const [selectedTalle, setSelectedTalle] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // ✅ NUEVO: Obtener todas las imágenes
+  const allImages = product && product.images && product.images.length > 0
+    ? product.images.filter(img => img && img !== '/placeholder.png')
+    : (product && product.image && product.image !== '/placeholder.png' ? [product.image] : []);
+
+  const hasImages = allImages.length > 0;
+  const hasMultipleImages = allImages.length > 1;
+  const currentImage = hasImages ? allImages[currentImageIndex] : '/placeholder.png';
 
   useEffect(() => {
     if (product && product.variants) {
-      // Extraer talles y colores únicos
       const uniqueTalles = [...new Set(product.variants.map(v => v.talle).filter(Boolean))];
       const uniqueColores = [...new Set(product.variants.map(v => v.color).filter(Boolean))];
-      
+
       setTalles(uniqueTalles);
       setColores(uniqueColores);
-      
-      // Reset selecciones
       setSelectedTalle('');
       setSelectedColor('');
       setSelectedVariant(null);
       setQuantity(1);
+      setCurrentImageIndex(0); // Reset imagen al abrir modal
     }
   }, [product]);
 
   useEffect(() => {
-    // Cuando se seleccionan talle y color, buscar la variante correspondiente
     if (product && selectedTalle && selectedColor) {
       const variant = product.variants.find(
         v => v.talle === selectedTalle && v.color === selectedColor
@@ -81,6 +90,14 @@ export default function ProductModal({ product, isOpen, onClose, userMargen, onA
   }, [selectedTalle, selectedColor, product]);
 
   if (!isOpen || !product) return null;
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+  };
 
   const handleAddToCart = () => {
     if (!selectedVariant) {
@@ -104,34 +121,33 @@ export default function ProductModal({ product, isOpen, onClose, userMargen, onA
       qty: quantity,
       mayorista: selectedVariant.price,
       venta: calcularPrecioVenta(selectedVariant.price, userMargen),
-      image: product.image
+      image: currentImage
     };
 
     if (onAddToCart) {
       onAddToCart(cartItem);
     }
 
-    // Cerrar modal
     onClose();
   };
 
-  const precioVenta = selectedVariant 
+  const precioVenta = selectedVariant
     ? calcularPrecioVenta(selectedVariant.price, userMargen)
     : 0;
 
   const totalVenta = precioVenta * quantity;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-start">
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-start z-10">
           <div className="flex-1">
             <h2 className="text-xl font-bold mb-1">{product.name}</h2>
             <p className="text-sm text-nadin-pink font-medium">{product.brand}</p>
@@ -146,21 +162,89 @@ export default function ProductModal({ product, isOpen, onClose, userMargen, onA
 
         {/* Content */}
         <div className="p-6">
-          {/* Image */}
+          {/* ✅ NUEVO: Carrusel de imágenes */}
           <div className="mb-6">
-            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden max-w-md mx-auto">
-              {product.image && product.image !== '/placeholder.png' ? (
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
+            <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden max-w-md mx-auto relative group">
+              {hasImages ? (
+                <>
+                  <img
+                    src={currentImage}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Controles del carrusel */}
+                  {hasMultipleImages && (
+                    <>
+                      <button
+                        onClick={prevImage}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 hover:bg-opacity-80 text-white rounded-full p-2 transition-all"
+                      >
+                        <ChevronLeft size={24} />
+                      </button>
+                      <button
+                        onClick={nextImage}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-black bg-opacity-60 hover:bg-opacity-80 text-white rounded-full p-2 transition-all"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+
+                      {/* Contador */}
+                      <div className="absolute top-3 right-3 bg-black bg-opacity-70 text-white text-sm px-3 py-1 rounded-full font-medium">
+                        {currentImageIndex + 1} / {allImages.length}
+                      </div>
+
+                      {/* Thumbnails */}
+                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2">
+                        {allImages.slice(0, 5).map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentImageIndex(index)}
+                            className={`w-2 h-2 rounded-full transition-all ${
+                              index === currentImageIndex
+                                ? 'bg-white w-6'
+                                : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                            }`}
+                          />
+                        ))}
+                        {allImages.length > 5 && (
+                          <span className="text-white text-xs bg-black bg-opacity-60 px-2 rounded-full">
+                            +{allImages.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  Sin imagen
+                  <Package size={64} />
                 </div>
               )}
             </div>
+
+            {/* Mini galería debajo */}
+            {hasMultipleImages && (
+              <div className="flex gap-2 mt-3 overflow-x-auto pb-2">
+                {allImages.map((img, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                      index === currentImageIndex
+                        ? 'border-nadin-pink scale-110'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <img
+                      src={img}
+                      alt={`${product.name} - ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Selección de Talle */}
@@ -265,7 +349,7 @@ export default function ProductModal({ product, isOpen, onClose, userMargen, onA
 
           {/* Resumen de Precios */}
           {selectedVariant && (
-            <div className="mb-6 p-4 bg-gradient-to-br from-nadin-pink to-pink-400 rounded-lg text-white">
+            <div className="mb-4 p-4 bg-gradient-to-br from-nadin-pink to-pink-400 rounded-lg text-white">
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="text-sm opacity-90">Precio unitario</p>
@@ -288,6 +372,15 @@ export default function ProductModal({ product, isOpen, onClose, userMargen, onA
               </div>
             </div>
           )}
+
+          {/* Botón WhatsApp */}
+          <div className="mb-4">
+            <ShareWhatsAppButton
+              product={product}
+              precioVenta={precioVenta}
+              className="w-full py-3"
+            />
+          </div>
         </div>
 
         {/* Footer con botones */}

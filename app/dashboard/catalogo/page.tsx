@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Eye, EyeOff, Search, Package } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
 import ProductModal, { CartItem } from '@/components/ProductModal';
+import ProductCard from '@/components/ProductCard'; // ✅ NUEVO IMPORT
 import { useCart } from '@/components/CartContext';
 import BackToHomeButton from '@/components/BackToHomeButton';
 
@@ -14,6 +15,7 @@ interface Product {
   brand: string;
   category: string;
   image: string;
+  images?: string[]; // ✅ NUEVO
   variants: any[];
 }
 
@@ -24,20 +26,20 @@ export default function CatalogoPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [subcategories, setSubcategories] = useState<string[]>([]);
   const [productTypes, setProductTypes] = useState<string[]>([]);
-  
+
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [selectedProductType, setSelectedProductType] = useState('');
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [userMargen, setUserMargen] = useState(60);
   const [showCosts, setShowCosts] = useState(false);
-  
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -54,13 +56,13 @@ export default function CatalogoPage() {
     try {
       const res = await fetch('/api/catalogo');
       const data: Product[] = await res.json();
-      
+
       const brandsArray: string[] = Array.from(new Set(
         data
           .map(p => p.brand)
           .filter(b => b && b !== 'Sin marca')
       )).sort();
-      
+
       setBrands(brandsArray);
     } catch (error) {
       console.error('Error cargando marcas:', error);
@@ -75,7 +77,7 @@ export default function CatalogoPage() {
     try {
       const res = await fetch('/api/catalogo');
       const data: Product[] = await res.json();
-      
+
       const catsSet = new Set<string>();
       data.forEach(p => {
         if (p.category) {
@@ -86,7 +88,7 @@ export default function CatalogoPage() {
           }
         }
       });
-      
+
       const catsArray: string[] = Array.from(catsSet).sort();
       setCategories(catsArray);
     } catch (error) {
@@ -102,7 +104,7 @@ export default function CatalogoPage() {
     try {
       const res = await fetch(`/api/catalogo?category=${encodeURIComponent(category)}`);
       const data: Product[] = await res.json();
-      
+
       const subcatsSet = new Set<string>();
       data.forEach(p => {
         if (p.category && p.category.startsWith(category)) {
@@ -113,7 +115,7 @@ export default function CatalogoPage() {
           }
         }
       });
-      
+
       const subcatsArray: string[] = Array.from(subcatsSet).sort();
       setSubcategories(subcatsArray);
     } catch (error) {
@@ -131,7 +133,7 @@ export default function CatalogoPage() {
         `/api/catalogo?category=${encodeURIComponent(category)}&subcategory=${encodeURIComponent(subcategory)}`
       );
       const data: Product[] = await res.json();
-      
+
       const typesSet = new Set<string>();
       data.forEach(p => {
         if (p.category && p.category.includes(subcategory)) {
@@ -142,7 +144,7 @@ export default function CatalogoPage() {
           }
         }
       });
-      
+
       const typesArray: string[] = Array.from(typesSet).sort();
       setProductTypes(typesArray);
     } catch (error) {
@@ -165,7 +167,7 @@ export default function CatalogoPage() {
 
       const res = await fetch(`/api/catalogo?${params.toString()}`);
       const data = await res.json();
-      
+
       setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error cargando productos:', error);
@@ -222,7 +224,7 @@ export default function CatalogoPage() {
       <div className="max-w-4xl mx-auto p-4">
         <BackToHomeButton />
         <h2 className="text-2xl font-bold mb-6 text-center">¿Qué querés mostrar?</h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => {
@@ -528,65 +530,18 @@ export default function CatalogoPage() {
         </div>
       ) : products.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* ✅ NUEVO: Usar ProductCard en vez de tarjetas manuales */}
           {products.map((product) => (
-            <div
+            <ProductCard
               key={product.id}
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer"
+              product={product}
               onClick={() => {
                 setSelectedProduct(product);
                 setIsModalOpen(true);
               }}
-            >
-              <div className="aspect-square bg-gray-100 rounded-t-lg overflow-hidden">
-                {product.image && product.image !== '/placeholder.png' ? (
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <Package size={48} />
-                  </div>
-                )}
-              </div>
-
-              <div className="p-3">
-                <p className="text-xs text-nadin-pink font-medium mb-1">{product.brand}</p>
-                <h3 className="font-semibold text-sm mb-2 line-clamp-2 min-h-[40px]">
-                  {product.name}
-                </h3>
-
-                {product.variants && product.variants.length > 0 && (
-                  <>
-                    <p className="text-xs text-gray-600 mb-2">
-                      Stock: {product.variants.reduce((sum: number, v: any) => sum + v.stock, 0)} unidades
-                    </p>
-
-                    <div className="border-t pt-2 space-y-1">
-                      <p className="text-lg font-bold text-nadin-pink">
-                        {formatCurrency(calcularPrecioVenta(product.variants[0].price, userMargen))}
-                      </p>
-
-                      {showCosts && (
-                        <>
-                          <p className="text-xs text-gray-600">
-                            Costo: <span className="font-semibold">{formatCurrency(product.variants[0].price)}</span>
-                          </p>
-                          <p className="text-xs text-green-600">
-                            Ganancia: <span className="font-semibold">
-                              {formatCurrency(
-                                calcularPrecioVenta(product.variants[0].price, userMargen) - product.variants[0].price
-                              )}
-                            </span>
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+              userMargen={userMargen}
+              showCosts={showCosts}
+            />
           ))}
         </div>
       ) : (

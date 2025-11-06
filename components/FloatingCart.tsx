@@ -7,19 +7,19 @@ import { formatCurrency } from '@/lib/precios';
 
 export default function FloatingCart() {
   const router = useRouter();
-  const { 
-    cart, 
-    removeFromCart, 
-    updateQuantity, 
+  const {
+    cart,
+    removeFromCart,
+    updateQuantity,
     updateDescuentoPesos,
     updateDescuentoPorcentaje,
-    getTotalItems, 
+    getTotalItems,
     getTotalVenta,
     getTotalDescuentos,
     getTotalFinal,
     getGananciaEstimada
   } = useCart();
-  
+
   const [isOpen, setIsOpen] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState<number | null>(null);
   const [discountType, setDiscountType] = useState<'pesos' | 'porcentaje'>('pesos');
@@ -29,13 +29,13 @@ export default function FloatingCart() {
 
   const handleCheckout = () => {
     setIsOpen(false);
-    router.push('/checkout');
+    // ✅ CORREGIDO: Ruta correcta a nuevo-pedido
+    router.push('/dashboard/nuevo-pedido');
   };
 
   const handleOpenDiscountEdit = (variantId: number, currentItem: any) => {
     setEditingDiscount(variantId);
-    
-    // Determinar qué tipo de descuento tiene actualmente
+
     if (currentItem.descuentoPorcentaje && currentItem.descuentoPorcentaje > 0) {
       setDiscountType('porcentaje');
       setDiscountValue(currentItem.descuentoPorcentaje.toString());
@@ -50,28 +50,28 @@ export default function FloatingCart() {
 
   const handleApplyDiscount = (variantId: number) => {
     const value = parseFloat(discountValue) || 0;
-    
+
     if (discountType === 'porcentaje') {
       updateDescuentoPorcentaje(variantId, value);
     } else {
       updateDescuentoPesos(variantId, value);
     }
-    
+
     setEditingDiscount(null);
     setDiscountValue('');
   };
 
   const calcularPrecioConDescuento = (item: any) => {
     const subtotal = item.venta * item.qty;
-    
+
     if (item.descuentoPorcentaje && item.descuentoPorcentaje > 0) {
       return subtotal - (subtotal * item.descuentoPorcentaje / 100);
     }
-    
+
     if (item.descuentoPesos && item.descuentoPesos > 0) {
       return subtotal - (item.descuentoPesos * item.qty);
     }
-    
+
     return subtotal;
   };
 
@@ -96,7 +96,7 @@ export default function FloatingCart() {
       {isOpen && (
         <>
           {/* Overlay */}
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setIsOpen(false)}
           />
@@ -144,7 +144,7 @@ export default function FloatingCart() {
                       <p className="text-xs text-gray-600">
                         Talle {item.talle} • {item.color}
                       </p>
-                      
+
                       {/* Precio unitario */}
                       <p className="text-sm font-semibold text-nadin-pink mt-1">
                         {formatCurrency(item.venta)} c/u
@@ -203,7 +203,7 @@ export default function FloatingCart() {
                           <Percent size={12} className="inline" /> En %
                         </button>
                       </div>
-                      
+
                       <div className="flex gap-2">
                         <input
                           type="number"
@@ -236,11 +236,11 @@ export default function FloatingCart() {
                         onClick={() => handleOpenDiscountEdit(item.variantId, item)}
                         className="text-xs text-nadin-pink hover:text-nadin-pink-dark font-medium"
                       >
-                        {(item.descuentoPorcentaje || item.descuentoPesos) 
-                          ? '✏️ Editar descuento' 
+                        {(item.descuentoPorcentaje || item.descuentoPesos)
+                          ? '✏️ Editar descuento'
                           : '+ Agregar descuento'}
                       </button>
-                      
+
                       {/* Mostrar descuento aplicado */}
                       {item.descuentoPorcentaje && item.descuentoPorcentaje > 0 && (
                         <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
@@ -285,19 +285,19 @@ export default function FloatingCart() {
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-semibold">{formatCurrency(getTotalVenta())}</span>
               </div>
-              
+
               {getTotalDescuentos() > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Descuentos:</span>
                   <span className="font-semibold">-{formatCurrency(getTotalDescuentos())}</span>
                 </div>
               )}
-              
+
               <div className="flex justify-between text-lg font-bold border-t pt-2">
                 <span>Total:</span>
                 <span className="text-nadin-pink">{formatCurrency(getTotalFinal())}</span>
               </div>
-              
+
               <div className="flex justify-between text-xs text-gray-600">
                 <span>Tu ganancia estimada:</span>
                 <span className="font-semibold text-green-600">{formatCurrency(getGananciaEstimada())}</span>
