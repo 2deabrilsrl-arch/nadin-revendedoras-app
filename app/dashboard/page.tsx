@@ -93,7 +93,7 @@ export default function DashboardHome() {
       <div className="mb-6 bg-gradient-to-r from-nadin-pink to-pink-400 text-white rounded-xl shadow-lg p-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
-        
+
         <div className="relative z-10">
           <h2 className="text-2xl font-bold mb-2">
             ¡Hola{user ? ` ${user.name.split(' ')[0]}` : ''}! 👋
@@ -116,8 +116,8 @@ export default function DashboardHome() {
               <div
                 key={index}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  index === fraseActual 
-                    ? 'w-8 bg-white' 
+                  index === fraseActual
+                    ? 'w-8 bg-white'
                     : 'w-1.5 bg-white bg-opacity-40'
                 }`}
               />
@@ -128,8 +128,8 @@ export default function DashboardHome() {
 
       {/* Grid de secciones */}
       <div className="grid grid-cols-2 gap-4">
-        <a 
-          href="/dashboard/catalogo" 
+        <a
+          href="/dashboard/catalogo"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
           <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📦</div>
@@ -137,8 +137,8 @@ export default function DashboardHome() {
           <p className="text-gray-600 text-sm">Ver catálogo completo</p>
         </a>
 
-        <a 
-          href="/dashboard/best%20sellers" 
+        <a
+          href="/dashboard/best-sellers"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
           <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🔥</div>
@@ -146,8 +146,8 @@ export default function DashboardHome() {
           <p className="text-gray-600 text-sm">Los productos top</p>
         </a>
 
-        <a 
-          href="/dashboard/pedidos" 
+        <a
+          href="/dashboard/pedidos"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
           <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🛍️</div>
@@ -155,8 +155,8 @@ export default function DashboardHome() {
           <p className="text-gray-600 text-sm">Gestionar pedidos</p>
         </a>
 
-        <a 
-          href="/dashboard/consolidar" 
+        <a
+          href="/dashboard/consolidar"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
           <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📤</div>
@@ -164,8 +164,8 @@ export default function DashboardHome() {
           <p className="text-gray-600 text-sm">Enviar a Nadin</p>
         </a>
 
-        <a 
-          href="/dashboard/catalogos-digitales" 
+        <a
+          href="/dashboard/catalogos-digitales"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
           <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📚</div>
@@ -173,8 +173,8 @@ export default function DashboardHome() {
           <p className="text-gray-600 text-sm">Descargar catálogos</p>
         </a>
 
-        <a 
-          href="/dashboard/analytics" 
+        <a
+          href="/dashboard/analytics"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
           <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📊</div>
@@ -182,17 +182,17 @@ export default function DashboardHome() {
           <p className="text-gray-600 text-sm">Ver estadísticas</p>
         </a>
 
-        <a 
-          href="/dashboard/historial" 
+        <a
+          href="/dashboard/historial"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
-          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📝</div>
+          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📋</div>
           <h3 className="font-bold text-lg mb-2">Historial</h3>
           <p className="text-gray-600 text-sm">Ver historial</p>
         </a>
 
-        <a 
-          href="/dashboard/perfil" 
+        <a
+          href="/dashboard/perfil"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
           <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">👤</div>
