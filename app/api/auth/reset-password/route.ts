@@ -4,9 +4,15 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+interface ResetPasswordBody {
+  email: string;
+  token: string;
+  newPassword: string;
+}
+
 export async function POST(request: Request) {
   try {
-    const { email, token, newPassword } = await request.json();
+    const { email, token, newPassword } = await request.json() as ResetPasswordBody;
 
     if (!email || !token || !newPassword) {
       return NextResponse.json(
