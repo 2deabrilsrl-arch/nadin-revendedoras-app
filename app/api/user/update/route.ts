@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+interface UpdateUserBody {
+  userId: string;
+  margen?: number;
+  cbu?: string;
+  alias?: string;
+}
+
 export async function PUT(req: NextRequest) {
   try {
-    const { userId, margen, cbu, alias } = await req.json();
+    const { userId, margen, cbu, alias } = await req.json() as UpdateUserBody;
 
     if (!userId) {
       return NextResponse.json(
