@@ -5,6 +5,12 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+interface Product {
+  id: number;
+  name: any;
+  categories: any[];
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -37,7 +43,7 @@ export async function GET(request: Request) {
       throw new Error(`TN API error: ${response.status}`);
     }
 
-    const products = await response.json();
+    const products = await response.json() as Product[];
     console.log(`✅ ${products.length} productos encontrados`);
 
     // Obtener TODAS las categorías para hacer el mapeo
@@ -182,7 +188,7 @@ export async function GET(request: Request) {
   }
 }
 
-// 📝 CÓMO USAR:
+// 🔍 CÓMO USAR:
 // http://localhost:3000/api/buscar-producto?q=bombacha
 // http://localhost:3000/api/buscar-producto?q=body
 // http://localhost:3000/api/buscar-producto?q=corpiño
