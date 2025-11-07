@@ -25,7 +25,7 @@ export async function GET() {
     while (hasMore) {
       const url = `https://api.tiendanube.com/v1/${TN_STORE_ID}/categories?page=${page}&per_page=200&fields=id,name,parent`;
       
-      console.log(`📥 Página ${page}: ${url}`);
+      console.log(`🔥 Página ${page}: ${url}`);
       
       const response = await fetch(url, {
         headers: {
@@ -38,7 +38,7 @@ export async function GET() {
         throw new Error(`TN API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any[];
       allCategories = [...allCategories, ...data];
       
       console.log(`✅ Página ${page}: ${data.length} categorías`);
