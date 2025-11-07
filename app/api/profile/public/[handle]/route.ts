@@ -32,13 +32,7 @@ export async function GET(
         linkedin: true,
         twitter: true,
         youtube: true,
-        website: true,
-        level: {
-          select: {
-            currentLevel: true,
-            totalSales: true
-          }
-        }
+        website: true
       }
     });
 
@@ -48,13 +42,6 @@ export async function GET(
         { status: 404 }
       );
     }
-
-    // Contar badges
-    const badgesCount = await prisma.userBadge.count({
-      where: { 
-        user: { handle }
-      }
-    });
 
     // Construir respuesta pública
     const publicProfile = {
@@ -70,12 +57,7 @@ export async function GET(
       linkedin: user.linkedin,
       twitter: user.twitter,
       youtube: user.youtube,
-      website: user.website,
-      stats: user.level ? {
-        level: user.level.currentLevel,
-        totalSales: user.level.totalSales,
-        badgesCount
-      } : undefined
+      website: user.website
     };
 
     return NextResponse.json(publicProfile);

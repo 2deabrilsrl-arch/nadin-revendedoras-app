@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+interface UploadPhotoBody {
+  userId: string;
+  photo: string;
+}
+
 // POST - Subir foto de perfil
 // Nota: Esta implementación usa base64 directamente
 // Para producción se recomienda usar un servicio como Cloudinary, S3, etc.
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as UploadPhotoBody;
     const { userId, photo } = body;
 
     if (!userId || !photo) {
