@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /
+
+# Esta app es privada para revendedoras de Nadin Lencería
+# No debe ser indexada por motores de búsqueda
