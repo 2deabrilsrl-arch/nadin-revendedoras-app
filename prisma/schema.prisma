@@ -22,8 +22,16 @@ model User {
   cvu            String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  
+  // Relaciones existentes
   pedidos        Pedido[]
   consolidaciones Consolidacion[]
+  
+  // 🎮 NUEVO: Relaciones de Gamificación
+  badges         UserBadge[]
+  level          UserLevel?
+  points         Point[]
+  rankings       Ranking[]
 }
 
 model Pedido {
@@ -36,14 +44,14 @@ model Pedido {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  // ✅ NUEVO: Estados del pedido (logística)
+  // Estados del pedido (logística)
   orderStatus String   @default("pending")
   
-  // ✅ NUEVO: Estados de pago
+  // Estados de pago
   paidToNadin    Boolean  @default(false)
   paidByClient   Boolean  @default(false)
   
-  // ✅ NUEVO: Fechas de cambio de estado
+  // Fechas de cambio de estado
   sentToNadinAt      DateTime?
   receivedNadinAt    DateTime?
   sentToClientAt     DateTime?
@@ -55,6 +63,7 @@ model Pedido {
   lineas    Linea[]
   @@index([userId])
   @@index([estado])
+  @@index([createdAt])
 }
 
 model Linea {
@@ -72,6 +81,7 @@ model Linea {
   venta      Float
   pedido     Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   @@index([pedidoId])
+  @@index([productId])
 }
 
 model Consolidacion {
@@ -109,4 +119,92 @@ model CatalogoCache {
   @@index([sex])
   @@index([salesCount])
   @@index([updatedAt])
+}
+
+// ==========================================
+// 🎮 GAMIFICACIÓN - NUEVAS TABLAS
+// ==========================================
+
+// 🏅 Medallas/Insignias del sistema
+model Badge {
+  id          String      @id @default(cuid())
+  slug        String      @unique // "primera-venta", "10-ventas", etc.
+  name        String      // "Primera Venta"
+  description String      // "Realizaste tu primera venta"
+  icon        String      // "🥉" o nombre de icono
+  category    String      // "ventas", "constancia", "especial"
+  condition   String      // Condición para desbloquear (JSON)
+  points      Int         @default(0) // Puntos que otorga
+  rarity      String      @default("common") // common, rare, epic, legendary
+  createdAt   DateTime    @default(now())
+  
+  // Relación con usuarios que la tienen
+  users       UserBadge[]
+  
+  @@index([category])
+  @@index([rarity])
+}
+
+// 🏅 Medallas desbloqueadas por usuarios
+model UserBadge {
+  id          String   @id @default(cuid())
+  userId      String
+  badgeId     String
+  unlockedAt  DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([unlockedAt])
+}
+
+// 📊 Nivel del usuario
+model UserLevel {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  currentLevel  String   @default("bronce") // bronce, plata, oro, platino, diamante, leyenda
+  currentXP     Int      @default(0) // Experiencia actual
+  totalSales    Int      @default(0) // Total de ventas realizadas
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([currentLevel])
+  @@index([totalSales])
+}
+
+// 💎 Historial de puntos
+model Point {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int      // Cantidad de puntos (+ ganados, - canjeados)
+  reason      String   // "venta", "compartir", "completar-perfil", "canje-descuento"
+  description String?  // Descripción detallada
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([reason])
+}
+
+// 🏆 Rankings
+model Ranking {
+  id          String   @id @default(cuid())
+  userId      String
+  period      String   // "monthly-2024-11", "yearly-2024", "all-time"
+  category    String   // "ventas", "monto", "constancia"
+  position    Int      // Posición en el ranking
+  value       Float    // Valor que determina la posición (ej: total ventas)
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, period, category])
+  @@index([period])
+  @@index([category])
+  @@index([position])
 }
