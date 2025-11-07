@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+interface UpdateProfileBody {
+  userId: string;
+  name?: string;
+  telefono?: string;
+  handle?: string;
+  margen?: string | number;
+  cbu?: string;
+  alias?: string;
+  cvu?: string;
+  profilePhoto?: string;
+  bio?: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+  whatsappBusiness?: string;
+  linkedin?: string;
+  twitter?: string;
+  youtube?: string;
+  website?: string;
+}
+
 // GET - Obtener perfil del usuario
 export async function GET(req: NextRequest) {
   try {
@@ -62,7 +83,7 @@ export async function GET(req: NextRequest) {
 // PATCH - Actualizar perfil del usuario
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as UpdateProfileBody;
     const { userId, ...updateData } = body;
 
     if (!userId) {
@@ -96,7 +117,7 @@ export async function PATCH(req: NextRequest) {
         name: updateData.name,
         telefono: updateData.telefono,
         handle: updateData.handle,
-        margen: parseFloat(updateData.margen),
+        margen: updateData.margen ? parseFloat(updateData.margen.toString()) : undefined,
         cbu: updateData.cbu || null,
         alias: updateData.alias || null,
         cvu: updateData.cvu || null,
