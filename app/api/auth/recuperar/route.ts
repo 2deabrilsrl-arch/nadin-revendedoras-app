@@ -1,66 +1,54 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 
-const prisma = new PrismaClient();
-
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { email } = await request.json();
+    const { email } = await req.json();
 
-    if (!email) {
-      return NextResponse.json(
-        { error: 'Email requerido' },
-        { status: 400 }
-      );
-    }
-
-    // Verificar que el usuario existe
+    // Buscar usuario
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email }
     });
 
     if (!user) {
       // Por seguridad, no revelamos si el email existe o no
       return NextResponse.json(
-        { message: 'Si el email existe, recibirás instrucciones' },
+        { message: 'Si el email existe, recibirás instrucciones para recuperar tu contraseña' },
         { status: 200 }
       );
     }
 
-    // Generar token de recuperación (válido por 1 hora)
+    // Generar token de recuperación
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hora
+    const resetUrl = `${process.env.NEXT_PUBLIC_URL || 'https://nadin-revendedoras-app.vercel.app'}/recuperar/nueva-password?token=${resetToken}&email=${email}`;
 
-    // Configurar transporter de nodemailer usando las variables SMTP_*
+    // Configurar transportador de email
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '465'),
-      secure: process.env.SMTP_SECURE === 'true', // true para port 465
+      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      port: Number(process.env.EMAIL_PORT) || 587,
+      secure: false, // true para 465, false para otros puertos
       auth: {
-        user: process.env.SMTP_USER || 'nadinlenceria@gmail.com',
-        pass: process.env.SMTP_PASS,
-      },
+        user: process.env.EMAIL_USER || 'nadinlenceria@gmail.com',
+        pass: process.env.EMAIL_PASS
+      }
     });
-
-    // URL de reseteo
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://nadin-revendedoras-app.vercel.app'}/recuperar/nueva-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
     // Enviar email
     await transporter.sendMail({
-      from: `"Nadin Lencería" <${process.env.SMTP_USER || 'nadinlenceria@gmail.com'}>`,
+      from: `"Nadin Lencería" <${process.env.EMAIL_USER || 'nadinlenceria@gmail.com'}>`,
       to: email,
       subject: 'Recuperar Contraseña - Nadin Lencería',
       html: `
         <!DOCTYPE html>
         <html>
         <head>
-          <meta charset="utf-8">
+          <meta charset="UTF-8">
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #EC4899 0%, #DB2777 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .header { background: linear-gradient(135deg, #EC4899 0%, #BE185D 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
             .button { display: inline-block; background: #EC4899; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
             .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
@@ -103,13 +91,14 @@ export async function POST(request: Request) {
           </div>
         </body>
         </html>
-      `,
+      `
     });
 
     return NextResponse.json(
-      { message: 'Email de recuperación enviado' },
+      { message: 'Si el email existe, recibirás instrucciones para recuperar tu contraseña' },
       { status: 200 }
     );
+
   } catch (error: any) {
     console.error('Error en recuperar contraseña:', error);
     return NextResponse.json(

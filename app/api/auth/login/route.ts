@@ -4,27 +4,41 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { email: string; password: string };
-    const { email, password } = body;
+    const { email, password } = await req.json();
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ 
+      where: { email } 
+    });
 
     if (!user || !await bcrypt.compare(password, user.password)) {
-      return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Email o contraseña incorrectos' }, 
+        { status: 401 }
+      );
     }
 
-    // ✅ CORRECCIÓN: Envolver el usuario en la propiedad "user"
+    // ✅ IMPORTANTE: Devolver objeto "user" completo
     return NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         handle: user.handle,
-        margen: user.margen
+        margen: user.margen,
+        dni: user.dni,
+        telefono: user.telefono,
+        cbu: user.cbu,
+        alias: user.alias,
+        provincia: user.provincia,
+        ciudad: user.ciudad
       }
     });
-  } catch (error) {
+
+  } catch (error: any) {
     console.error('Error en login:', error);
-    return NextResponse.json({ error: 'Error en login' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Error al iniciar sesión' }, 
+      { status: 500 }
+    );
   }
 }
