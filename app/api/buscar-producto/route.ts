@@ -60,7 +60,7 @@ export async function GET(request: Request) {
         },
       });
       
-      const data = await catResponse.json();
+      const data = await catResponse.json() as any[];
       allCategories = [...allCategories, ...data];
       
       if (data.length < 200) hasMore = false;
