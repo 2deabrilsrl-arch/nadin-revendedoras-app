@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '@/lib/precios';
-import { Package, Calendar, User, Phone, FileText, ChevronDown, ChevronUp, CheckCircle, Clock, Send, Truck, DollarSign } from 'lucide-react';
+import { Package, Calendar, User, Phone, FileText, ChevronDown, ChevronUp, CheckCircle, Clock, Send, Truck, DollarSign, XCircle } from 'lucide-react';
 import BackToHomeButton from '@/components/BackToHomeButton';
+import CancelarPedidoButton from '@/components/CancelarPedidoButton';
 
 interface PedidoLinea {
   id: number;
@@ -194,190 +195,238 @@ export default function PedidosPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {pedidos.map((pedido) => (
-            <div key={pedido.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-              {/* Header del pedido con estados */}
-              <div className="p-4">
-                {/* Badges de estado superiores */}
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <StatusBadge status={pedido.orderStatus || 'pending'} />
-                  
-                  {/* Badge de pago a Nadin */}
-                  {pedido.paidToNadin ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      <CheckCircle size={14} />
-                      Pagado a Nadin
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                      <Clock size={14} />
-                      Debe pagar a Nadin
-                    </span>
-                  )}
-
-                  {/* Badge de pago del cliente */}
-                  {pedido.paidByClient ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      <DollarSign size={14} />
-                      Cliente pagó
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                      <Clock size={14} />
-                      Cliente debe pagar
-                    </span>
-                  )}
-                </div>
-
-                {/* Info del pedido */}
-                <div 
-                  className="cursor-pointer"
-                  onClick={() => setExpandedPedido(expandedPedido === pedido.id ? null : pedido.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="inline-flex items-center gap-2 bg-nadin-pink text-white px-3 py-1 rounded-full text-sm font-medium">
-                          <Package size={16} />
-                          Pedido #{pedido.id.slice(0, 8)}
+          {pedidos.map((pedido) => {
+            const estaCancelado = pedido.estado === 'cancelado';
+            
+            return (
+              <div 
+                key={pedido.id} 
+                className={`bg-white rounded-lg shadow hover:shadow-lg transition-shadow ${
+                  estaCancelado ? 'opacity-60' : ''
+                }`}
+              >
+                {/* Header del pedido con estados */}
+                <div className="p-4">
+                  {/* Badges de estado superiores */}
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {/* Badge de cancelado (si aplica) */}
+                    {estaCancelado ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <XCircle size={14} />
+                        CANCELADO
+                      </span>
+                    ) : (
+                      <StatusBadge status={pedido.orderStatus || 'pending'} />
+                    )}
+                    
+                    {/* Badge de pago a Nadin */}
+                    {!estaCancelado && (
+                      pedido.paidToNadin ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <CheckCircle size={14} />
+                          Pagado a Nadin
                         </span>
-                        <span className="text-xs text-gray-500">
-                          {formatearFecha(pedido.createdAt)}
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          <Clock size={14} />
+                          Debe pagar a Nadin
                         </span>
+                      )
+                    )}
+
+                    {/* Badge de pago del cliente */}
+                    {!estaCancelado && (
+                      pedido.paidByClient ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <DollarSign size={14} />
+                          Cliente pagó
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          <Clock size={14} />
+                          Cliente debe pagar
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  {/* Info del pedido */}
+                  <div 
+                    className="cursor-pointer"
+                    onClick={() => setExpandedPedido(expandedPedido === pedido.id ? null : pedido.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+                            estaCancelado ? 'bg-gray-400 text-white' : 'bg-nadin-pink text-white'
+                          }`}>
+                            <Package size={16} />
+                            Pedido #{pedido.id.slice(0, 8)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatearFecha(pedido.createdAt)}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <User size={16} />
+                            <span className="font-medium">{pedido.cliente}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Phone size={16} />
+                            <span>{pedido.telefono}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <FileText size={16} />
+                            <span>{pedido.lineas.length} producto{pedido.lineas.length !== 1 ? 's' : ''}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <User size={16} />
-                          <span className="font-medium">{pedido.cliente}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Phone size={16} />
-                          <span>{pedido.telefono}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <FileText size={16} />
-                          <span>{pedido.lineas.length} producto{pedido.lineas.length !== 1 ? 's' : ''}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right ml-4">
-                      <p className="text-2xl font-bold text-nadin-pink">
-                        {formatCurrency(calcularTotalPedido(pedido.lineas))}
-                      </p>
-                      <p className="text-sm text-green-600">
-                        Ganancia: {formatCurrency(calcularGananciaPedido(pedido.lineas))}
-                      </p>
-                      <div className="mt-2">
-                        {expandedPedido === pedido.id ? (
-                          <ChevronUp size={20} className="text-gray-400" />
-                        ) : (
-                          <ChevronDown size={20} className="text-gray-400" />
+                      <div className="text-right ml-4">
+                        <p className={`text-2xl font-bold ${estaCancelado ? 'text-gray-400 line-through' : 'text-nadin-pink'}`}>
+                          {formatCurrency(calcularTotalPedido(pedido.lineas))}
+                        </p>
+                        {!estaCancelado && (
+                          <p className="text-sm text-green-600">
+                            Ganancia: {formatCurrency(calcularGananciaPedido(pedido.lineas))}
+                          </p>
                         )}
+                        <div className="mt-2">
+                          {expandedPedido === pedido.id ? (
+                            <ChevronUp size={20} className="text-gray-400" />
+                          ) : (
+                            <ChevronDown size={20} className="text-gray-400" />
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {pedido.nota && (
+                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-gray-700">
+                          <strong>Nota:</strong> {pedido.nota}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  {pedido.nota && (
-                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-sm text-gray-700">
-                        <strong>Nota:</strong> {pedido.nota}
-                      </p>
+                  {/* Gestión de estados - Solo si NO está cancelado */}
+                  {!estaCancelado && (
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        {/* Cambiar estado del pedido */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Estado del Pedido
+                          </label>
+                          <select
+                            value={pedido.orderStatus || 'pending'}
+                            onChange={(e) => updateOrderStatus(pedido.id, { orderStatus: e.target.value })}
+                            disabled={updatingOrder === pedido.id}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-wait"
+                          >
+                            {Object.entries(ORDER_STATUSES).map(([key, value]) => (
+                              <option key={key} value={key}>{value.label}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Estado de pago a Nadin */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Pago a Nadin
+                          </label>
+                          <label className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              checked={pedido.paidToNadin}
+                              onChange={(e) => updateOrderStatus(pedido.id, { paidToNadin: e.target.checked })}
+                              disabled={updatingOrder === pedido.id}
+                              className="w-4 h-4 text-nadin-pink border-gray-300 rounded focus:ring-nadin-pink disabled:cursor-wait"
+                            />
+                            <span className="text-sm">
+                              {pedido.paidToNadin ? '✅ Pagado' : '⏳ Pendiente'}
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Estado de pago del cliente */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Cobro al Cliente
+                          </label>
+                          <label className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              checked={pedido.paidByClient}
+                              onChange={(e) => updateOrderStatus(pedido.id, { paidByClient: e.target.checked })}
+                              disabled={updatingOrder === pedido.id}
+                              className="w-4 h-4 text-nadin-pink border-gray-300 rounded focus:ring-nadin-pink disabled:cursor-wait"
+                            />
+                            <span className="text-sm">
+                              {pedido.paidByClient ? '✅ Cobrado' : '⏳ Pendiente'}
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* 🆕 BOTÓN DE CANCELAR */}
+                      <div className="flex justify-end">
+                        <CancelarPedidoButton 
+                          pedidoId={pedido.id}
+                          onCancel={() => loadPedidos(userId)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mensaje si está cancelado */}
+                  {estaCancelado && (
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-800 text-center">
+                          ⚠️ Este pedido fue cancelado y no cuenta para estadísticas ni gamificación
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {/* Gestión de estados */}
-                <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Cambiar estado del pedido */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Estado del Pedido
-                    </label>
-                    <select
-                      value={pedido.orderStatus || 'pending'}
-                      onChange={(e) => updateOrderStatus(pedido.id, { orderStatus: e.target.value })}
-                      disabled={updatingOrder === pedido.id}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-wait"
-                    >
-                      {Object.entries(ORDER_STATUSES).map(([key, value]) => (
-                        <option key={key} value={key}>{value.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Estado de pago a Nadin */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pago a Nadin
-                    </label>
-                    <label className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        checked={pedido.paidToNadin}
-                        onChange={(e) => updateOrderStatus(pedido.id, { paidToNadin: e.target.checked })}
-                        disabled={updatingOrder === pedido.id}
-                        className="w-4 h-4 text-nadin-pink border-gray-300 rounded focus:ring-nadin-pink disabled:cursor-wait"
-                      />
-                      <span className="text-sm">
-                        {pedido.paidToNadin ? '✅ Pagado' : '⏳ Pendiente'}
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Estado de pago del cliente */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cobro al Cliente
-                    </label>
-                    <label className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        checked={pedido.paidByClient}
-                        onChange={(e) => updateOrderStatus(pedido.id, { paidByClient: e.target.checked })}
-                        disabled={updatingOrder === pedido.id}
-                        className="w-4 h-4 text-nadin-pink border-gray-300 rounded focus:ring-nadin-pink disabled:cursor-wait"
-                      />
-                      <span className="text-sm">
-                        {pedido.paidByClient ? '✅ Cobrado' : '⏳ Pendiente'}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Detalle del pedido (expandible) */}
-              {expandedPedido === pedido.id && (
-                <div className="border-t">
-                  <div className="p-4">
-                    <h4 className="font-semibold mb-3">Productos del pedido:</h4>
-                    <div className="space-y-2">
-                      {pedido.lineas.map((linea) => (
-                        <div key={linea.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex-1">
-                            <p className="font-medium">{linea.name}</p>
-                            <p className="text-sm text-gray-600">
-                              {linea.brand} • Talle {linea.talle} • {linea.color}
-                            </p>
-                            <p className="text-xs text-gray-500 font-mono">SKU: {linea.sku}</p>
+                {/* Detalle del pedido (expandible) */}
+                {expandedPedido === pedido.id && (
+                  <div className="border-t">
+                    <div className="p-4">
+                      <h4 className="font-semibold mb-3">Productos del pedido:</h4>
+                      <div className="space-y-2">
+                        {pedido.lineas.map((linea) => (
+                          <div key={linea.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-1">
+                              <p className="font-medium">{linea.name}</p>
+                              <p className="text-sm text-gray-600">
+                                {linea.brand} • Talle {linea.talle} • {linea.color}
+                              </p>
+                              <p className="text-xs text-gray-500 font-mono">SKU: {linea.sku}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">
+                                {linea.qty} x {formatCurrency(linea.venta)}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                = {formatCurrency(linea.venta * linea.qty)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-semibold">
-                              {linea.qty} x {formatCurrency(linea.venta)}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              = {formatCurrency(linea.venta * linea.qty)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

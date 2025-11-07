@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Menu, Home, User, ShoppingCart, Send, TrendingUp, Clock, BookOpen } from 'lucide-react';
+import { Menu, Home, User, ShoppingCart, Send, TrendingUp, Clock, BookOpen, Trophy, Award } from 'lucide-react';
 import Link from 'next/link';
 import { CartProvider } from '@/components/CartContext';
 import FloatingCart from '@/components/FloatingCart';
@@ -84,6 +84,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Send size={20} className="text-nadin-pink" />
                   <span className="font-medium">Consolidar</span>
                 </Link>
+
+                {/* 🆕 GAMIFICACIÓN */}
+                <div className="my-2 border-t border-gray-200"></div>
+                
+                <Link 
+                  href="/dashboard/logros" 
+                  className="flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg transition-colors"
+                  onClick={() => setShowMenu(false)}
+                >
+                  <Trophy size={20} className="text-nadin-pink" />
+                  <span className="font-medium">🏆 Mis Logros</span>
+                </Link>
+
+                <Link 
+                  href="/dashboard/ranking" 
+                  className="flex items-center gap-3 p-3 hover:bg-gray-100 rounded-lg transition-colors"
+                  onClick={() => setShowMenu(false)}
+                >
+                  <Award size={20} className="text-nadin-pink" />
+                  <span className="font-medium">📊 Ranking</span>
+                </Link>
+
+                <div className="my-2 border-t border-gray-200"></div>
 
                 <Link 
                   href="/dashboard/analytics" 

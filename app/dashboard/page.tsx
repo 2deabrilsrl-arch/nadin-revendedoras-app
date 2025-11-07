@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Sparkles, TrendingUp, Lightbulb, Heart } from 'lucide-react';
+import GamificationWidget from '@/components/GamificationWidget';
 
 const FRASES_MOTIVADORAS = [
   {
@@ -126,6 +127,11 @@ export default function DashboardHome() {
         </div>
       </div>
 
+      {/* 🆕 WIDGET DE GAMIFICACIÓN */}
+      <div className="mb-6">
+        <GamificationWidget />
+      </div>
+
       {/* Grid de secciones */}
       <div className="grid grid-cols-2 gap-4">
         <a
@@ -150,7 +156,7 @@ export default function DashboardHome() {
           href="/dashboard/pedidos"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
-          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🛍️</div>
+          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🛒</div>
           <h3 className="font-bold text-lg mb-2">Mis Pedidos</h3>
           <p className="text-gray-600 text-sm">Gestionar pedidos</p>
         </a>
@@ -162,6 +168,26 @@ export default function DashboardHome() {
           <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📤</div>
           <h3 className="font-bold text-lg mb-2">Consolidar</h3>
           <p className="text-gray-600 text-sm">Enviar a Nadin</p>
+        </a>
+
+        {/* 🆕 LOGROS */}
+        <a
+          href="/dashboard/logros"
+          className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
+        >
+          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">🏆</div>
+          <h3 className="font-bold text-lg mb-2">Mis Logros</h3>
+          <p className="text-gray-600 text-sm">Badges y nivel</p>
+        </a>
+
+        {/* 🆕 RANKING */}
+        <a
+          href="/dashboard/ranking"
+          className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
+        >
+          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📊</div>
+          <h3 className="font-bold text-lg mb-2">Ranking</h3>
+          <p className="text-gray-600 text-sm">Ver posiciones</p>
         </a>
 
         <a
@@ -177,7 +203,7 @@ export default function DashboardHome() {
           href="/dashboard/analytics"
           className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 group"
         >
-          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📊</div>
+          <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📈</div>
           <h3 className="font-bold text-lg mb-2">Analytics</h3>
           <p className="text-gray-600 text-sm">Ver estadísticas</p>
         </a>

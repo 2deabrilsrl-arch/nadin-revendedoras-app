@@ -23,11 +23,25 @@ model User {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   
+  // 🆕 CAMPOS DE PERFIL COMPLETO
+  profilePhoto   String?         // URL de la foto de perfil
+  bio            String?         // Biografía/descripción corta
+  
+  // 🆕 REDES SOCIALES (todas opcionales)
+  instagram      String?
+  facebook       String?
+  tiktok         String?
+  whatsappBusiness String?
+  linkedin       String?
+  twitter        String?
+  youtube        String?
+  website        String?
+  
   // Relaciones existentes
   pedidos        Pedido[]
   consolidaciones Consolidacion[]
   
-  // 🎮 NUEVO: Relaciones de Gamificación
+  // 🎮 Relaciones de Gamificación
   badges         UserBadge[]
   level          UserLevel?
   points         Point[]
@@ -122,7 +136,7 @@ model CatalogoCache {
 }
 
 // ==========================================
-// 🎮 GAMIFICACIÓN - NUEVAS TABLAS
+// 🎮 GAMIFICACIÓN - TABLAS
 // ==========================================
 
 // 🏅 Medallas/Insignias del sistema

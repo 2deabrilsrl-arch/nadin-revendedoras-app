@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         cliente,
         telefono,
         nota: nota || '',
-        estado: 'pendiente',
+        estado: 'pendiente', // Siempre empieza como pendiente
         lineas: {
           create: items.map((item: any) => ({
             productId: item.productId.toString(),
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     });
 
     console.log('✅ Pedido creado:', pedido.id);
+    console.log('ℹ️ Estado: pendiente (gamificación se activará al completar)');
 
     return NextResponse.json({
       success: true,
