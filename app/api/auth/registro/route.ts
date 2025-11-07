@@ -55,19 +55,6 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    // Crear gamificación inicial
-    await prisma.userGamification.create({
-      data: {
-        userId: user.id,
-        level: 'principiante',
-        totalPoints: 0,
-        totalSales: 0,
-        totalRevenue: 0,
-        currentStreak: 0,
-        longestStreak: 0
-      }
-    });
-
     return NextResponse.json({
       user: {
         id: user.id,
