@@ -34,8 +34,7 @@ export async function POST(req: NextRequest) {
         telefono: user.telefono,
         cbu: user.cbu,
         alias: user.alias,
-        provincia: user.provincia,
-        ciudad: user.ciudad
+        cvu: user.cvu
       }
     });
 
