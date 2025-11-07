@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
+interface RegistroBody {
+  email: string;
+  password: string;
+  name: string;
+  dni: string;
+  telefono: string;
+  handle: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, dni, telefono, handle } = await req.json();
+    const { email, password, name, dni, telefono, handle } = await req.json() as RegistroBody;
 
     // Validar que no exista el email
     const existingUser = await prisma.user.findUnique({

@@ -3,9 +3,13 @@ import { prisma } from '@/lib/prisma';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 
+interface RecuperarBody {
+  email: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
+    const { email } = await req.json() as RecuperarBody;
 
     // Buscar usuario
     const user = await prisma.user.findUnique({

@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
+interface LoginBody {
+  email: string;
+  password: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password } = await req.json() as LoginBody;
 
     const user = await prisma.user.findUnique({ 
       where: { email } 
