@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { processGamificationAfterSale, recalculateGamificationAfterCancel } from '@/lib/gamification';
 
+interface UpdateStatusBody {
+  orderId: string;
+  orderStatus?: string;
+  paidToNadin?: boolean;
+  paidByClient?: boolean;
+  estado?: string;
+}
+
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as UpdateStatusBody;
     const { orderId, orderStatus, paidToNadin, paidByClient, estado } = body;
 
     if (!orderId) {
