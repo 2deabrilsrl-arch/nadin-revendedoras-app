@@ -4,243 +4,214 @@ import { getAllProducts, getCategories } from './tiendanube';
 interface TiendanubeCategory {
   id: number;
   name: { es: string };
-  parent?: number | null;
-  subcategories?: number[];
+  parent: number | null;
 }
 
 /**
- * Construye la ruta completa de una categoría (ej: "MUJER > MEDIAS > SOQUETES")
+ * Construye el path completo de una categoría subiendo por parent
  */
 function buildCategoryPath(
   categoryId: number,
-  categoriesMap: Map<number, TiendanubeCategory>,
-  debug: boolean = false
+  categoriesMap: Map<number, TiendanubeCategory>
 ): string {
   const path: string[] = [];
-  let currentId: number | null | undefined = categoryId;
-
-  // Evitar loops infinitos
+  let currentId: number | null = categoryId;
   const visited = new Set<number>();
-  let depth = 0;
 
-  if (debug) {
-    console.log(`\n  🔍 buildCategoryPath(${categoryId}):`);
-  }
+  console.log(`  🔍 Construyendo path para categoría ID ${categoryId}:`);
 
-  while (currentId && currentId > 0 && !visited.has(currentId) && depth < 10) {
+  while (currentId && !visited.has(currentId)) {
     visited.add(currentId);
     const category = categoriesMap.get(currentId);
-
+    
     if (!category) {
-      if (debug) {
-        console.log(`    ❌ Categoría ID ${currentId} NO encontrada en mapa`);
-      }
-      console.warn(`⚠️ Categoría ID ${currentId} no encontrada en el mapa`);
+      console.warn(`    ⚠️ Categoría ID ${currentId} no encontrada`);
       break;
     }
 
-    if (debug) {
-      console.log(`    ✅ ID ${currentId}: "${category.name.es}" (parent: ${category.parent || 'null'})`);
-    }
-
+    console.log(`    → ID ${currentId}: "${category.name.es}" (parent: ${category.parent || 'null'})`);
+    
+    // Agregar al inicio del path
     path.unshift(category.name.es);
-    // En TN, parent=0 significa "sin parent"
+    
+    // Subir al parent
+    // En TN: parent=0 o parent=null significa raíz
     currentId = (category.parent && category.parent > 0) ? category.parent : null;
-    depth++;
   }
 
   const result = path.join(' > ');
-
-  if (debug) {
-    console.log(`    → Resultado: "${result}"`);
-  }
-
+  console.log(`    ✅ Path final: "${result}"`);
+  
   return result;
 }
 
 /**
- * Obtiene todas las categorías y crea un mapa para búsqueda rápida
+ * Obtiene TODAS las categorías de TN y crea el mapa
  */
 async function getCategoriesMap(): Promise<Map<number, TiendanubeCategory>> {
-  console.log('📂 Obteniendo categorías de TN...');
+  console.log('\n📂 ========================================');
+  console.log('📂 OBTENIENDO CATEGORÍAS DE TIENDANUBE');
+  console.log('📂 ========================================\n');
+  
   const categories = await getCategories();
-  console.log(`✅ ${categories.length} categorías obtenidas de TN`);
+  console.log(`✅ ${categories.length} categorías obtenidas de TN\n`);
 
   const map = new Map<number, TiendanubeCategory>();
 
-  let conParent = 0;
-  let sinParent = 0;
+  let nivel1 = 0; // parent = 0 o null
+  let nivel2 = 0; // parent apunta a nivel1
+  let nivel3 = 0; // parent apunta a nivel2
 
   categories.forEach((cat: any) => {
-    // En TN, parent=0 significa "sin parent" (categoría raíz)
-    const hasParent = cat.parent && cat.parent > 0;
-    if (hasParent) conParent++;
-    else sinParent++;
-
+    // En TN: parent=0 o parent=null = categoría raíz
+    const parentId = (cat.parent && cat.parent > 0) ? cat.parent : null;
+    
     map.set(cat.id, {
       id: cat.id,
       name: cat.name || { es: 'Sin nombre' },
-      parent: (cat.parent && cat.parent > 0) ? cat.parent : null,
-      subcategories: cat.subcategories || []
+      parent: parentId
     });
+
+    if (!parentId) {
+      nivel1++;
+    } else {
+      // Verificar si el parent es nivel 1 o nivel 2
+      const parentCat = categories.find((c: any) => c.id === parentId);
+      if (parentCat) {
+        if (!parentCat.parent || parentCat.parent === 0) {
+          nivel2++;
+        } else {
+          nivel3++;
+        }
+      }
+    }
   });
 
-  console.log(`📊 Categorías CON parent: ${conParent}`);
-  console.log(`📊 Categorías SIN parent (nivel raíz): ${sinParent}`);
+  console.log('📊 DISTRIBUCIÓN DE CATEGORÍAS:');
+  console.log(`   Nivel 1 (raíz): ${nivel1}`);
+  console.log(`   Nivel 2: ${nivel2}`);
+  console.log(`   Nivel 3: ${nivel3}`);
 
-  // Mostrar ejemplos de categorías con parent
-  if (conParent > 0) {
-    console.log('🔎 Ejemplos de categorías con parent:');
-    const ejemplosConParent = Array.from(map.values())
-      .filter(c => c.parent)
-      .slice(0, 3);
-    ejemplosConParent.forEach(cat => {
-      const parentCat = map.get(cat.parent!);
-      console.log(`  - "${cat.name.es}" (ID: ${cat.id}) → parent: "${parentCat?.name.es || 'desconocido'}" (ID: ${cat.parent})`);
-    });
-  }
+  // Mostrar ejemplos de cada nivel
+  console.log('\n🔍 EJEMPLOS DE CATEGORÍAS:\n');
+  
+  const ejemplosNivel1 = Array.from(map.values()).filter(c => !c.parent).slice(0, 3);
+  console.log('Nivel 1 (raíz):');
+  ejemplosNivel1.forEach(cat => {
+    console.log(`  - ID ${cat.id}: "${cat.name.es}"`);
+  });
 
-  // Mostrar ejemplos de categorías raíz
-  if (sinParent > 0) {
-    console.log('🔎 Ejemplos de categorías raíz (sin parent):');
-    const ejemplosSinParent = Array.from(map.values())
-      .filter(c => !c.parent)
-      .slice(0, 3);
-    ejemplosSinParent.forEach(cat => {
-      console.log(`  - "${cat.name.es}" (ID: ${cat.id})`);
-    });
-  }
+  const ejemplosNivel2 = Array.from(map.values()).filter(c => c.parent && map.get(c.parent)?.parent === null).slice(0, 3);
+  console.log('\nNivel 2:');
+  ejemplosNivel2.forEach(cat => {
+    const parentName = map.get(cat.parent!)?.name.es;
+    console.log(`  - ID ${cat.id}: "${cat.name.es}" (parent: "${parentName}")`);
+  });
+
+  const ejemplosNivel3 = Array.from(map.values()).filter(c => {
+    if (!c.parent) return false;
+    const parent = map.get(c.parent);
+    return parent && parent.parent && parent.parent > 0;
+  }).slice(0, 3);
+  console.log('\nNivel 3:');
+  ejemplosNivel3.forEach(cat => {
+    const parent = map.get(cat.parent!);
+    const grandparent = parent ? map.get(parent.parent!) : null;
+    console.log(`  - ID ${cat.id}: "${cat.name.es}" (parent: "${parent?.name.es}", grandparent: "${grandparent?.name.es}")`);
+  });
+
+  console.log('\n📂 ========================================\n');
 
   return map;
 }
 
 /**
- * Formatea productos con jerarquía de categorías completa
+ * Encuentra la categoría MÁS ESPECÍFICA (más profunda) de un producto
  */
-export async function formatProductsWithFullCategories(products: any[]) {
-  console.log('📂 Construyendo jerarquía de categorías...');
-  console.log(`📦 Productos recibidos: ${products.length}`);
+function findDeepestCategory(
+  productCategories: any[],
+  categoriesMap: Map<number, TiendanubeCategory>
+): number | null {
+  let deepestId: number | null = null;
+  let maxDepth = -1;
 
-  // Ver formato de los primeros productos
-  if (products.length > 0) {
-    console.log('\n🔍 FORMATO DE PRODUCTOS RECIBIDOS (primeros 3):');
-    products.slice(0, 3).forEach((p, idx) => {
-      console.log(`\n--- Producto ${idx + 1} ---`);
-      console.log('ID:', p.id);
-      console.log('Nombre:', p.name?.es || p.name);
-      console.log('Categories field:', JSON.stringify(p.categories, null, 2));
-    });
-  }
+  for (const cat of productCategories) {
+    if (!cat.id) continue;
 
-  // Obtener todas las categorías
-  const categoriesMap = await getCategoriesMap();
-  console.log(`✅ ${categoriesMap.size} categorías en memoria`);
+    let depth = 0;
+    let currentId: number | null = cat.id;
+    const visited = new Set<number>();
 
-  // Mostrar el mapa de categorías
-  console.log('\n🗺️ MAPA DE CATEGORÍAS (primeras 10):');
-  let count = 0;
-  for (const [id, cat] of categoriesMap.entries()) {
-    if (count++ < 10) {
-      console.log(`  ID ${id}: "${cat.name.es}" → parent: ${cat.parent || 'null'}`);
+    // Contar cuántos parents tiene
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId);
+      const category = categoriesMap.get(currentId);
+      if (!category) break;
+      
+      depth++;
+      currentId = (category.parent && category.parent > 0) ? category.parent : null;
+    }
+
+    if (depth > maxDepth) {
+      maxDepth = depth;
+      deepestId = cat.id;
     }
   }
 
-  // Contadores para diagnóstico
-  let sinCategoria = 0;
-  let nivel1 = 0;
-  let nivel2 = 0;
-  let nivel3 = 0;
-  let nivel4Plus = 0;
-  let erroresEnConstruccion = 0;
+  return deepestId;
+}
+
+/**
+ * Formatea productos con jerarquía completa construida por parent
+ */
+export async function formatProductsWithFullCategories(products: any[]) {
+  console.log('\n🔄 ========================================');
+  console.log('🔄 FORMATEANDO PRODUCTOS');
+  console.log('🔄 ========================================');
+  console.log(`📦 Total productos: ${products.length}\n`);
+
+  // Obtener mapa de categorías
+  const categoriesMap = await getCategoriesMap();
 
   const formatted = products.map((product, index) => {
     try {
-      let fullCategoryPath = 'Sin categoría';
+      let categoryPath = 'Sin categoría';
 
-      // Si el producto tiene categorías
       if (product.categories && product.categories.length > 0) {
-        // Ver qué formato tiene
+        // Log detallado para los primeros 3 productos
         if (index < 3) {
-          console.log(`\n🔍 Procesando producto ${index + 1}:`);
-          console.log('  Nombre:', product.name?.es || product.name);
-          console.log('  Categories:', JSON.stringify(product.categories));
-          console.log('  Total categorías:', product.categories.length);
+          console.log(`\n📦 Producto ${index + 1}: "${product.name?.es || product.name}"`);
+          console.log(`   ID: ${product.id}`);
+          console.log(`   Categorías asignadas en TN: ${product.categories.length}`);
+          product.categories.forEach((cat: any) => {
+            console.log(`   - ID ${cat.id}: "${cat.name?.es}"`);
+          });
         }
 
-        // CORRECCIÓN: Buscar la categoría MÁS ESPECÍFICA
-        // La más específica es la que tiene más niveles de parent
-        let categoryId = product.categories[0].id; // Default: primera
-        let maxDepth = 0;
+        // Encontrar la categoría más específica
+        const deepestCategoryId = findDeepestCategory(product.categories, categoriesMap);
 
-        // Calcular profundidad de cada categoría
-        for (const cat of product.categories) {
-          if (!cat.id) continue;
-
-          let depth = 0;
-          let currentCat = cat;
-          let visited = new Set();
-
-          // Contar cuántos parents tiene
-          while (currentCat && currentCat.parent && currentCat.parent > 0 && depth < 10) {
-            if (visited.has(currentCat.id)) break;
-            visited.add(currentCat.id);
-
-            depth++;
-            // Buscar el parent en el array de categorías del producto
-            currentCat = product.categories.find((c: any) => c.id === currentCat.parent);
+        if (deepestCategoryId) {
+          if (index < 3) {
+            console.log(`   🎯 Categoría más específica: ID ${deepestCategoryId}`);
           }
+
+          // Construir path completo subiendo por parent
+          categoryPath = buildCategoryPath(deepestCategoryId, categoriesMap);
 
           if (index < 3) {
-            console.log(`    - "${cat.name.es}" (ID: ${cat.id}): profundidad ${depth}`);
-          }
-
-          // Si esta categoría es más profunda, usarla
-          if (depth > maxDepth) {
-            maxDepth = depth;
-            categoryId = cat.id;
+            console.log(`   ✅ Path construido: "${categoryPath}"\n`);
           }
         }
-
-        if (categoryId) {
-          if (index < 3) {
-            console.log(`  → Seleccionada: ID ${categoryId} (profundidad: ${maxDepth})`);
-            console.log('  → ¿Existe en mapa?', categoriesMap.has(categoryId));
-          }
-
-          fullCategoryPath = buildCategoryPath(categoryId, categoriesMap, index < 3);
-
-          if (index < 3) {
-            console.log('  → Path construido:', fullCategoryPath);
-          }
-        } else {
-          if (index < 3) {
-            console.log('  → CategoryID es null/undefined');
-          }
-        }
-      } else {
-        if (index < 3) {
-          console.log(`\n⚠️ Producto ${index + 1} SIN categories field`);
-        }
-      }
-
-      // Contar niveles para diagnóstico
-      if (fullCategoryPath === 'Sin categoría') {
-        sinCategoria++;
-      } else {
-        const niveles = fullCategoryPath.split(' > ').length;
-        if (niveles === 1) nivel1++;
-        else if (niveles === 2) nivel2++;
-        else if (niveles === 3) nivel3++;
-        else nivel4Plus++;
       }
 
       return {
         id: product.id,
         name: product.name?.es || 'Sin nombre',
         brand: product.brand || 'Sin marca',
-        category: fullCategoryPath, // AHORA CON JERARQUÍA COMPLETA
-        image: product.images?.[0]?.src || '/placeholder.png', // Primera imagen (compatibilidad)
-        images: (product.images || [])  // ✅ NUEVO: Array con TODAS las imágenes
+        category: categoryPath,
+        image: product.images?.[0]?.src || '/placeholder.png',
+        images: (product.images || [])
           .map((img: any) => img.src)
           .filter((src: string) => src && src !== '/placeholder.png'),
         variants: (product.variants || []).map((variant: any) => ({
@@ -248,93 +219,130 @@ export async function formatProductsWithFullCategories(products: any[]) {
           sku: variant.sku || '',
           price: parseFloat(variant.price) || 0,
           stock: variant.stock || 0,
-          talle: variant.values?.[1]?.es || '',  // ✅ CORREGIDO: [1] es talle
-          color: variant.values?.[0]?.es || ''   // ✅ CORREGIDO: [0] es color
+          talle: variant.values?.[1]?.es || '',
+          color: variant.values?.[0]?.es || ''
         })),
         published: product.published
       };
     } catch (error) {
       console.error('❌ Error formateando producto:', product.id, error);
-      erroresEnConstruccion++;
       return null;
     }
   }).filter(p => p !== null);
 
-  // Mostrar diagnóstico
-  console.log('\n📊 DIAGNÓSTICO DE CATEGORÍAS CONSTRUIDAS:');
-  console.log(`  Sin categoría: ${sinCategoria}`);
-  console.log(`  Nivel 1 solo: ${nivel1}`);
-  console.log(`  Nivel 2: ${nivel2}`);
-  console.log(`  Nivel 3: ${nivel3}`);
-  console.log(`  Nivel 4+: ${nivel4Plus}`);
-  console.log(`  Errores: ${erroresEnConstruccion}`);
+  // Diagnóstico de niveles
+  const stats = {
+    sinCategoria: 0,
+    nivel1: 0,
+    nivel2: 0,
+    nivel3: 0,
+    nivel4Plus: 0
+  };
 
-  // Mostrar ejemplos
-  console.log('\n🔎 Ejemplos de categorías construidas (primeros 10):');
-  formatted.slice(0, 10).forEach(p => {
-    console.log(`  - "${p.name}": "${p.category}"`);
+  formatted.forEach(p => {
+    if (p.category === 'Sin categoría') {
+      stats.sinCategoria++;
+    } else {
+      const niveles = p.category.split(' > ').length;
+      if (niveles === 1) stats.nivel1++;
+      else if (niveles === 2) stats.nivel2++;
+      else if (niveles === 3) stats.nivel3++;
+      else stats.nivel4Plus++;
+    }
   });
 
-  // ALERTA si todos están en nivel 1
-  if (nivel1 > 0 && nivel2 === 0 && nivel3 === 0) {
-    console.warn('\n⚠️  ¡ALERTA! Todos los productos tienen solo 1 nivel de categoría.');
-    console.warn('⚠️  Posibles causas:');
-    console.warn('⚠️  1. Los productos en TN no tienen el field "categories"');
-    console.warn('⚠️  2. El field "categories" no tiene el formato esperado');
-    console.warn('⚠️  3. buildCategoryPath() no está funcionando');
-  }
+  console.log('\n📊 ========================================');
+  console.log('📊 DIAGNÓSTICO FINAL DE CATEGORÍAS');
+  console.log('📊 ========================================');
+  console.log(`   Sin categoría: ${stats.sinCategoria}`);
+  console.log(`   Nivel 1: ${stats.nivel1}`);
+  console.log(`   Nivel 2: ${stats.nivel2}`);
+  console.log(`   Nivel 3: ${stats.nivel3}`);
+  console.log(`   Nivel 4+: ${stats.nivel4Plus}`);
+
+  // Mostrar ejemplos finales
+  console.log('\n🔍 EJEMPLOS DE PRODUCTOS CATEGORIZADOS:\n');
+  formatted.slice(0, 10).forEach(p => {
+    console.log(`   - "${p.name}": "${p.category}"`);
+  });
+
+  console.log('\n🔄 ========================================\n');
 
   return formatted;
 }
 
 /**
- * Sincroniza el catálogo con jerarquía completa de categorías
+ * Sincroniza el catálogo completo
  */
 export async function syncCatalogWithFullCategories() {
   try {
-    console.log('🔄 Iniciando sincronización con jerarquía completa...');
-    console.log('⏰ Timestamp:', new Date().toISOString());
+    console.log('\n🔄 ========================================');
+    console.log('🔄 SINCRONIZACIÓN INICIADA');
+    console.log('🔄 ========================================');
+    console.log(`⏰ Timestamp: ${new Date().toISOString()}\n`);
 
-    // Obtener productos
-    const products = await getAllProducts();
-    console.log(`📦 ${products.length} productos obtenidos de TN`);
+    // 1. Obtener productos de TN
+    const products = await getAllProducts({
+      onlyPublished: true,
+      maxPages: 100
+    });
+    console.log(`\n📦 ${products.length} productos obtenidos de TN`);
 
-    // Formatear con jerarquía completa
+    // 2. Formatear con jerarquía construida por parent
     const formatted = await formatProductsWithFullCategories(products);
     console.log(`✅ ${formatted.length} productos formateados`);
 
-    // Limpiar cache anterior
+    // 3. Limpiar cache
+    console.log('\n🗑️  Limpiando cache...');
     await prisma.catalogoCache.deleteMany({});
-    console.log('🗑️  Cache antiguo eliminado');
+    console.log('✅ Cache limpio');
 
-    // Guardar con nuevas categorías
-    const createPromises = formatted.map(product =>
-      prisma.catalogoCache.create({
-        data: {
-          productId: product.id.toString(),
-          data: JSON.stringify(product),
-          brand: product.brand,
-          category: product.category, // Ahora con jerarquía completa
-          sex: inferSex(product.category, product.name),
-          salesCount: 0,
-          updatedAt: new Date()
-        }
-      })
-    );
+    // 4. Preparar datos
+    const dataToInsert = formatted.map(product => ({
+      productId: product.id.toString(),
+      data: JSON.stringify(product),
+      brand: product.brand,
+      category: product.category,
+      sex: inferSex(product.category),
+      salesCount: 0,
+      updatedAt: new Date()
+    }));
 
-    await Promise.all(createPromises);
-    console.log(`✅ ${formatted.length} productos guardados con jerarquía completa`);
-    console.log('⏰ Finalizado:', new Date().toISOString());
+    // 5. Guardar en lotes
+    console.log(`\n💾 Guardando ${dataToInsert.length} productos...`);
+    const batchSize = 100;
+    let insertedCount = 0;
 
-    return { success: true, count: formatted.length };
+    for (let i = 0; i < dataToInsert.length; i += batchSize) {
+      const batch = dataToInsert.slice(i, i + batchSize);
+      
+      await prisma.catalogoCache.createMany({
+        data: batch,
+        skipDuplicates: true
+      });
+      
+      insertedCount += batch.length;
+      const batchNum = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(dataToInsert.length / batchSize);
+      console.log(`  ✅ Lote ${batchNum}/${totalBatches}: ${insertedCount}/${dataToInsert.length}`);
+    }
+
+    console.log('\n🎉 ========================================');
+    console.log('🎉 SINCRONIZACIÓN COMPLETADA');
+    console.log('🎉 ========================================');
+    console.log(`📊 Total guardado: ${insertedCount} productos`);
+    console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
+    console.log('🎉 ========================================\n');
+
+    return { success: true, count: insertedCount };
   } catch (error) {
-    console.error('❌ Error en sincronización:', error);
+    console.error('\n❌ Error en sincronización:', error);
     throw error;
   }
 }
 
 /**
- * Obtiene productos desde el cache con filtros opcionales
+ * Obtiene productos con filtros
  */
 export async function getCachedProducts(filters?: {
   brand?: string;
@@ -342,24 +350,75 @@ export async function getCachedProducts(filters?: {
   sex?: string;
   search?: string;
 }) {
-  // Construir filtros
   const where: any = {};
-  if (filters?.brand) where.brand = filters.brand;
-  if (filters?.category) where.category = { contains: filters.category };
-  if (filters?.sex) where.sex = filters.sex;
+  
+  if (filters?.brand) {
+    where.brand = filters.brand;
+  }
+  
+  if (filters?.sex) {
+    where.sex = filters.sex;
+  }
 
-  // Obtener productos del cache
+  // Filtro de categoría: usa OR al nivel where (no dentro del campo)
+  if (filters?.category) {
+    // Crear un array de condiciones
+    const conditions: any[] = [];
+    
+    // Condición base (otros filtros)
+    const baseCondition: any = {};
+    if (filters.brand) baseCondition.brand = filters.brand;
+    if (filters.sex) baseCondition.sex = filters.sex;
+    
+    // Agregar condiciones de categoría con OR
+    conditions.push({
+      ...baseCondition,
+      category: { equals: filters.category }
+    });
+    
+    conditions.push({
+      ...baseCondition,
+      category: { startsWith: `${filters.category} > ` }
+    });
+    
+    // Usar OR al nivel where
+    const cached = await prisma.catalogoCache.findMany({
+      where: {
+        OR: conditions
+      },
+      orderBy: [
+        { salesCount: 'desc' },
+        { updatedAt: 'desc' }
+      ]
+    });
+    
+    let products = cached.map(item => JSON.parse(item.data));
+
+    // Búsqueda por texto
+    if (filters?.search) {
+      const searchLower = filters.search.toLowerCase();
+      products = products.filter(p =>
+        p.name.toLowerCase().includes(searchLower) ||
+        p.brand.toLowerCase().includes(searchLower) ||
+        p.variants.some((v: any) => v.sku?.toLowerCase().includes(searchLower))
+      );
+    }
+
+    return products;
+  }
+
+  // Si no hay filtro de categoría, usar where normal
   const cached = await prisma.catalogoCache.findMany({
     where,
     orderBy: [
-      { salesCount: 'desc' }, // Primero los más vendidos
+      { salesCount: 'desc' },
       { updatedAt: 'desc' }
     ]
   });
 
-  // Parsear JSON y aplicar búsqueda si existe
   let products = cached.map(item => JSON.parse(item.data));
 
+  // Búsqueda por texto
   if (filters?.search) {
     const searchLower = filters.search.toLowerCase();
     products = products.filter(p =>
@@ -373,7 +432,7 @@ export async function getCachedProducts(filters?: {
 }
 
 /**
- * Fuerza una sincronización manual del catálogo
+ * Fuerza sincronización manual
  */
 export async function forceSyncCatalog() {
   return await syncCatalogWithFullCategories();
@@ -397,18 +456,18 @@ export async function getCacheStats() {
 }
 
 /**
- * Infiere el sexo del producto
+ * Infiere el sexo del producto solo por categoría
  */
-function inferSex(category: string, name: string): string {
-  const text = `${category} ${name}`.toLowerCase();
+function inferSex(category: string): string {
+  const text = category.toLowerCase();
 
-  if (text.includes('mujer') || text.includes('dama') || text.includes('femenin')) {
+  if (text.includes('mujer') || text.includes('dama')) {
     return 'Mujer';
   }
-  if (text.includes('hombre') || text.includes('masculin') || text.includes('caballero')) {
+  if (text.includes('hombre') || text.includes('masculin')) {
     return 'Hombre';
   }
-  if (text.includes('niñ') || text.includes('kid') || text.includes('infant')) {
+  if (text.includes('niño') || text.includes('niña') || text.includes('kid')) {
     return 'Niños';
   }
 

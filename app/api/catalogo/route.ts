@@ -31,61 +31,32 @@ export async function GET(req: NextRequest) {
 
     console.log('📦 Filtros recibidos:', { brand, category, subcategory, productType, search });
 
-    // Obtener productos del cache
-    const allProducts = await getCachedProducts({
+    // ✅ CONSTRUIR CATEGORÍA COMPLETA
+    let fullCategory: string | undefined = undefined;
+
+    if (productType && subcategory && category) {
+      // Nivel 3: Categoría completa
+      fullCategory = `${category} > ${subcategory} > ${productType}`;
+    } else if (subcategory && category) {
+      // Nivel 2: Categoría + Subcategoría
+      fullCategory = `${category} > ${subcategory}`;
+    } else if (category) {
+      // Nivel 1: Solo categoría
+      fullCategory = category;
+    }
+
+    console.log('🎯 Categoría construida:', fullCategory);
+
+    // ✅ USAR EL FILTRO CORRECTO DE getCachedProducts
+    const products = await getCachedProducts({
       brand,
+      category: fullCategory,
       search
     });
 
-    console.log(`📊 Productos obtenidos del cache: ${allProducts.length}`);
+    console.log(`✅ Productos filtrados: ${products.length}`);
 
-    // Filtrar por categorías jerárquicas
-    let filteredProducts = allProducts;
-
-    if (category || subcategory || productType) {
-      filteredProducts = allProducts.filter((p: any) => {
-        if (!p.category) return false;
-
-        const categoryParts = p.category.split(' > ').map((part: string) => part.trim());
-
-        // Filtro por categoría principal (nivel 1)
-        if (category) {
-          const matchesCategory = categoryParts[0] === category || 
-                                 categoryParts[0]?.includes(category) ||
-                                 category.includes(categoryParts[0]);
-          
-          if (!matchesCategory) return false;
-        }
-
-        // Filtro por subcategoría (nivel 2)
-        if (subcategory) {
-          if (!categoryParts[1]) return false;
-          
-          const matchesSubcategory = categoryParts[1] === subcategory ||
-                                    categoryParts[1]?.includes(subcategory) ||
-                                    subcategory.includes(categoryParts[1]);
-          
-          if (!matchesSubcategory) return false;
-        }
-
-        // Filtro por tipo de producto (nivel 3)
-        if (productType) {
-          if (!categoryParts[2]) return false;
-          
-          const matchesType = categoryParts[2] === productType ||
-                             categoryParts[2]?.includes(productType) ||
-                             productType.includes(categoryParts[2]);
-          
-          if (!matchesType) return false;
-        }
-
-        return true;
-      });
-    }
-
-    console.log(`✅ Productos filtrados: ${filteredProducts.length}`);
-
-    return NextResponse.json(filteredProducts);
+    return NextResponse.json(products);
   } catch (error) {
     console.error('❌ Error en API de catálogo:', error);
     return NextResponse.json(

@@ -136,11 +136,14 @@ export default function CatalogoPage() {
 
       const typesSet = new Set<string>();
       data.forEach(p => {
-        if (p.category && p.category.includes(subcategory)) {
-          const parts = p.category.split(' > ');
-          const prodType = parts[2]?.trim();
-          if (prodType) {
-            typesSet.add(prodType);
+        if (p.category) {
+          const parts = p.category.split(' > ').map(part => part.trim());
+          // ✅ CORRECCIÓN: Verificar que la subcategoría sea exactamente parts[1]
+          if (parts[1] === subcategory) {
+            const prodType = parts[2];
+            if (prodType) {
+              typesSet.add(prodType);
+            }
           }
         }
       });
