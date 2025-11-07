@@ -68,16 +68,19 @@ export default function ClientaDetailPage() {
   const [clienta, setClienta] = useState<ClientaDetail | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        router.push('/login');
+        return;
+      }
+      const user = JSON.parse(userStr);
+      setUserId(user.id);
+      loadClientaDetail(user.id);
+    } catch (error) {
+      // Server-side rendering, no localStorage available
       router.push('/login');
-      return;
     }
-    const user = JSON.parse(userStr);
-    setUserId(user.id);
-    loadClientaDetail(user.id);
   }, []);
 
   const loadClientaDetail = async (uid: string) => {
