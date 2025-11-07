@@ -61,53 +61,150 @@ async function fetchTN(endpoint: string, params: Record<string, string> = {}) {
 }
 
 /**
- * Obtiene TODOS los productos de Tiendanube con paginación automática
+ * Función auxiliar para reintentar una operación
  */
-export async function getAllProducts(sortBy?: string): Promise<Product[]> {
+async function retryOperation<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000,
+  operationName: string = 'operación'
+): Promise<T | null> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      console.error(`❌ Error en ${operationName} (intento ${attempt}/${maxRetries}):`, error);
+      
+      if (attempt === maxRetries) {
+        console.error(`❌ ${operationName} falló después de ${maxRetries} intentos`);
+        return null;
+      }
+      
+      // Esperar antes de reintentar (backoff exponencial)
+      const waitTime = delayMs * attempt;
+      console.log(`⏳ Reintentando en ${waitTime}ms...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+  return null;
+}
+
+/**
+ * Obtiene TODOS los productos de Tiendanube con paginación automática
+ * MEJORADO: Con retry logic, mejor logging y manejo de errores
+ */
+export async function getAllProducts(
+  options: {
+    sortBy?: string;
+    onlyPublished?: boolean;
+    maxPages?: number;
+  } = {}
+): Promise<Product[]> {
+  const { sortBy, onlyPublished = true, maxPages = 100 } = options;
+  
   let allProducts: Product[] = [];
   let page = 1;
   const perPage = 200; // Máximo permitido por Tiendanube
-  let hasMore = true;
+  let consecutiveErrors = 0;
+  const maxConsecutiveErrors = 3;
 
-  console.log('🔄 Sincronizando productos desde Tiendanube...');
+  console.log('\n🔄 ========================================');
+  console.log('🔄 INICIANDO SINCRONIZACIÓN DE PRODUCTOS');
+  console.log('🔄 ========================================');
+  console.log(`📋 Configuración:`);
+  console.log(`   - Solo publicados: ${onlyPublished}`);
+  console.log(`   - Productos por página: ${perPage}`);
+  console.log(`   - Máximo de páginas: ${maxPages}`);
+  console.log(`   - Sort by: ${sortBy || 'default'}`);
+  console.log('🔄 ========================================\n');
 
-  while (hasMore) {
-    try {
-      const params: Record<string, string> = {
-        page: page.toString(),
-        per_page: perPage.toString(),
-        published: 'true' // Solo productos publicados
-      };
+  while (page <= maxPages) {
+    console.log(`\n📄 ========== PÁGINA ${page} ==========`);
+    
+    const params: Record<string, string> = {
+      page: page.toString(),
+      per_page: perPage.toString(),
+    };
 
-      if (sortBy) {
-        params.sort_by = sortBy;
+    if (onlyPublished) {
+      params.published = 'true';
+    }
+
+    if (sortBy) {
+      params.sort_by = sortBy;
+    }
+
+    // Intentar obtener productos de esta página con retry
+    const products = await retryOperation(
+      () => fetchTN('/products', params),
+      3, // 3 intentos
+      1000, // 1 segundo entre intentos
+      `página ${page}`
+    );
+
+    if (!products) {
+      consecutiveErrors++;
+      console.error(`❌ Página ${page} falló después de reintentos`);
+      
+      if (consecutiveErrors >= maxConsecutiveErrors) {
+        console.error(`\n❌ ========================================`);
+        console.error(`❌ DETENIENDO: ${maxConsecutiveErrors} errores consecutivos`);
+        console.error(`❌ ========================================\n`);
+        break;
       }
+      
+      // Continuar con la siguiente página
+      page++;
+      continue;
+    }
 
-      const products = await fetchTN('/products', params);
+    // Reset contador de errores consecutivos
+    consecutiveErrors = 0;
 
-      if (products && products.length > 0) {
-        allProducts = allProducts.concat(products);
-        console.log(`✓ Página ${page}: ${products.length} productos (Total: ${allProducts.length})`);
-        
-        // Si trajo menos de perPage, ya no hay más páginas
-        if (products.length < perPage) {
-          hasMore = false;
-        } else {
-          page++;
-          
-          // Agregar delay entre páginas para no saturar la API
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      } else {
-        hasMore = false;
+    if (products && products.length > 0) {
+      allProducts = allProducts.concat(products);
+      
+      console.log(`✅ Página ${page} exitosa:`);
+      console.log(`   - Productos en esta página: ${products.length}`);
+      console.log(`   - Total acumulado: ${allProducts.length}`);
+      
+      // Mostrar algunos ejemplos de productos de esta página
+      if (products.length > 0) {
+        console.log(`   - Ejemplos de esta página:`);
+        products.slice(0, 3).forEach((p: Product) => {
+          console.log(`     • ID ${p.id}: "${p.name?.es || p.name}"`);
+        });
       }
-    } catch (error) {
-      console.error(`❌ Error en página ${page}:`, error);
-      hasMore = false;
+      
+      // Si trajo menos de perPage, ya no hay más páginas
+      if (products.length < perPage) {
+        console.log(`\n✅ ========================================`);
+        console.log(`✅ ÚLTIMA PÁGINA ALCANZADA (${products.length} < ${perPage})`);
+        console.log(`✅ ========================================\n`);
+        break;
+      }
+      
+      page++;
+      
+      // Agregar delay entre páginas para no saturar la API
+      // Delay más largo para ser más conservadores
+      const delayMs = 500;
+      console.log(`⏳ Esperando ${delayMs}ms antes de siguiente página...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      
+    } else {
+      console.log(`⚠️ Página ${page} devolvió array vacío`);
+      break;
     }
   }
 
-  console.log(`✅ Sincronización completa: ${allProducts.length} productos obtenidos`);
+  console.log(`\n🎉 ========================================`);
+  console.log(`🎉 SINCRONIZACIÓN COMPLETA`);
+  console.log(`🎉 ========================================`);
+  console.log(`📊 Total de productos obtenidos: ${allProducts.length}`);
+  console.log(`📄 Páginas procesadas: ${page - 1}`);
+  console.log(`🎉 ========================================\n`);
+
   return allProducts;
 }
 
@@ -156,12 +253,12 @@ export async function getBestSellingProducts(limit: number = 50): Promise<Produc
         
         if (moreProducts && moreProducts.length > 0) {
           allProducts = allProducts.concat(moreProducts);
-          console.log(`✓ Página ${page}: ${moreProducts.length} productos (Total: ${allProducts.length})`);
+          console.log(`✔ Página ${page}: ${moreProducts.length} productos (Total: ${allProducts.length})`);
           
           if (moreProducts.length < 200) break;
           page++;
           
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 500));
         } else {
           break;
         }
@@ -191,33 +288,63 @@ export async function getProduct(id: string): Promise<Product> {
 
 /**
  * Obtiene todas las categorías de Tiendanube
+ * MEJORADO: Con retry logic y mejor manejo de errores
  */
 export async function getCategories() {
   try {
+    console.log('\n📂 ========================================');
+    console.log('📂 OBTENIENDO CATEGORÍAS');
+    console.log('📂 ========================================\n');
+    
     let allCategories: any[] = [];
     let page = 1;
-    let hasMore = true;
+    let consecutiveErrors = 0;
+    const maxConsecutiveErrors = 3;
 
-    while (hasMore) {
-      const categories = await fetchTN('/categories', {
-        page: page.toString(),
-        per_page: '200'
-      });
+    while (page <= 20) { // Límite razonable de páginas
+      console.log(`📄 Página ${page} de categorías...`);
+      
+      const categories = await retryOperation(
+        () => fetchTN('/categories', {
+          page: page.toString(),
+          per_page: '200'
+        }),
+        3,
+        1000,
+        `categorías página ${page}`
+      );
+
+      if (!categories) {
+        consecutiveErrors++;
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          console.error(`❌ Deteniendo obtención de categorías: ${maxConsecutiveErrors} errores consecutivos`);
+          break;
+        }
+        page++;
+        continue;
+      }
+
+      consecutiveErrors = 0;
 
       if (categories && categories.length > 0) {
         allCategories = allCategories.concat(categories);
+        console.log(`✅ Página ${page}: ${categories.length} categorías (Total: ${allCategories.length})`);
         
         if (categories.length < 200) {
-          hasMore = false;
-        } else {
-          page++;
+          console.log(`✅ Última página de categorías alcanzada`);
+          break;
         }
+        
+        page++;
+        await new Promise(resolve => setTimeout(resolve, 300));
       } else {
-        hasMore = false;
+        break;
       }
     }
 
-    console.log(`✅ ${allCategories.length} categorías obtenidas`);
+    console.log(`\n✅ ${allCategories.length} categorías obtenidas en total`);
+    console.log('📂 ========================================\n');
+    
     return allCategories;
   } catch (error) {
     console.error('❌ Error obteniendo categorías:', error);
