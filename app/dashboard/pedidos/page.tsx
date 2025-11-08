@@ -324,7 +324,7 @@ export default function PedidosPage() {
                           </label>
                           <select
                             value={pedido.orderStatus || 'pending'}
-                            onChange={(e) => updateOrderStatus(pedido.id, { orderStatus: e.target.value })}
+                            onChange={(e) => updateOrderStatus(pedido.id, { orderStatus: (e.target as any).value })}
                             disabled={updatingOrder === pedido.id}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-wait"
                           >
@@ -343,7 +343,7 @@ export default function PedidosPage() {
                             <input
                               type="checkbox"
                               checked={pedido.paidToNadin}
-                              onChange={(e) => updateOrderStatus(pedido.id, { paidToNadin: e.target.checked })}
+                              onChange={(e) => updateOrderStatus(pedido.id, { paidToNadin: (e.target as any).checked })}
                               disabled={updatingOrder === pedido.id}
                               className="w-4 h-4 text-nadin-pink border-gray-300 rounded focus:ring-nadin-pink disabled:cursor-wait"
                             />
@@ -362,7 +362,7 @@ export default function PedidosPage() {
                             <input
                               type="checkbox"
                               checked={pedido.paidByClient}
-                              onChange={(e) => updateOrderStatus(pedido.id, { paidByClient: e.target.checked })}
+                              onChange={(e) => updateOrderStatus(pedido.id, { paidByClient: (e.target as any).checked })}
                               disabled={updatingOrder === pedido.id}
                               className="w-4 h-4 text-nadin-pink border-gray-300 rounded focus:ring-nadin-pink disabled:cursor-wait"
                             />
