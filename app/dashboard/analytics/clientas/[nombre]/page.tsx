@@ -1,7 +1,5 @@
 'use client';
 
-/// <reference lib="dom" />
-
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
@@ -70,7 +68,7 @@ export default function ClientaDetailPage() {
   const [clienta, setClienta] = useState<ClientaDetail | null>(null);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = (globalThis as any).localStorage?.getItem('user');
     if (!userStr) {
       router.push('/login');
       return;
