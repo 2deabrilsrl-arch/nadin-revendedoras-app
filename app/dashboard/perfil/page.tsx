@@ -91,7 +91,7 @@ export default function PerfilPage() {
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = (e.target as any).files?.[0];
     if (!file) return;
 
     // Validar tamaño (max 5MB)
@@ -274,7 +274,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.name}
-              onChange={(e) => handleChange('name', e.target.value)}
+              onChange={(e) => handleChange('name', (e.target as any).value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
           </div>
@@ -288,7 +288,7 @@ export default function PerfilPage() {
               <input
                 type="text"
                 value={profile.handle}
-                onChange={(e) => handleChange('handle', e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                onChange={(e) => handleChange('handle', (e.target as any).value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
                 placeholder="tunombre"
               />
@@ -317,7 +317,7 @@ export default function PerfilPage() {
             <input
               type="tel"
               value={profile.telefono}
-              onChange={(e) => handleChange('telefono', e.target.value)}
+              onChange={(e) => handleChange('telefono', (e.target as any).value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
           </div>
@@ -329,7 +329,7 @@ export default function PerfilPage() {
             <input
               type="number"
               value={profile.margen}
-              onChange={(e) => handleChange('margen', parseFloat(e.target.value) || 0)}
+              onChange={(e) => handleChange('margen', parseFloat((e.target as any).value) || 0)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
               min="0"
               max="200"
@@ -343,7 +343,7 @@ export default function PerfilPage() {
         <h3 className="text-lg font-bold mb-4">✍️ Sobre Mí</h3>
         <textarea
           value={profile.bio || ''}
-          onChange={(e) => handleChange('bio', e.target.value)}
+          onChange={(e) => handleChange('bio', (e.target as any).value)}
           placeholder="Contale a tus clientas quién sos, qué te inspira, por qué eligen comprarte a vos..."
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent resize-none"
           rows={4}
@@ -367,7 +367,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.instagram || ''}
-              onChange={(e) => handleChange('instagram', e.target.value)}
+              onChange={(e) => handleChange('instagram', (e.target as any).value)}
               placeholder="@tuusuario"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -378,7 +378,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.facebook || ''}
-              onChange={(e) => handleChange('facebook', e.target.value)}
+              onChange={(e) => handleChange('facebook', (e.target as any).value)}
               placeholder="facebook.com/tupagina"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -391,7 +391,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.tiktok || ''}
-              onChange={(e) => handleChange('tiktok', e.target.value)}
+              onChange={(e) => handleChange('tiktok', (e.target as any).value)}
               placeholder="@tuusuario"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -402,7 +402,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.whatsappBusiness || ''}
-              onChange={(e) => handleChange('whatsappBusiness', e.target.value)}
+              onChange={(e) => handleChange('whatsappBusiness', (e.target as any).value)}
               placeholder="+54 9 11 1234-5678"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -413,7 +413,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.linkedin || ''}
-              onChange={(e) => handleChange('linkedin', e.target.value)}
+              onChange={(e) => handleChange('linkedin', (e.target as any).value)}
               placeholder="linkedin.com/in/tunombre"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -424,7 +424,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.twitter || ''}
-              onChange={(e) => handleChange('twitter', e.target.value)}
+              onChange={(e) => handleChange('twitter', (e.target as any).value)}
               placeholder="@tuusuario"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -435,7 +435,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.youtube || ''}
-              onChange={(e) => handleChange('youtube', e.target.value)}
+              onChange={(e) => handleChange('youtube', (e.target as any).value)}
               placeholder="youtube.com/@tucanal"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -446,7 +446,7 @@ export default function PerfilPage() {
             <input
               type="url"
               value={profile.website || ''}
-              onChange={(e) => handleChange('website', e.target.value)}
+              onChange={(e) => handleChange('website', (e.target as any).value)}
               placeholder="https://tusitioweb.com"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -466,7 +466,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.cbu || ''}
-              onChange={(e) => handleChange('cbu', e.target.value)}
+              onChange={(e) => handleChange('cbu', (e.target as any).value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
               maxLength={22}
             />
@@ -479,7 +479,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.alias || ''}
-              onChange={(e) => handleChange('alias', e.target.value)}
+              onChange={(e) => handleChange('alias', (e.target as any).value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
           </div>
@@ -491,7 +491,7 @@ export default function PerfilPage() {
             <input
               type="text"
               value={profile.cvu || ''}
-              onChange={(e) => handleChange('cvu', e.target.value)}
+              onChange={(e) => handleChange('cvu', (e.target as any).value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
               maxLength={22}
             />
