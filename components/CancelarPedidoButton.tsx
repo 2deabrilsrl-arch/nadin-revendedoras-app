@@ -38,7 +38,7 @@ export default function CancelarPedidoButton({ pedidoId, onCancel }: CancelarPed
       }
 
       // Recargar la página para reflejar cambios
-      window.location.reload();
+      (globalThis as any).window?.location?.reload();
 
     } catch (error) {
       console.error('Error:', error);
