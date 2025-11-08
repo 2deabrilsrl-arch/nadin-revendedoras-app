@@ -67,9 +67,8 @@ export default function ConsolidarPage() {
       setTransporte('');
       setDescuentoTotal(0);
       // Recargar pedidos
-      if (typeof window !== 'undefined') {
-        window.location.reload();
-      }
+      // @ts-ignore - window is available in client components
+      window.location.reload();
     } else {
       (globalThis as any).alert?.('❌ Error al consolidar pedidos');
     }
