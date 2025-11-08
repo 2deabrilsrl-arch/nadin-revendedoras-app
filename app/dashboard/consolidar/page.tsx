@@ -112,7 +112,7 @@ export default function ConsolidarPage() {
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => {
-                        if (e.target.checked) {
+                        if ((e.target as any).checked) {
                           setSelectedPedidos([...selectedPedidos, pedido.id]);
                         } else {
                           setSelectedPedidos(selectedPedidos.filter(id => id !== pedido.id));
@@ -149,7 +149,7 @@ export default function ConsolidarPage() {
                     <input 
                       type="number"
                       value={descuentoTotal}
-                      onChange={(e) => setDescuentoTotal(Number(e.target.value))}
+                      onChange={(e) => setDescuentoTotal(Number((e.target as any).value))}
                       placeholder="0"
                       className="w-32 px-3 py-1 border rounded text-right"
                       min="0"
@@ -200,7 +200,7 @@ export default function ConsolidarPage() {
                     value={tipoEnvio}
                     onChange={(e) => {
                       setTipoEnvio((e.target as any).value);
-                      if (e.target.value !== 'Cadete a Transporte') {
+                      if ((e.target as any).value !== 'Cadete a Transporte') {
                         setTransporte('');
                       }
                     }}
