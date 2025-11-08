@@ -19,7 +19,7 @@ export default function RecuperarPage() {
         body: JSON.stringify({ email }),
       });
 
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (res.ok) {
         setEnviado(true);
@@ -80,7 +80,7 @@ export default function RecuperarPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail((e.target as any).value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
                 placeholder="tu@email.com"
                 required
