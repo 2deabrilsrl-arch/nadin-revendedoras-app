@@ -4,6 +4,7 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === 'development',
+  sw: 'sw-enhanced.js',
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,
@@ -127,7 +128,7 @@ const withPWA = require('next-pwa')({
           maxEntries: 16,
           maxAgeSeconds: 24 * 60 * 60 // 24 hours
         },
-        networkTimeoutSeconds: 10 // Fall back to cache if network takes > 10s
+        networkTimeoutSeconds: 10
       }
     },
     {
@@ -158,6 +159,9 @@ const nextConfig = {
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
+  },
+  experimental: {
+    webpackBuildWorker: true
   }
 };
 

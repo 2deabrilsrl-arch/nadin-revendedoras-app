@@ -65,13 +65,15 @@
       "src": "/screenshots/dashboard.png",
       "sizes": "1170x2532",
       "type": "image/png",
-      "form_factor": "narrow"
+      "form_factor": "narrow",
+      "label": "Dashboard principal"
     },
     {
       "src": "/screenshots/catalogo.png",
       "sizes": "1170x2532",
       "type": "image/png",
-      "form_factor": "narrow"
+      "form_factor": "narrow",
+      "label": "Catálogo de productos"
     }
   ],
   "shortcuts": [
@@ -79,7 +81,7 @@
       "name": "Nuevo Pedido",
       "short_name": "Pedido",
       "description": "Crear un pedido nuevo",
-      "url": "/dashboard?action=new-order",
+      "url": "/dashboard/nuevo-pedido",
       "icons": [
         {
           "src": "/icons/icon-96x96.png",
