@@ -71,7 +71,7 @@ export default function PerfilPage() {
       }
 
       // Generar QR del perfil
-      const profileUrl = `${window.location.origin}/perfil/${data.handle}`;
+      const profileUrl = `${(globalThis as any).window?.location?.origin || ''}/perfil/${data.handle}`;
       const qr = await QRCode.toDataURL(profileUrl, {
         width: 300,
         margin: 2,
@@ -151,7 +151,7 @@ export default function PerfilPage() {
       
       // Actualizar localStorage
       const updatedUser = await response.json() as any;
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      (globalThis as any).localStorage?.setItem('user', JSON.stringify(updatedUser));
 
     } catch (err) {
       console.error('Error:', err);
@@ -167,13 +167,13 @@ export default function PerfilPage() {
   };
 
   const copyProfileLink = () => {
-    const link = `${window.location.origin}/perfil/${profile?.handle}`;
+    const link = `${(globalThis as any).window?.location?.origin || ''}/perfil/${profile?.handle}`;
     navigator.clipboard.writeText(link);
     (globalThis as any).alert?.('✅ Link copiado al portapapeles');
   };
 
   const shareProfile = async () => {
-    const link = `${window.location.origin}/perfil/${profile?.handle}`;
+    const link = `${(globalThis as any).window?.location?.origin || ''}/perfil/${profile?.handle}`;
     
     if (navigator.share) {
       try {
