@@ -101,11 +101,13 @@ export default function PerfilPage() {
     }
 
     // Preview local
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhotoPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    if (typeof FileReader !== 'undefined') {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSave = async () => {
@@ -168,14 +170,16 @@ export default function PerfilPage() {
 
   const copyProfileLink = () => {
     const link = `${(globalThis as any).window?.location?.origin || ''}/perfil/${profile?.handle}`;
-    navigator.clipboard.writeText(link);
-    (globalThis as any).alert?.('✅ Link copiado al portapapeles');
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(link);
+      (globalThis as any).alert?.('✅ Link copiado al portapapeles');
+    }
   };
 
   const shareProfile = async () => {
     const link = `${(globalThis as any).window?.location?.origin || ''}/perfil/${profile?.handle}`;
     
-    if (navigator.share) {
+    if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: `Perfil de ${profile?.name}`,
