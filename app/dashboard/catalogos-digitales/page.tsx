@@ -6,7 +6,9 @@ export default function CatalogosDigitalesPage() {
   const driveUrl = 'https://drive.google.com/drive/u/0/folders/19jdKf8yOZTJWKc2FHy3f7VKtP3IWYlEI';
 
   const handleOpenDrive = () => {
-    window.open(driveUrl, '_blank');
+    if (typeof window !== 'undefined') {
+      window.open(driveUrl, '_blank');
+    }
   };
 
   return (
@@ -58,7 +60,7 @@ export default function CatalogosDigitalesPage() {
 
           {/* Instrucciones */}
           <div className="bg-gray-50 rounded-lg p-6">
-            <h4 className="font-semibold text-gray-800 mb-3">📝 Cómo usar:</h4>
+            <h4 className="font-semibold text-gray-800 mb-3">🔍 Cómo usar:</h4>
             <ol className="space-y-2 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="font-bold text-nadin-pink">1.</span>
@@ -119,7 +121,7 @@ export default function CatalogosDigitalesPage() {
 
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <div className="text-3xl mb-2">💾</div>
-          <h4 className="font-semibold text-gray-800 mb-1">Sin límites</h4>
+          <h4 className="font-semibent text-gray-800 mb-1">Sin límites</h4>
           <p className="text-sm text-gray-600">
             Descarga todos los que necesites
           </p>
