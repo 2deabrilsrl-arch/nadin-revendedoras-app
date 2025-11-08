@@ -211,12 +211,12 @@ export default function NuevoPedidoPage() {
 
       {/* Datos del Cliente */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h3 className="font-bold text-lg mb-4">📝 Datos de la Cliente</h3>
+        <h3 className="font-bold text-lg mb-4">📋 Datos del Cliente</h3>
         
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nombre completo *
+              Nombre del Cliente *
             </label>
             <input
               type="text"
@@ -235,21 +235,21 @@ export default function NuevoPedidoPage() {
               type="tel"
               value={telefono}
               onChange={(e) => setTelefono((e.target as any).value)}
-              placeholder="Ej: 341 123-4567"
+              placeholder="Ej: 341 123 4567"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nota (opcional)
+              Nota (Opcional)
             </label>
             <textarea
               value={nota}
               onChange={(e) => setNota((e.target as any).value)}
-              placeholder="Ej: Enviar en caja de regalo..."
+              placeholder="Observaciones sobre el pedido..."
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent resize-none"
             />
           </div>
         </div>
@@ -257,77 +257,58 @@ export default function NuevoPedidoPage() {
 
       {/* Productos */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h3 className="font-bold text-lg mb-4">📦 Productos ({cart.length})</h3>
+        <h3 className="font-bold text-lg mb-4">🛍️ Productos ({cart.length})</h3>
         
         <div className="space-y-4">
           {cart.map((item) => {
             const subtotal = item.venta * item.qty;
             const subtotalConDescuento = calcularSubtotalProducto(item);
             const tieneDescuento = subtotal !== subtotalConDescuento;
-            
-            return (
-              <div key={item.variantId} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex gap-3 mb-3">
-                  {/* Imagen */}
-                  <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                    {item.image && item.image !== '/placeholder.png' ? (
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                        Sin img
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Info */}
+            return (
+              <div key={item.variantId} className="border rounded-lg p-4">
+                <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <p className="text-xs text-nadin-pink font-medium">{item.brand}</p>
-                    <p className="font-semibold">{item.name}</p>
+                    <h4 className="font-semibold">{item.name}</h4>
                     <p className="text-sm text-gray-600">
-                      Talle {item.talle} • {item.color}
+                      {item.size} · {item.color}
                     </p>
-                    <p className="text-xs text-gray-500 font-mono">SKU: {item.sku}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {formatCurrency(item.venta)} x {item.qty} unid.
+                    </p>
                   </div>
                   
                   <button
                     onClick={() => removeFromCart(item.variantId)}
-                    className="text-red-500 hover:text-red-700"
+                    className="text-red-500 hover:text-red-700 p-2"
                   >
                     <Trash2 size={20} />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => updateQuantity(item.variantId, item.qty - 1)}
-                      disabled={item.qty <= 1}
-                      className="p-1 bg-gray-100 rounded disabled:opacity-50"
-                    >
-                      <Minus size={16} />
-                    </button>
-                    <span className="font-semibold w-8 text-center">{item.qty}</span>
-                    <button
-                      onClick={() => updateQuantity(item.variantId, item.qty + 1)}
-                      className="p-1 bg-gray-100 rounded"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
+                {/* Controles de cantidad */}
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    onClick={() => updateQuantity(item.variantId, Math.max(1, item.qty - 1))}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg p-2"
+                  >
+                    <Minus size={16} />
+                  </button>
                   
-                  <p className="text-sm">
-                    {formatCurrency(item.venta)} c/u
-                  </p>
+                  <span className="font-semibold w-12 text-center">{item.qty}</span>
+                  
+                  <button
+                    onClick={() => updateQuantity(item.variantId, item.qty + 1)}
+                    className="bg-nadin-pink hover:bg-nadin-pink-dark text-white rounded-lg p-2"
+                  >
+                    <Plus size={16} />
+                  </button>
                 </div>
 
-                {/* Editor de descuento individual */}
+                {/* Descuentos individuales */}
                 {editingDiscount === item.variantId ? (
-                  <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-200">
-                    <div className="flex gap-2 mb-2">
+                  <div className="border-t pt-3 space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={() => setTempDiscountType('pesos')}
                         className={`flex-1 py-2 px-3 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
@@ -432,7 +413,7 @@ export default function NuevoPedidoPage() {
               min="0"
               step="0.01"
               value={descuentoGeneral}
-              onChange={(e) => setDescuentoGeneral(parseFloat(e.target.value) || 0)}
+              onChange={(e) => setDescuentoGeneral(parseFloat((e.target as any).value) || 0)}
               placeholder="0"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -444,7 +425,7 @@ export default function NuevoPedidoPage() {
             </label>
             <select
               value={tipoDescuentoGeneral}
-              onChange={(e) => setTipoDescuentoGeneral(e.target.value as 'porcentaje' | 'fijo')}
+              onChange={(e) => setTipoDescuentoGeneral((e.target as any).value as 'porcentaje' | 'fijo')}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             >
               <option value="porcentaje">% Porcentaje</option>
