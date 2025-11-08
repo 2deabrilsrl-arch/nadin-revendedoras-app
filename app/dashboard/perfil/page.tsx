@@ -101,8 +101,9 @@ export default function PerfilPage() {
     }
 
     // Preview local
-    if (typeof FileReader !== 'undefined') {
-      const reader = new FileReader();
+    const FileReaderClass = (globalThis as any).FileReader;
+    if (FileReaderClass) {
+      const reader = new FileReaderClass();
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string);
       };
@@ -170,18 +171,20 @@ export default function PerfilPage() {
 
   const copyProfileLink = () => {
     const link = `${(globalThis as any).window?.location?.origin || ''}/perfil/${profile?.handle}`;
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(link);
+    const nav = (globalThis as any).navigator;
+    if (nav?.clipboard) {
+      nav.clipboard.writeText(link);
       (globalThis as any).alert?.('✅ Link copiado al portapapeles');
     }
   };
 
   const shareProfile = async () => {
     const link = `${(globalThis as any).window?.location?.origin || ''}/perfil/${profile?.handle}`;
+    const nav = (globalThis as any).navigator;
     
-    if (typeof navigator !== 'undefined' && navigator.share) {
+    if (nav?.share) {
       try {
-        await navigator.share({
+        await nav.share({
           title: `Perfil de ${profile?.name}`,
           text: `¡Mirá mi perfil de revendedora Nadin!`,
           url: link
