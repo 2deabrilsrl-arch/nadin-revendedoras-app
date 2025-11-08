@@ -50,7 +50,7 @@ function NuevaPasswordForm() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (res.ok) {
         setSuccess(true);
@@ -110,7 +110,7 @@ function NuevaPasswordForm() {
           <input
             type={showPassword ? 'text' : 'password'}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => setPassword((e.target as any).value)}
             placeholder="Mínimo 6 caracteres"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent pr-10"
             required
@@ -132,7 +132,7 @@ function NuevaPasswordForm() {
           <input
             type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={(e) => setConfirmPassword((e.target as any).value)}
             placeholder="Ingresá la misma contraseña"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent pr-10"
             required
