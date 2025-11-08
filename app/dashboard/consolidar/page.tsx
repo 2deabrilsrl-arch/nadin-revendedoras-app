@@ -20,7 +20,8 @@ export default function ConsolidarPage() {
       // Cargar pedidos pendientes
       fetch(`/api/pedidos?userId=${u.id}`)
         .then(r => r.json())
-        .then(data => {
+        .then((data: any) => {
+          // @ts-ignore - data es array de pedidos
           const pendientes = data.filter((p: any) => p.estado === 'pendiente');
           setPedidos(pendientes);
         });
@@ -66,7 +67,9 @@ export default function ConsolidarPage() {
       setTransporte('');
       setDescuentoTotal(0);
       // Recargar pedidos
-      window.location.reload();
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } else {
       (globalThis as any).alert?.('❌ Error al consolidar pedidos');
     }
