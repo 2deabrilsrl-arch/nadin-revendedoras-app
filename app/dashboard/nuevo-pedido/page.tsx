@@ -271,7 +271,7 @@ export default function NuevoPedidoPage() {
                   <div className="flex-1">
                     <h4 className="font-semibold">{item.name}</h4>
                     <p className="text-sm text-gray-600">
-                      {item.size} · {item.color}
+                      {item.talle} · {item.color}
                     </p>
                     <p className="text-sm text-gray-500 mt-1">
                       {formatCurrency(item.venta)} x {item.qty} unid.
