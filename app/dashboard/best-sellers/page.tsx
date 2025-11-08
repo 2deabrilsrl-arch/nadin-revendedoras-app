@@ -93,7 +93,7 @@ export default function BestSellersPage() {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = (globalThis as any).localStorage?.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
       setUserMargen(user.margen || 60);
@@ -223,7 +223,7 @@ export default function BestSellersPage() {
 
   const handleAddToCart = (item: CartItem) => {
     addToCart(item);
-    alert('✅ Producto agregado al pedido');
+    (globalThis as any).alert?.('✅ Producto agregado al pedido');
   };
 
   const clearFilters = () => {
@@ -316,7 +316,7 @@ export default function BestSellersPage() {
             </label>
             <select
               value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
+              onChange={(e) => setSelectedBrand((e.target as any).value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             >
               <option value="">Todas las marcas</option>
@@ -333,7 +333,7 @@ export default function BestSellersPage() {
             </label>
             <select
               value={selectedMainCategory}
-              onChange={(e) => handleMainCategoryChange(e.target.value)}
+              onChange={(e) => handleMainCategoryChange((e.target as any).value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             >
               <option value="">Todas las categorías</option>
@@ -350,7 +350,7 @@ export default function BestSellersPage() {
             </label>
             <select
               value={selectedSubcategory}
-              onChange={(e) => handleSubcategoryChange(e.target.value)}
+              onChange={(e) => handleSubcategoryChange((e.target as any).value)}
               disabled={!selectedMainCategory || subcats.length === 0}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
@@ -372,7 +372,7 @@ export default function BestSellersPage() {
             </label>
             <select
               value={selectedProductType}
-              onChange={(e) => setSelectedProductType(e.target.value)}
+              onChange={(e) => setSelectedProductType((e.target as any).value)}
               disabled={!selectedSubcategory || productTypes.length === 0}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
