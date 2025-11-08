@@ -93,7 +93,7 @@ export default function ClientaDetailPage() {
       setClienta(data);
     } catch (err) {
       console.error('Error:', err);
-      alert('Error al cargar detalle de clienta');
+      (globalThis as any).alert?.('Error al cargar detalle de clienta');
       router.push('/dashboard/analytics/clientas');
     } finally {
       setLoading(false);
