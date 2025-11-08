@@ -72,7 +72,7 @@ export default function DashboardHome() {
 
   useEffect(() => {
     // Obtener datos del usuario
-    const userData = localStorage.getItem('user');
+    const userData = (globalThis as any).localStorage?.getItem('user');
     if (userData) {
       setUser(JSON.parse(userData));
     }

@@ -101,12 +101,12 @@ export default function ProductModal({ product, isOpen, onClose, userMargen, onA
 
   const handleAddToCart = () => {
     if (!selectedVariant) {
-      alert('Por favor seleccioná talle y color');
+      (globalThis as any).alert?.('Por favor seleccioná talle y color');
       return;
     }
 
     if (quantity > selectedVariant.stock) {
-      alert(`Stock insuficiente. Solo hay ${selectedVariant.stock} unidades disponibles`);
+      (globalThis as any).alert?.(`Stock insuficiente. Solo hay ${selectedVariant.stock} unidades disponibles`);
       return;
     }
 
@@ -331,7 +331,7 @@ export default function ProductModal({ product, isOpen, onClose, userMargen, onA
                   max={selectedVariant.stock}
                   value={quantity}
                   onChange={(e) => {
-                    const val = parseInt(e.target.value) || 1;
+                    const val = parseInt((e.target as any).value) || 1;
                     setQuantity(Math.max(1, Math.min(selectedVariant.stock, val)));
                   }}
                   className="w-20 text-center text-xl font-bold border-2 border-gray-300 rounded-lg py-2"

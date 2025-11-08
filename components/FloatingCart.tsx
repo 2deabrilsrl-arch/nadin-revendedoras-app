@@ -211,7 +211,7 @@ export default function FloatingCart() {
                           max={discountType === 'porcentaje' ? '100' : undefined}
                           step={discountType === 'porcentaje' ? '1' : '0.01'}
                           value={discountValue}
-                          onChange={(e) => setDiscountValue(e.target.value)}
+                          onChange={(e) => setDiscountValue((e.target as any).value)}
                           placeholder={discountType === 'porcentaje' ? '% desc.' : '$ desc.'}
                           className="flex-1 px-2 py-1 border rounded text-sm"
                           autoFocus

@@ -37,7 +37,7 @@ export default function NuevoPedidoPage() {
   const [userId, setUserId] = useState('');
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = (globalThis as any).localStorage?.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
       setUserId(user.id);
@@ -119,17 +119,17 @@ export default function NuevoPedidoPage() {
 
   const handleFinalizarPedido = async () => {
     if (!cliente.trim()) {
-      alert('Por favor ingresa el nombre del cliente');
+      (globalThis as any).alert?.('Por favor ingresa el nombre del cliente');
       return;
     }
     
     if (!telefono.trim()) {
-      alert('Por favor ingresa el teléfono del cliente');
+      (globalThis as any).alert?.('Por favor ingresa el teléfono del cliente');
       return;
     }
     
     if (cart.length === 0) {
-      alert('El pedido debe tener al menos un producto');
+      (globalThis as any).alert?.('El pedido debe tener al menos un producto');
       return;
     }
 
@@ -152,19 +152,19 @@ export default function NuevoPedidoPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json() as any;
         throw new Error(error.error || 'Error al crear pedido');
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       
-      alert('✅ Pedido creado exitosamente');
+      (globalThis as any).alert?.('✅ Pedido creado exitosamente');
       clearCart();
       setDescuentoGeneral(0);
       router.push('/dashboard/pedidos');
     } catch (error) {
       console.error('Error creando pedido:', error);
-      alert('❌ Error al crear el pedido: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+      (globalThis as any).alert?.('❌ Error al crear el pedido: ' + (error instanceof Error ? error.message : 'Error desconocido'));
     } finally {
       setLoading(false);
     }
@@ -221,7 +221,7 @@ export default function NuevoPedidoPage() {
             <input
               type="text"
               value={cliente}
-              onChange={(e) => setCliente(e.target.value)}
+              onChange={(e) => setCliente((e.target as any).value)}
               placeholder="Ej: María González"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -234,7 +234,7 @@ export default function NuevoPedidoPage() {
             <input
               type="tel"
               value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
+              onChange={(e) => setTelefono((e.target as any).value)}
               placeholder="Ej: 341 123-4567"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
@@ -246,7 +246,7 @@ export default function NuevoPedidoPage() {
             </label>
             <textarea
               value={nota}
-              onChange={(e) => setNota(e.target.value)}
+              onChange={(e) => setNota((e.target as any).value)}
               placeholder="Ej: Enviar en caja de regalo..."
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
@@ -357,7 +357,7 @@ export default function NuevoPedidoPage() {
                         max={tempDiscountType === 'porcentaje' ? '100' : undefined}
                         step={tempDiscountType === 'porcentaje' ? '1' : '0.01'}
                         value={tempDiscountValue}
-                        onChange={(e) => setTempDiscountValue(e.target.value)}
+                        onChange={(e) => setTempDiscountValue((e.target as any).value)}
                         placeholder={tempDiscountType === 'porcentaje' ? '% por unidad' : '$ por unidad'}
                         className="flex-1 px-3 py-2 border rounded"
                         autoFocus

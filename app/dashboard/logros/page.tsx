@@ -59,7 +59,7 @@ export default function LogrosPage() {
   const loadStats = async () => {
     try {
       setLoading(true);
-      const userStr = localStorage.getItem('user');
+      const userStr = (globalThis as any).localStorage?.getItem('user');
       if (!userStr) {
         throw new Error('Usuario no encontrado');
       }
@@ -71,7 +71,7 @@ export default function LogrosPage() {
         throw new Error('Error al cargar estadísticas');
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       setStats(data);
     } catch (err) {
       console.error('Error:', err);

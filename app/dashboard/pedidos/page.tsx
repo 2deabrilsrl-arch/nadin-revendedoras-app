@@ -48,7 +48,7 @@ export default function PedidosPage() {
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = (globalThis as any).localStorage?.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
       setUserId(user.id);
@@ -68,7 +68,7 @@ export default function PedidosPage() {
         throw new Error('Error al cargar pedidos');
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       setPedidos(data);
     } catch (err) {
       console.error('Error:', err);
@@ -92,7 +92,7 @@ export default function PedidosPage() {
         throw new Error('Error al actualizar estado');
       }
 
-      const updatedOrder = await response.json();
+      const updatedOrder = await response.json() as any;
       
       // Actualizar el pedido en el estado local
       setPedidos(prev => prev.map(p => 
@@ -104,7 +104,7 @@ export default function PedidosPage() {
       console.log('✅ Estado actualizado correctamente');
     } catch (err) {
       console.error('Error:', err);
-      alert('Error al actualizar el estado del pedido');
+      (globalThis as any).alert?.('Error al actualizar el estado del pedido');
     } finally {
       setUpdatingOrder(null);
     }

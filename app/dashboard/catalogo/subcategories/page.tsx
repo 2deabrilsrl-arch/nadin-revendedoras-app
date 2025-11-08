@@ -31,7 +31,7 @@ function CategorySubcategoriesContent() {
       
       // Obtener todos los productos de esta categoría
       const res = await fetch(`/api/catalogo?category=${encodeURIComponent(category)}`);
-      const products = await res.json();
+      const products = await res.json() as any;
       
       setTotalProducts(products.length);
 

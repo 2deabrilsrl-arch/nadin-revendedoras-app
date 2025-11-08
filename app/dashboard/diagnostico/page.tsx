@@ -23,7 +23,7 @@ export default function DiagnosticoPage() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       console.log('Response data:', data);
       
       setResult({

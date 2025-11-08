@@ -35,7 +35,7 @@ export default function GamificationWidget() {
 
   const loadStats = async () => {
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = (globalThis as any).localStorage?.getItem('user');
       if (!userStr) return;
 
       const user = JSON.parse(userStr);
@@ -43,7 +43,7 @@ export default function GamificationWidget() {
       
       if (!response.ok) throw new Error('Error al cargar estadísticas');
 
-      const data = await response.json();
+      const data = await response.json() as any;
       setStats(data);
     } catch (err) {
       console.error('Error:', err);

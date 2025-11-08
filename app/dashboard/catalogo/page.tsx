@@ -43,7 +43,7 @@ export default function CatalogoPage() {
   const { addToCart } = useCart();
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = (globalThis as any).localStorage?.getItem('user');
     if (userStr) {
       const user = JSON.parse(userStr);
       setUserMargen(user.margen || 60);
@@ -55,7 +55,7 @@ export default function CatalogoPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/catalogo');
-      const data: Product[] = await res.json();
+      const data: Product[] = await res.json() as any;
 
       const brandsArray: string[] = Array.from(new Set(
         data
@@ -76,7 +76,7 @@ export default function CatalogoPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/catalogo');
-      const data: Product[] = await res.json();
+      const data: Product[] = await res.json() as any;
 
       const catsSet = new Set<string>();
       data.forEach(p => {
@@ -103,7 +103,7 @@ export default function CatalogoPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/catalogo?category=${encodeURIComponent(category)}`);
-      const data: Product[] = await res.json();
+      const data: Product[] = await res.json() as any;
 
       const subcatsSet = new Set<string>();
       data.forEach(p => {
@@ -132,7 +132,7 @@ export default function CatalogoPage() {
       const res = await fetch(
         `/api/catalogo?category=${encodeURIComponent(category)}&subcategory=${encodeURIComponent(subcategory)}`
       );
-      const data: Product[] = await res.json();
+      const data: Product[] = await res.json() as any;
 
       const typesSet = new Set<string>();
       data.forEach(p => {
@@ -169,7 +169,7 @@ export default function CatalogoPage() {
       if (searchTerm) params.append('search', searchTerm);
 
       const res = await fetch(`/api/catalogo?${params.toString()}`);
-      const data = await res.json();
+      const data = await res.json() as any;
 
       setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -182,7 +182,7 @@ export default function CatalogoPage() {
 
   const handleAddToCart = (item: CartItem) => {
     addToCart(item);
-    alert('✅ Producto agregado al pedido');
+    (globalThis as any).alert?.('✅ Producto agregado al pedido');
   };
 
   const goBack = () => {
@@ -503,7 +503,7 @@ export default function CatalogoPage() {
             type="text"
             placeholder="Buscar por nombre o SKU..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm((e.target as any).value)}
             onKeyPress={(e) => {
               if (e.key === 'Enter') {
                 loadProducts({

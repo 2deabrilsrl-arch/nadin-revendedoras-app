@@ -11,11 +11,11 @@ export default function DiagnosticoCategorias() {
     try {
       // 1. Verificar estadísticas del cache
       const statsRes = await fetch('/api/catalogo?stats=true');
-      const stats = await statsRes.json();
+      const stats = await statsRes.json() as any;
 
       // 2. Obtener algunos productos para ver formato de categorías
       const productsRes = await fetch('/api/catalogo');
-      const products = await productsRes.json();
+      const products = await productsRes.json() as any;
 
       // Analizar categorías
       const categoriasEjemplo = products.slice(0, 10).map((p: any) => ({
@@ -67,11 +67,11 @@ export default function DiagnosticoCategorias() {
     setLoading(true);
     try {
       const res = await fetch('/api/catalogo?sync=true');
-      const data = await res.json();
-      alert('✅ Sincronización completada. Esperá 2-3 minutos y verificá de nuevo.');
+      const data = await res.json() as any;
+      (globalThis as any).alert?.('✅ Sincronización completada. Esperá 2-3 minutos y verificá de nuevo.');
       setResultado(null);
     } catch (error) {
-      alert('❌ Error en sincronización: ' + error);
+      (globalThis as any).alert?.('❌ Error en sincronización: ' + error);
     } finally {
       setLoading(false);
     }

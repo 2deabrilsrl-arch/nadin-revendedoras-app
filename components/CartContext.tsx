@@ -46,7 +46,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Cargar carrito desde localStorage al montar
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+      const savedCart = (globalThis as any).localStorage?.getItem(CART_STORAGE_KEY);
       if (savedCart) {
         setCart(JSON.parse(savedCart));
       }

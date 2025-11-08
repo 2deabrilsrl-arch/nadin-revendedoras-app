@@ -28,10 +28,10 @@ export default function CancelarPedidoButton({ pedidoId, onCancel }: CancelarPed
         throw new Error('Error al cancelar pedido');
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       console.log('Pedido cancelado:', data);
 
-      alert('✅ Pedido cancelado correctamente');
+      (globalThis as any).alert?.('✅ Pedido cancelado correctamente');
       
       if (onCancel) {
         onCancel();
@@ -42,7 +42,7 @@ export default function CancelarPedidoButton({ pedidoId, onCancel }: CancelarPed
 
     } catch (error) {
       console.error('Error:', error);
-      alert('❌ Error al cancelar el pedido');
+      (globalThis as any).alert?.('❌ Error al cancelar el pedido');
     } finally {
       setLoading(false);
       setShowConfirm(false);

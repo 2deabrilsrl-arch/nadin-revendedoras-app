@@ -37,7 +37,7 @@ export default function RankingPage() {
   const loadRanking = async () => {
     try {
       setLoading(true);
-      const userStr = localStorage.getItem('user');
+      const userStr = (globalThis as any).localStorage?.getItem('user');
       if (!userStr) {
         throw new Error('Usuario no encontrado');
       }
@@ -49,7 +49,7 @@ export default function RankingPage() {
         throw new Error('Error al cargar ranking');
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       setRanking(data);
     } catch (err) {
       console.error('Error:', err);

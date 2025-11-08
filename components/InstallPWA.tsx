@@ -23,7 +23,7 @@ export default function InstallPWA() {
     setIsIOS(iOS);
 
     // Si ya está instalada o el usuario cerró el banner, no mostrar
-    const bannerDismissed = localStorage.getItem('pwa-banner-dismissed');
+    const bannerDismissed = (globalThis as any).localStorage?.getItem('pwa-banner-dismissed');
     if (standalone || bannerDismissed === 'true') {
       return;
     }

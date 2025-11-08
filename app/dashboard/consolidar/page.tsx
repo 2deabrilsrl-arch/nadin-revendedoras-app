@@ -12,7 +12,7 @@ export default function ConsolidarPage() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    const userData = (globalThis as any).localStorage?.getItem('user');
     if (userData) {
       const u = JSON.parse(userData);
       setUser(u);
@@ -29,19 +29,19 @@ export default function ConsolidarPage() {
 
   const handleConsolidar = async () => {
     if (selectedPedidos.length === 0) {
-      alert('Seleccioná al menos un pedido');
+      (globalThis as any).alert?.('Seleccioná al menos un pedido');
       return;
     }
     if (!formaPago) {
-      alert('Seleccioná forma de pago');
+      (globalThis as any).alert?.('Seleccioná forma de pago');
       return;
     }
     if (!tipoEnvio) {
-      alert('Seleccioná tipo de envío');
+      (globalThis as any).alert?.('Seleccioná tipo de envío');
       return;
     }
     if (tipoEnvio === 'Cadete a Transporte' && !transporte.trim()) {
-      alert('Completá el nombre del transporte');
+      (globalThis as any).alert?.('Completá el nombre del transporte');
       return;
     }
 
@@ -59,7 +59,7 @@ export default function ConsolidarPage() {
     });
 
     if (res.ok) {
-      alert('✅ Pedidos consolidados y enviados a Nadin!');
+      (globalThis as any).alert?.('✅ Pedidos consolidados y enviados a Nadin!');
       setSelectedPedidos([]);
       setFormaPago('');
       setTipoEnvio('');
@@ -68,7 +68,7 @@ export default function ConsolidarPage() {
       // Recargar pedidos
       window.location.reload();
     } else {
-      alert('❌ Error al consolidar pedidos');
+      (globalThis as any).alert?.('❌ Error al consolidar pedidos');
     }
   };
 
@@ -181,7 +181,7 @@ export default function ConsolidarPage() {
                   <label className="block font-medium mb-2 text-sm">Forma de pago *</label>
                   <select
                     value={formaPago}
-                    onChange={(e) => setFormaPago(e.target.value)}
+                    onChange={(e) => setFormaPago((e.target as any).value)}
                     className="w-full p-3 border rounded-lg"
                   >
                     <option value="">Seleccionar...</option>
@@ -197,7 +197,7 @@ export default function ConsolidarPage() {
                   <select
                     value={tipoEnvio}
                     onChange={(e) => {
-                      setTipoEnvio(e.target.value);
+                      setTipoEnvio((e.target as any).value);
                       if (e.target.value !== 'Cadete a Transporte') {
                         setTransporte('');
                       }
@@ -217,7 +217,7 @@ export default function ConsolidarPage() {
                     <input
                       type="text"
                       value={transporte}
-                      onChange={(e) => setTransporte(e.target.value)}
+                      onChange={(e) => setTransporte((e.target as any).value)}
                       placeholder="Completar nombre de Transporte a enviar"
                       className="w-full p-3 border rounded-lg"
                     />

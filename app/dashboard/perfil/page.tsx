@@ -43,7 +43,7 @@ export default function PerfilPage() {
   const [showQR, setShowQR] = useState(false);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = (globalThis as any).localStorage?.getItem('user');
     if (!userStr) {
       router.push('/login');
       return;
@@ -63,7 +63,7 @@ export default function PerfilPage() {
         throw new Error('Error al cargar perfil');
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       setProfile(data);
       
       if (data.profilePhoto) {
@@ -84,7 +84,7 @@ export default function PerfilPage() {
 
     } catch (err) {
       console.error('Error:', err);
-      alert('Error al cargar el perfil');
+      (globalThis as any).alert?.('Error al cargar el perfil');
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,7 @@ export default function PerfilPage() {
 
     // Validar tamaño (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen no puede superar los 5MB');
+      (globalThis as any).alert?.('La imagen no puede superar los 5MB');
       return;
     }
 
@@ -127,7 +127,7 @@ export default function PerfilPage() {
         });
 
         if (uploadResponse.ok) {
-          const { url } = await uploadResponse.json();
+          const { url } = await uploadResponse.json() as any;
           photoUrl = url;
         }
       }
@@ -147,15 +147,15 @@ export default function PerfilPage() {
         throw new Error('Error al guardar');
       }
 
-      alert('✅ Perfil actualizado correctamente');
+      (globalThis as any).alert?.('✅ Perfil actualizado correctamente');
       
       // Actualizar localStorage
-      const updatedUser = await response.json();
+      const updatedUser = await response.json() as any;
       localStorage.setItem('user', JSON.stringify(updatedUser));
 
     } catch (err) {
       console.error('Error:', err);
-      alert('Error al guardar el perfil');
+      (globalThis as any).alert?.('Error al guardar el perfil');
     } finally {
       setSaving(false);
     }
@@ -169,7 +169,7 @@ export default function PerfilPage() {
   const copyProfileLink = () => {
     const link = `${window.location.origin}/perfil/${profile?.handle}`;
     navigator.clipboard.writeText(link);
-    alert('✅ Link copiado al portapapeles');
+    (globalThis as any).alert?.('✅ Link copiado al portapapeles');
   };
 
   const shareProfile = async () => {
