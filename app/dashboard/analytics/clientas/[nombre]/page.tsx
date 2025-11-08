@@ -89,7 +89,7 @@ export default function ClientaDetailPage() {
         throw new Error('Error al cargar detalle de clienta');
       }
 
-      const data = await response.json();
+      const data = await response.json() as ClientaDetail;
       setClienta(data);
     } catch (err) {
       console.error('Error:', err);
