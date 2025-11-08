@@ -61,7 +61,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       try {
-        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+        (globalThis as any).localStorage?.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
       } catch (error) {
         console.error('Error guardando carrito:', error);
       }

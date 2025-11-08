@@ -15,11 +15,12 @@ export default function InstallPWA() {
 
   useEffect(() => {
     // Detectar si ya está instalada (modo standalone)
-    const standalone = window.matchMedia('(display-mode: standalone)').matches;
+    const standalone = (globalThis as any).window?.matchMedia?.('(display-mode: standalone)')?.matches || false;
     setIsStandalone(standalone);
 
     // Detectar iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const nav = (globalThis as any).navigator;
+    const iOS = nav ? /iPad|iPhone|iPod/.test(nav.userAgent) : false;
     setIsIOS(iOS);
 
     // Si ya está instalada o el usuario cerró el banner, no mostrar
@@ -35,7 +36,7 @@ export default function InstallPWA() {
       setShowBanner(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    const win = (globalThis as any).window; win?.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // Para iOS, mostrar instrucciones después de 3 segundos
     if (iOS && !standalone) {
@@ -46,7 +47,7 @@ export default function InstallPWA() {
     }
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      (globalThis as any).window?.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
 
@@ -66,7 +67,7 @@ export default function InstallPWA() {
 
   const handleDismiss = () => {
     setShowBanner(false);
-    localStorage.setItem('pwa-banner-dismissed', 'true');
+    (globalThis as any).localStorage?.setItem('pwa-banner-dismissed', 'true');
   };
 
   // No mostrar si ya está instalada

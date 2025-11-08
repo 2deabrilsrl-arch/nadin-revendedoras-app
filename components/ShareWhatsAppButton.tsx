@@ -75,7 +75,7 @@ export default function ShareWhatsAppButton({ product, precioVenta, className = 
 
     // Abrir WhatsApp
     const urlWhatsApp = `https://wa.me/?text=${mensajeCodificado}`;
-    window.open(urlWhatsApp, '_blank');
+    (globalThis as any).window?.open(urlWhatsApp, '_blank');
   };
 
   return (
