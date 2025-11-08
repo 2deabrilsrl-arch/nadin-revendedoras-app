@@ -42,7 +42,7 @@ export default function ClientasPage() {
   const [filtroEstado, setFiltroEstado] = useState<'todas' | 'activa' | 'regular' | 'inactiva' | 'riesgo'>('todas');
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = (globalThis as any).localStorage?.getItem('user');
     if (!userStr) {
       router.push('/login');
       return;
@@ -65,11 +65,11 @@ export default function ClientasPage() {
         throw new Error('Error al cargar clientas');
       }
 
-      const data = await response.json();
+      const data = await response.json() as { clientas: Clienta[] };
       setClientas(data.clientas);
     } catch (err) {
       console.error('Error:', err);
-      alert('Error al cargar clientas');
+      (globalThis as any).alert?.('Error al cargar clientas');
     } finally {
       setLoading(false);
     }
