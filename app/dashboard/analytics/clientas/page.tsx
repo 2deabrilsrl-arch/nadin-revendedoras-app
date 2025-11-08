@@ -296,7 +296,7 @@ export default function ClientasPage() {
               type="text"
               placeholder="Buscar por nombre o teléfono..."
               value={searchTerm}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.currentTarget.value)}
+              onChange={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
             />
           </div>
