@@ -47,10 +47,10 @@ export default function RegistroPage() {
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (res.ok) {
-        alert('✅ Registro exitoso! Ahora podés iniciar sesión');
+        (globalThis as any).alert?.('✅ Registro exitoso! Ahora podés iniciar sesión');
         router.push('/login');
       } else {
         setError(data.error || 'Error en el registro');
@@ -85,7 +85,7 @@ export default function RegistroPage() {
               type="text" 
               placeholder="Nombre completo *" 
               value={formData.name} 
-              onChange={(e) => setFormData({...formData, name: e.target.value})} 
+              onChange={(e) => setFormData({...formData, name: (e.target as any).value})} 
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent" 
               required 
             />
@@ -96,7 +96,7 @@ export default function RegistroPage() {
               type="email" 
               placeholder="Email *" 
               value={formData.email} 
-              onChange={(e) => setFormData({...formData, email: e.target.value})} 
+              onChange={(e) => setFormData({...formData, email: (e.target as any).value})} 
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent" 
               required 
             />
@@ -107,7 +107,7 @@ export default function RegistroPage() {
               type="text" 
               placeholder="DNI *" 
               value={formData.dni} 
-              onChange={(e) => setFormData({...formData, dni: e.target.value})} 
+              onChange={(e) => setFormData({...formData, dni: (e.target as any).value})} 
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent" 
               required 
             />
@@ -118,7 +118,7 @@ export default function RegistroPage() {
               type="tel" 
               placeholder="Teléfono *" 
               value={formData.telefono} 
-              onChange={(e) => setFormData({...formData, telefono: e.target.value})} 
+              onChange={(e) => setFormData({...formData, telefono: (e.target as any).value})} 
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent" 
               required 
             />
@@ -129,7 +129,7 @@ export default function RegistroPage() {
               type="text" 
               placeholder="Handle (ej: vicky) *" 
               value={formData.handle} 
-              onChange={(e) => setFormData({...formData, handle: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '')})} 
+              onChange={(e) => setFormData({...formData, handle: (e.target as any).value.toLowerCase().replace(/[^a-z0-9]/g, '')})} 
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent" 
               required 
             />
@@ -141,7 +141,7 @@ export default function RegistroPage() {
               type={showPassword ? 'text' : 'password'}
               placeholder="Contraseña (mínimo 6 caracteres) *" 
               value={formData.password} 
-              onChange={(e) => setFormData({...formData, password: e.target.value})} 
+              onChange={(e) => setFormData({...formData, password: (e.target as any).value})} 
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent pr-10" 
               required 
               minLength={6}
@@ -160,7 +160,7 @@ export default function RegistroPage() {
               type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Confirmar contraseña *" 
               value={formData.confirmPassword} 
-              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} 
+              onChange={(e) => setFormData({...formData, confirmPassword: (e.target as any).value})} 
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent pr-10" 
               required 
             />
