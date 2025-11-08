@@ -112,10 +112,11 @@ export default function BestSellersPage() {
       
       if (!res.ok) throw new Error('Error al cargar productos');
 
-      const data = await res.json();
-      setAllProducts(Array.isArray(data) ? data : []);
+      const data = await res.json() as any[];
+      const products = Array.isArray(data) ? data : [];
+      setAllProducts(products);
       
-      console.log('✅ Productos más vendidos cargados:', data.length);
+      console.log('✅ Productos más vendidos cargados:', products.length);
     } catch (err) {
       console.error('Error cargando más vendidos:', err);
       setError('Error al cargar los productos más vendidos');
