@@ -54,7 +54,7 @@ async function fetchTN(endpoint: string, params: Record<string, string> = {}) {
     throw new Error(`TN API Error: ${response.status} - ${errorText}`);
   }
   
-  const data = await response.json();
+  const data = await response.json() as any;
   console.log(`✅ TN Response: ${Array.isArray(data) ? data.length : 'object'} items`);
   
   return data;
@@ -140,7 +140,7 @@ export async function getAllProducts(
       3, // 3 intentos
       1000, // 1 segundo entre intentos
       `página ${page}`
-    );
+    ) as any;
 
     if (!products) {
       consecutiveErrors++;
@@ -312,7 +312,7 @@ export async function getCategories() {
         3,
         1000,
         `categorías página ${page}`
-      );
+      ) as any;
 
       if (!categories) {
         consecutiveErrors++;
