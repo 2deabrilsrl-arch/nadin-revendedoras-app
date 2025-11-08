@@ -68,8 +68,6 @@ export default function ClientaDetailPage() {
   const [clienta, setClienta] = useState<ClientaDetail | null>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
     const userStr = window.localStorage.getItem('user');
     if (!userStr) {
       router.push('/login');
