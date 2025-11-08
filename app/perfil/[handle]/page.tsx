@@ -64,7 +64,7 @@ export default function PerfilPublicoPage() {
         return;
       }
 
-      const data = await response.json();
+      const data = await response.json() as any;
       setProfile(data);
 
     } catch (err) {
