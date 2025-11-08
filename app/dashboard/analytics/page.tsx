@@ -48,7 +48,7 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState('all');
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = (globalThis as any).localStorage?.getItem('user');
     if (!userStr) {
       router.push('/login');
       return;
@@ -67,11 +67,11 @@ export default function AnalyticsPage() {
         throw new Error('Error al cargar analytics');
       }
 
-      const data = await response.json();
+      const data = await response.json() as Analytics;
       setAnalytics(data);
     } catch (err) {
       console.error('Error:', err);
-      alert('Error al cargar analytics');
+      (globalThis as any).alert?.('Error al cargar analytics');
     } finally {
       setLoading(false);
     }
@@ -122,7 +122,7 @@ export default function AnalyticsPage() {
         {/* Selector de período */}
         <select
           value={period}
-          onChange={(e) => setPeriod(e.target.value)}
+          onChange={(e) => setPeriod((e.target as any).value)}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
         >
           <option value="all">Todo el tiempo</option>
