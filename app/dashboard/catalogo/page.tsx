@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Eye, EyeOff, Search, Package } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Search, Package, Sparkles, User, Heart, Baby, Tag, Folder } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
 import ProductModal, { CartItem } from '@/components/ProductModal';
 import ProductCard from '@/components/ProductCard'; // ✅ NUEVO IMPORT
@@ -18,6 +18,23 @@ interface Product {
   images?: string[]; // ✅ NUEVO
   variants: any[];
 }
+
+// Función para obtener el ícono correcto según la categoría
+const getCategoryIcon = (categoryName: string) => {
+  const name = categoryName.toUpperCase();
+  
+  if (name.includes('BLANCO')) {
+    return <div className="text-5xl">🛏️</div>;
+  } else if (name.includes('HOMBRE')) {
+    return <div className="text-5xl">👨</div>;
+  } else if (name.includes('MUJER')) {
+    return <div className="text-5xl">👩</div>;
+  } else if (name.includes('NIÑO') || name.includes('NIÑA')) {
+    return <div className="text-5xl">👶</div>;
+  } else {
+    return <Tag size={48} className="text-gray-500" />;
+  }
+};
 
 export default function CatalogoPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('initial');
@@ -236,7 +253,9 @@ export default function CatalogoPage() {
             }}
             className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
           >
-            <div className="text-6xl mb-4">🏷️</div>
+            <div className="flex justify-center mb-4">
+              <Tag size={64} className="text-purple-500" />
+            </div>
             <h3 className="text-xl font-bold mb-2">Por Marca</h3>
             <p className="text-gray-600 text-sm">Navega por marcas específicas</p>
           </button>
@@ -248,7 +267,9 @@ export default function CatalogoPage() {
             }}
             className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
           >
-            <div className="text-6xl mb-4">📂</div>
+            <div className="flex justify-center mb-4">
+              <Folder size={64} className="text-blue-500" />
+            </div>
             <h3 className="text-xl font-bold mb-2">Por Categoría</h3>
             <p className="text-gray-600 text-sm">Explora por tipo de producto</p>
           </button>
@@ -260,7 +281,9 @@ export default function CatalogoPage() {
             }}
             className="bg-gradient-to-br from-nadin-pink to-pink-400 text-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
           >
-            <div className="text-6xl mb-4">📦</div>
+            <div className="flex justify-center mb-4">
+              <Package size={64} />
+            </div>
             <h3 className="text-xl font-bold mb-2">Ver Todo</h3>
             <p className="text-sm">Ver catálogo completo</p>
           </button>
@@ -339,8 +362,8 @@ export default function CatalogoPage() {
                 }}
                 className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all hover:scale-105 text-center"
               >
-                <div className="text-3xl mb-2">
-                  {cat.includes('MUJER') ? '👚' : cat.includes('HOMBRE') ? '👔' : '👶'}
+                <div className="mb-3 flex justify-center">
+                  {getCategoryIcon(cat)}
                 </div>
                 <p className="font-semibold">{cat}</p>
               </button>

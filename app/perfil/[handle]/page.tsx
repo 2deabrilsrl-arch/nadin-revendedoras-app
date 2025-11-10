@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { 
   User, Instagram, Facebook, Globe, Linkedin, 
   Twitter, Youtube, MessageCircle, Phone, Mail,
-  Star, Award, TrendingUp
+  Star, Award, TrendingUp, ArrowLeft
 } from 'lucide-react';
 
 interface PublicProfile {
@@ -40,6 +40,7 @@ const LEVEL_CONFIG: Record<string, { name: string; icon: string; color: string }
 
 export default function PerfilPublicoPage() {
   const params = useParams();
+  const router = useRouter();
   const handle = params?.handle as string;
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,7 +117,15 @@ export default function PerfilPublicoPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
-          <div className="text-6xl mb-4">😔</div>
+          <div className="flex justify-center mb-4">
+            <div className="bg-red-100 rounded-full p-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+          </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             {error || 'Perfil no encontrado'}
           </h2>
@@ -138,6 +147,26 @@ export default function PerfilPublicoPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+      {/* Botón de volver - Fixed en la esquina superior izquierda */}
+      <button
+        onClick={() => {
+          // Si se abrió en nueva pestaña, cerrar
+          if (window.opener) {
+            window.close();
+          } else if (window.history.length > 1) {
+            // Si hay historial, volver
+            router.back();
+          } else {
+            // Si no, ir al inicio
+            router.push('/dashboard');
+          }
+        }}
+        className="fixed top-4 left-4 z-50 flex items-center gap-2 bg-white text-gray-700 px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all hover:bg-gray-50"
+      >
+        <ArrowLeft size={20} />
+        <span className="font-medium">Volver</span>
+      </button>
+
       {/* Header con foto y nombre */}
       <div className="bg-gradient-to-r from-nadin-pink to-pink-400 text-white pt-20 pb-32">
         <div className="max-w-4xl mx-auto px-4 text-center">
@@ -213,7 +242,10 @@ export default function PerfilPublicoPage() {
 
         {/* Contacto */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h3 className="font-bold text-lg mb-4">📞 Contacto</h3>
+          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <Phone size={20} className="text-nadin-pink" />
+            Contacto
+          </h3>
           
           <div className="space-y-3">
             {profile.whatsappBusiness && (
@@ -250,7 +282,10 @@ export default function PerfilPublicoPage() {
         {(profile.instagram || profile.facebook || profile.tiktok || profile.linkedin || 
           profile.twitter || profile.youtube || profile.website) && (
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="font-bold text-lg mb-4">🌐 Redes Sociales</h3>
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <Globe size={20} className="text-nadin-pink" />
+              Redes Sociales
+            </h3>
             
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {profile.instagram && (

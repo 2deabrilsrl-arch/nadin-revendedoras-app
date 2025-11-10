@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   User, Camera, Instagram, Facebook, Globe, Linkedin, 
   Twitter, Youtube, MessageCircle, Link as LinkIcon, 
-  Save, QrCode, Share2, Edit, Eye
+  Save, QrCode, Share2, Edit, Eye, LogOut, CreditCard
 } from 'lucide-react';
 import BackToHomeButton from '@/components/BackToHomeButton';
 import QRCode from 'qrcode';
@@ -197,6 +197,13 @@ export default function PerfilPage() {
     }
   };
 
+  const handleLogout = () => {
+    if (confirm('¿Estás segura que querés cerrar sesión?')) {
+      (globalThis as any).localStorage?.removeItem('user');
+      router.push('/login');
+    }
+  };
+
   if (loading || !profile) {
     return (
       <div className="max-w-4xl mx-auto p-4">
@@ -363,7 +370,10 @@ export default function PerfilPage() {
 
       {/* Redes Sociales */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 className="text-lg font-bold mb-4">🌐 Redes Sociales</h3>
+        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <Globe size={20} />
+          Redes Sociales
+        </h3>
         <p className="text-sm text-gray-600 mb-4">
           Agregá tus redes para que tus clientas te encuentren (todas opcionales)
         </p>
@@ -463,7 +473,10 @@ export default function PerfilPage() {
 
       {/* Datos Bancarios */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 className="text-lg font-bold mb-4">💳 Datos Bancarios</h3>
+        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <CreditCard size={20} />
+          Datos Bancarios
+        </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -508,44 +521,47 @@ export default function PerfilPage() {
 
       {/* Compartir Perfil */}
       <div className="bg-gradient-to-r from-nadin-pink to-pink-400 text-white rounded-lg shadow-lg p-6 mb-6">
-        <h3 className="text-lg font-bold mb-2">🌟 Compartí tu Perfil</h3>
+        <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
+          <Share2 size={22} />
+          Compartí tu Perfil
+        </h3>
         <p className="text-sm text-pink-100 mb-4">
           Compartí tu perfil con tus clientas para que te conozcan mejor
         </p>
 
-        <div className="flex gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <button
             onClick={copyProfileLink}
-            className="flex-1 bg-white text-nadin-pink px-4 py-3 rounded-lg font-semibold hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
+            className="bg-white text-nadin-pink px-4 py-3 rounded-lg font-semibold hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
           >
             <LinkIcon size={18} />
-            Copiar Link
+            <span className="text-sm">Copiar Link</span>
           </button>
 
           <button
             onClick={shareProfile}
-            className="flex-1 bg-white text-nadin-pink px-4 py-3 rounded-lg font-semibold hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
+            className="bg-white text-nadin-pink px-4 py-3 rounded-lg font-semibold hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
           >
             <Share2 size={18} />
-            Compartir
+            <span className="text-sm">Compartir</span>
           </button>
 
           <button
             onClick={() => setShowQR(!showQR)}
-            className="flex-1 bg-white text-nadin-pink px-4 py-3 rounded-lg font-semibold hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
+            className="bg-white text-nadin-pink px-4 py-3 rounded-lg font-semibold hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
           >
             <QrCode size={18} />
-            Ver QR
+            <span className="text-sm">Ver QR</span>
           </button>
 
           <a
             href={`/perfil/${profile.handle}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 bg-white text-nadin-pink px-4 py-3 rounded-lg font-semibold hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
+            className="bg-white text-nadin-pink px-4 py-3 rounded-lg font-semibold hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
           >
             <Eye size={18} />
-            Ver Perfil
+            <span className="text-sm">Ver Perfil</span>
           </a>
         </div>
 
@@ -559,7 +575,7 @@ export default function PerfilPage() {
         )}
       </div>
 
-      {/* Botón Guardar */}
+      {/* Botón Guardar y Cerrar Sesión */}
       <div className="sticky bottom-4 bg-white rounded-lg shadow-xl p-4 flex gap-3">
         <button
           onClick={handleSave}
@@ -568,6 +584,14 @@ export default function PerfilPage() {
         >
           <Save size={20} />
           {saving ? 'Guardando...' : 'Guardar Cambios'}
+        </button>
+
+        <button
+          onClick={handleLogout}
+          className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+        >
+          <LogOut size={20} />
+          Cerrar Sesión
         </button>
       </div>
     </div>
