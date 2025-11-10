@@ -150,10 +150,11 @@ export default function PerfilPublicoPage() {
       {/* Botón de volver - Fixed en la esquina superior izquierda */}
       <button
         onClick={() => {
+          const win = (globalThis as any).window;
           // Si se abrió en nueva pestaña, cerrar
-          if (window.opener) {
-            window.close();
-          } else if (window.history.length > 1) {
+          if (win?.opener) {
+            win.close();
+          } else if (win?.history?.length > 1) {
             // Si hay historial, volver
             router.back();
           } else {
