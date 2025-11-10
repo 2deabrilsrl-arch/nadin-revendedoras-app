@@ -198,7 +198,7 @@ export default function PerfilPage() {
   };
 
   const handleLogout = () => {
-    if (confirm('¿Estás segura que querés cerrar sesión?')) {
+    if ((globalThis as any).window?.confirm('¿Estás segura que querés cerrar sesión?')) {
       (globalThis as any).localStorage?.removeItem('user');
       router.push('/login');
     }
