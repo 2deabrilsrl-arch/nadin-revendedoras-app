@@ -192,7 +192,7 @@ export default function CatalogoPage() {
       if (selectedProductType) params.append('productType', selectedProductType);
 
       const res = await fetch(`/api/filtros?${params.toString()}`);
-      const data = await res.json();
+      const data = await res.json() as any;
 
       setAvailableTalles(data.talles || []);
       setAvailableColores(data.colores || []);
