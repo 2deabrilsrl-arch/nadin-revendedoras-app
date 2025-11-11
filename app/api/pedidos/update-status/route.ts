@@ -8,12 +8,13 @@ interface UpdateStatusBody {
   paidToNadin?: boolean;
   paidByClient?: boolean;
   estado?: string;
+  montoRealPagado?: number | null;
 }
 
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json() as UpdateStatusBody;
-    const { orderId, orderStatus, paidToNadin, paidByClient, estado } = body;
+    const { orderId, orderStatus, paidToNadin, paidByClient, estado, montoRealPagado } = body;
 
     if (!orderId) {
       return NextResponse.json(
@@ -80,6 +81,11 @@ export async function PATCH(req: NextRequest) {
       if (paidByClient) {
         updateData.paidByClientAt = new Date();
       }
+    }
+
+    // 💰 Actualizar monto real pagado (puede ser null para resetear)
+    if (montoRealPagado !== undefined) {
+      updateData.montoRealPagado = montoRealPagado;
     }
 
     // Actualizar pedido en la DB

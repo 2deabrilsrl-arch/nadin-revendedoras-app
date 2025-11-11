@@ -352,11 +352,10 @@ export default function CatalogoPage() {
   };
 
   // Cargar subcategorías de una categoría
-  const loadSubcategories = async (category: string) => {
+  const loadSubcategories = async (mainCategory: string) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      params.append('category', category);
       if (selectedTalle) params.append('talle', selectedTalle);
       if (selectedColor) params.append('color', selectedColor);
       
@@ -365,7 +364,7 @@ export default function CatalogoPage() {
 
       const subcatsSet = new Set<string>();
       data.forEach(p => {
-        if (p.category && p.category.startsWith(category)) {
+        if (p.category && p.category.startsWith(mainCategory + ' > ')) {
           const parts = p.category.split(' > ');
           const subcat = parts[1]?.trim();
           if (subcat) {
@@ -383,13 +382,11 @@ export default function CatalogoPage() {
     }
   };
 
-  // Cargar tipos de producto de una subcategoría
-  const loadProductTypes = async (category: string, subcategory: string) => {
+  // Cargar tipos de producto
+  const loadProductTypes = async (mainCategory: string, subcat: string) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      params.append('category', category);
-      params.append('subcategory', subcategory);
       if (selectedTalle) params.append('talle', selectedTalle);
       if (selectedColor) params.append('color', selectedColor);
       
@@ -397,14 +394,14 @@ export default function CatalogoPage() {
       const data: Product[] = await res.json() as any;
 
       const typesSet = new Set<string>();
+      const prefix = `${mainCategory} > ${subcat} > `;
+      
       data.forEach(p => {
-        if (p.category) {
-          const parts = p.category.split(' > ').map(part => part.trim());
-          if (parts[1] === subcategory) {
-            const prodType = parts[2];
-            if (prodType) {
-              typesSet.add(prodType);
-            }
+        if (p.category && p.category.startsWith(prefix)) {
+          const parts = p.category.split(' > ');
+          const type = parts[2]?.trim();
+          if (type) {
+            typesSet.add(type);
           }
         }
       });
@@ -412,22 +409,27 @@ export default function CatalogoPage() {
       const typesArray: string[] = Array.from(typesSet).sort();
       setProductTypes(typesArray);
     } catch (error) {
-      console.error('Error cargando tipos:', error);
+      console.error('Error cargando tipos de producto:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Cargar productos
-  const loadProducts = async (filters: any = {}) => {
+  // Cargar productos filtrados
+  const loadProducts = async (filters: {
+    brand?: string;
+    category?: string;
+    subcategory?: string;
+    productType?: string;
+  }) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
       if (filters.brand) params.append('brand', filters.brand);
       if (filters.category) params.append('category', filters.category);
       if (filters.subcategory) params.append('subcategory', filters.subcategory);
       if (filters.productType) params.append('productType', filters.productType);
-      if (searchTerm) params.append('search', searchTerm);
       if (selectedTalle) params.append('talle', selectedTalle);
       if (selectedColor) params.append('color', selectedColor);
 
@@ -435,9 +437,6 @@ export default function CatalogoPage() {
       const data = await res.json() as any;
 
       setProducts(Array.isArray(data) ? data : []);
-      
-      // Actualizar opciones de filtros según el contexto
-      await loadFilterOptions();
     } catch (error) {
       console.error('Error cargando productos:', error);
       setProducts([]);
@@ -446,11 +445,22 @@ export default function CatalogoPage() {
     }
   };
 
-  const handleAddToCart = (item: CartItem) => {
-    addToCart(item);
-    (globalThis as any).alert?.('✅ Producto agregado al pedido');
+  // Resetear todo y volver al inicio
+  const resetAndGoInitial = () => {
+    setViewMode('initial');
+    setSelectedBrand('');
+    setSelectedCategory('');
+    setSelectedSubcategory('');
+    setSelectedProductType('');
+    setSearchTerm('');
+    setProducts([]);
+    setBrands([]);
+    setCategories([]);
+    setSubcategories([]);
+    setProductTypes([]);
   };
 
+  // Volver a la vista anterior
   const goBack = () => {
     if (viewMode === 'products') {
       if (selectedProductType) {
@@ -466,35 +476,27 @@ export default function CatalogoPage() {
         setSelectedBrand('');
         setViewMode('brands');
       } else {
-        setViewMode('initial');
+        resetAndGoInitial();
       }
-    } else if (viewMode === 'all') {
-      setViewMode('initial');
     } else if (viewMode === 'producttypes') {
       setViewMode('subcategories');
     } else if (viewMode === 'subcategories') {
       setViewMode('categories');
-    } else if (viewMode === 'brands' || viewMode === 'categories') {
-      setViewMode('initial');
+    } else if (viewMode === 'brands' || viewMode === 'categories' || viewMode === 'all') {
+      resetAndGoInitial();
     }
   };
 
-  const resetAndGoInitial = () => {
-    setSelectedBrand('');
-    setSelectedCategory('');
-    setSelectedSubcategory('');
-    setSelectedProductType('');
-    setSearchTerm('');
-    setProducts([]);
-    setViewMode('initial');
+  const handleAddToCart = (item: CartItem) => {
+    addToCart(item);
   };
 
-  // COMPONENTE: Panel de Filtros (se muestra en TODAS las vistas)
+  // Componente de filtros (panel colapsable)
   const FilterPanel = () => (
     <div className="mb-4">
       <button
         onClick={() => setShowFilters(!showFilters)}
-        className="w-full flex items-center justify-between bg-white border-2 border-gray-200 rounded-lg px-4 py-3 hover:border-nadin-pink transition-colors"
+        className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-nadin-pink to-pink-400 text-white rounded-lg hover:from-nadin-pink-dark hover:to-pink-500 transition-all"
       >
         <div className="flex items-center gap-2">
           <Filter size={20} className="text-nadin-pink" />
@@ -626,13 +628,23 @@ export default function CatalogoPage() {
     return (
       <div className="max-w-7xl mx-auto p-4">
         <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={resetAndGoInitial}
-            className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
-          >
-            <ArrowLeft size={20} />
-            Volver
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={goBack}
+              className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
+            >
+              <ArrowLeft size={20} />
+              Volver
+            </button>
+            <button
+              onClick={resetAndGoInitial}
+              className="flex items-center gap-2 px-3 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark"
+              title="Ir al inicio"
+            >
+              <Sparkles size={18} />
+              Inicio
+            </button>
+          </div>
 
           <button
             onClick={() => setShowCosts(!showCosts)}
@@ -727,13 +739,23 @@ export default function CatalogoPage() {
   if (viewMode === 'brands') {
     return (
       <div className="max-w-4xl mx-auto p-4">
-        <button
-          onClick={resetAndGoInitial}
-          className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"
-        >
-          <ArrowLeft size={20} />
-          Volver al inicio
-        </button>
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={resetAndGoInitial}
+            className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
+          >
+            <ArrowLeft size={20} />
+            Volver al inicio
+          </button>
+          <button
+            onClick={resetAndGoInitial}
+            className="flex items-center gap-2 px-3 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark"
+            title="Ir al inicio"
+          >
+            <Sparkles size={18} />
+            Inicio
+          </button>
+        </div>
 
         <h2 className="text-2xl font-bold mb-4">Seleccioná una Marca</h2>
 
@@ -770,13 +792,23 @@ export default function CatalogoPage() {
   if (viewMode === 'categories') {
     return (
       <div className="max-w-4xl mx-auto p-4">
-        <button
-          onClick={resetAndGoInitial}
-          className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"
-        >
-          <ArrowLeft size={20} />
-          Volver al inicio
-        </button>
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={resetAndGoInitial}
+            className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
+          >
+            <ArrowLeft size={20} />
+            Volver al inicio
+          </button>
+          <button
+            onClick={resetAndGoInitial}
+            className="flex items-center gap-2 px-3 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark"
+            title="Ir al inicio"
+          >
+            <Sparkles size={18} />
+            Inicio
+          </button>
+        </div>
 
         <h2 className="text-2xl font-bold mb-4">Seleccioná una Categoría</h2>
 
@@ -815,13 +847,23 @@ export default function CatalogoPage() {
   if (viewMode === 'subcategories') {
     return (
       <div className="max-w-4xl mx-auto p-4">
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"
-        >
-          <ArrowLeft size={20} />
-          Volver a categorías
-        </button>
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={goBack}
+            className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
+          >
+            <ArrowLeft size={20} />
+            Volver a categorías
+          </button>
+          <button
+            onClick={resetAndGoInitial}
+            className="flex items-center gap-2 px-3 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark"
+            title="Ir al inicio"
+          >
+            <Sparkles size={18} />
+            Inicio
+          </button>
+        </div>
 
         <h2 className="text-2xl font-bold mb-2">{selectedCategory}</h2>
         <p className="text-gray-600 mb-4">Seleccioná una subcategoría</p>
@@ -870,13 +912,23 @@ export default function CatalogoPage() {
   if (viewMode === 'producttypes') {
     return (
       <div className="max-w-4xl mx-auto p-4">
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark mb-4"
-        >
-          <ArrowLeft size={20} />
-          Volver a subcategorías
-        </button>
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={goBack}
+            className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
+          >
+            <ArrowLeft size={20} />
+            Volver a subcategorías
+          </button>
+          <button
+            onClick={resetAndGoInitial}
+            className="flex items-center gap-2 px-3 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark"
+            title="Ir al inicio"
+          >
+            <Sparkles size={18} />
+            Inicio
+          </button>
+        </div>
 
         <h2 className="text-2xl font-bold mb-2">{selectedCategory} → {selectedSubcategory}</h2>
         <p className="text-gray-600 mb-4">Seleccioná un tipo de producto</p>
@@ -945,13 +997,23 @@ export default function CatalogoPage() {
   return (
     <div className="max-w-7xl mx-auto p-4">
       <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={goBack}
-          className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
-        >
-          <ArrowLeft size={20} />
-          Volver
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goBack}
+            className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
+          >
+            <ArrowLeft size={20} />
+            Volver
+          </button>
+          <button
+            onClick={resetAndGoInitial}
+            className="flex items-center gap-2 px-3 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark"
+            title="Ir al inicio"
+          >
+            <Sparkles size={18} />
+            Inicio
+          </button>
+        </div>
 
         <button
           onClick={() => setShowCosts(!showCosts)}

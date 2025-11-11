@@ -65,6 +65,9 @@ model Pedido {
   paidToNadin    Boolean  @default(false)
   paidByClient   Boolean  @default(false)
   
+  // 💰 GANANCIA REAL - Monto real que la revendedora pagó a Nadin
+  montoRealPagado Float?
+  
   // Fechas de cambio de estado
   sentToNadinAt      DateTime?
   receivedNadinAt    DateTime?

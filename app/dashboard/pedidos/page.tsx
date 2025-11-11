@@ -26,6 +26,7 @@ interface Pedido {
   orderStatus: string;
   paidToNadin: boolean;
   paidByClient: boolean;
+  montoRealPagado: number | null;
   createdAt: string;
   lineas: PedidoLinea[];
 }
@@ -46,6 +47,8 @@ export default function PedidosPage() {
   const [expandedPedido, setExpandedPedido] = useState<string | null>(null);
   const [userId, setUserId] = useState('');
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
+  const [editingMontoReal, setEditingMontoReal] = useState<string | null>(null);
+  const [tempMontoReal, setTempMontoReal] = useState<string>('');
 
   useEffect(() => {
     const userStr = (globalThis as any).localStorage?.getItem('user');
@@ -110,14 +113,45 @@ export default function PedidosPage() {
     }
   };
 
+  const handleEditMontoReal = (pedidoId: string, currentMonto: number | null) => {
+    setEditingMontoReal(pedidoId);
+    setTempMontoReal(currentMonto?.toString() || '');
+  };
+
+  const handleSaveMontoReal = async (pedidoId: string) => {
+    const montoReal = tempMontoReal.trim() === '' ? null : parseFloat(tempMontoReal);
+    
+    if (montoReal !== null && (isNaN(montoReal) || montoReal < 0)) {
+      (globalThis as any).alert?.('Ingresá un monto válido');
+      return;
+    }
+
+    await updateOrderStatus(pedidoId, { montoRealPagado: montoReal });
+    setEditingMontoReal(null);
+    setTempMontoReal('');
+  };
+
+  const handleCancelEditMontoReal = () => {
+    setEditingMontoReal(null);
+    setTempMontoReal('');
+  };
+
   const calcularTotalPedido = (lineas: PedidoLinea[]) => {
     return lineas.reduce((sum, linea) => sum + (linea.venta * linea.qty), 0);
   };
 
-  const calcularGananciaPedido = (lineas: PedidoLinea[]) => {
-    const totalVenta = lineas.reduce((sum, linea) => sum + (linea.venta * linea.qty), 0);
-    const totalMayorista = lineas.reduce((sum, linea) => sum + (linea.mayorista * linea.qty), 0);
-    return totalVenta - totalMayorista;
+  const calcularCostoMayorista = (lineas: PedidoLinea[]) => {
+    return lineas.reduce((sum, linea) => sum + (linea.mayorista * linea.qty), 0);
+  };
+
+  const calcularGananciaPedido = (lineas: PedidoLinea[], montoRealPagado: number | null) => {
+    const totalVenta = calcularTotalPedido(lineas);
+    const costoBase = calcularCostoMayorista(lineas);
+    
+    // Si hay monto real pagado, usar ese; sino usar costo mayorista
+    const costoReal = montoRealPagado !== null ? montoRealPagado : costoBase;
+    
+    return totalVenta - costoReal;
   };
 
   const formatearFecha = (fecha: string) => {
@@ -197,6 +231,9 @@ export default function PedidosPage() {
         <div className="space-y-4">
           {pedidos.map((pedido) => {
             const estaCancelado = pedido.estado === 'cancelado';
+            const costoMayorista = calcularCostoMayorista(pedido.lineas);
+            const totalVenta = calcularTotalPedido(pedido.lineas);
+            const gananciaReal = calcularGananciaPedido(pedido.lineas, pedido.montoRealPagado);
             
             return (
               <div 
@@ -287,12 +324,19 @@ export default function PedidosPage() {
 
                       <div className="text-right ml-4">
                         <p className={`text-2xl font-bold ${estaCancelado ? 'text-gray-400 line-through' : 'text-nadin-pink'}`}>
-                          {formatCurrency(calcularTotalPedido(pedido.lineas))}
+                          {formatCurrency(totalVenta)}
                         </p>
                         {!estaCancelado && (
-                          <p className="text-sm text-green-600">
-                            Ganancia: {formatCurrency(calcularGananciaPedido(pedido.lineas))}
-                          </p>
+                          <>
+                            <p className="text-sm text-green-600 font-semibold">
+                              Ganancia: {formatCurrency(gananciaReal)}
+                            </p>
+                            {pedido.montoRealPagado !== null && (
+                              <p className="text-xs text-gray-500">
+                                (Monto real pagado)
+                              </p>
+                            )}
+                          </>
                         )}
                         <div className="mt-2">
                           {expandedPedido === pedido.id ? (
@@ -371,6 +415,56 @@ export default function PedidosPage() {
                             </span>
                           </label>
                         </div>
+                      </div>
+
+                      {/* 💰 MONTO REAL PAGADO A NADIN */}
+                      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          💰 Monto Real Pagado a Nadin
+                        </label>
+                        <p className="text-xs text-gray-600 mb-3">
+                          Costo mayorista: {formatCurrency(costoMayorista)} | 
+                          {pedido.montoRealPagado !== null 
+                            ? ` Monto real: ${formatCurrency(pedido.montoRealPagado)}`
+                            : ' No especificado (usa costo mayorista)'
+                          }
+                        </p>
+
+                        {editingMontoReal === pedido.id ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              value={tempMontoReal}
+                              onChange={(e) => setTempMontoReal((e.target as HTMLInputElement).value)}
+                              placeholder="Ingresá el monto real"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+                              step="0.01"
+                              min="0"
+                            />
+                            <button
+                              onClick={() => handleSaveMontoReal(pedido.id)}
+                              disabled={updatingOrder === pedido.id}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-wait"
+                            >
+                              Guardar
+                            </button>
+                            <button
+                              onClick={handleCancelEditMontoReal}
+                              disabled={updatingOrder === pedido.id}
+                              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:cursor-wait"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleEditMontoReal(pedido.id, pedido.montoRealPagado)}
+                            disabled={updatingOrder === pedido.id}
+                            className="w-full px-4 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark disabled:bg-gray-400 disabled:cursor-wait"
+                          >
+                            {pedido.montoRealPagado !== null ? 'Editar Monto Real' : 'Agregar Monto Real'}
+                          </button>
+                        )}
                       </div>
 
                       {/* 🆕 BOTÓN DE CANCELAR */}
