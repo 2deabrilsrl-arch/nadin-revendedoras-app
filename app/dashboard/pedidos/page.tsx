@@ -435,7 +435,7 @@ export default function PedidosPage() {
                             <input
                               type="number"
                               value={tempMontoReal}
-                              onChange={(e) => setTempMontoReal((e.target as HTMLInputElement).value)}
+                              onChange={(e) => setTempMontoReal((e.target as any).value)}
                               placeholder="Ingresá el monto real"
                               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
                               step="0.01"
