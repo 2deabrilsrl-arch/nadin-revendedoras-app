@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Eye, EyeOff, Search, Package, Tag, ChevronDown, ChevronUp, Filter, Sparkles } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { ArrowLeft, Eye, EyeOff, Search, Package, Tag, ChevronDown, ChevronUp, Filter, Sparkles, X } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
 import ProductModal, { CartItem } from '@/components/ProductModal';
 import ProductCard from '@/components/ProductCard';
@@ -17,6 +17,141 @@ interface Product {
   image: string;
   images?: string[];
   variants: any[];
+}
+
+// Componente SearchableSelect (input con dropdown filtrable)
+interface SearchableSelectProps {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+function SearchableSelect({ label, options, value, onChange, placeholder }: SearchableSelectProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [filteredOptions, setFilteredOptions] = useState<string[]>(options);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setFilteredOptions(options);
+  }, [options]);
+
+  useEffect(() => {
+    // Filtrar opciones según el término de búsqueda
+    if (searchTerm.trim() === '') {
+      setFilteredOptions(options);
+    } else {
+      const filtered = options.filter(option =>
+        option.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredOptions(filtered);
+    }
+  }, [searchTerm, options]);
+
+  useEffect(() => {
+    // Cerrar dropdown al hacer click afuera
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (option: string) => {
+    onChange(option);
+    setSearchTerm('');
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    onChange('');
+    setSearchTerm('');
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <label className="block text-sm font-semibold text-gray-700 mb-2">
+        {label}
+      </label>
+      
+      <div className="relative">
+        <input
+          type="text"
+          value={value || searchTerm}
+          onChange={(e) => {
+            setSearchTerm((e.target as any).value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder || `Buscar ${label.toLowerCase()}...`}
+          className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+        />
+        
+        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+          {value && (
+            <button
+              onClick={handleClear}
+              className="p-1 hover:bg-gray-100 rounded"
+              type="button"
+            >
+              <X size={16} className="text-gray-400" />
+            </button>
+          )}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-1 hover:bg-gray-100 rounded"
+            type="button"
+          >
+            <ChevronDown size={16} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          {filteredOptions.length > 0 ? (
+            <>
+              <button
+                onClick={handleClear}
+                className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 text-gray-500 text-sm"
+              >
+                Todos
+              </button>
+              {filteredOptions.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => handleSelect(option)}
+                  className={`w-full px-3 py-2 text-left hover:bg-gray-50 ${
+                    value === option ? 'bg-nadin-pink/10 text-nadin-pink font-semibold' : ''
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </>
+          ) : (
+            <div className="px-3 py-2 text-gray-400 text-sm">
+              No se encontraron opciones
+            </div>
+          )}
+        </div>
+      )}
+
+      {options.length > 0 && (
+        <p className="text-xs text-green-600 mt-1">
+          {filteredOptions.length} {filteredOptions.length === 1 ? 'opción' : 'opciones'} disponibles
+        </p>
+      )}
+      {options.length === 0 && (
+        <p className="text-xs text-gray-400 mt-1">No hay opciones disponibles</p>
+      )}
+    </div>
+  );
 }
 
 // Función para obtener el ícono correcto según la categoría
@@ -385,55 +520,23 @@ export default function CatalogoPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {/* Filtro de Talle */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Talle
-                  </label>
-                  <select
-                    value={selectedTalle}
-                    onChange={(e) => setSelectedTalle((e.target as any).value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-                  >
-                    <option value="">Todos los talles</option>
-                    {availableTalles.map((talle) => (
-                      <option key={talle} value={talle}>
-                        {talle}
-                      </option>
-                    ))}
-                  </select>
-                  {availableTalles.length === 0 && (
-                    <p className="text-xs text-gray-400 mt-1">No hay talles disponibles</p>
-                  )}
-                  {availableTalles.length > 0 && (
-                    <p className="text-xs text-green-600 mt-1">{availableTalles.length} talles disponibles</p>
-                  )}
-                </div>
+                {/* Filtro de Talle con búsqueda */}
+                <SearchableSelect
+                  label="Talle"
+                  options={availableTalles}
+                  value={selectedTalle}
+                  onChange={setSelectedTalle}
+                  placeholder="Buscar o seleccionar talle..."
+                />
 
-                {/* Filtro de Color */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Color
-                  </label>
-                  <select
-                    value={selectedColor}
-                    onChange={(e) => setSelectedColor((e.target as any).value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-                  >
-                    <option value="">Todos los colores</option>
-                    {availableColores.map((color) => (
-                      <option key={color} value={color}>
-                        {color}
-                      </option>
-                    ))}
-                  </select>
-                  {availableColores.length === 0 && (
-                    <p className="text-xs text-gray-400 mt-1">No hay colores disponibles</p>
-                  )}
-                  {availableColores.length > 0 && (
-                    <p className="text-xs text-green-600 mt-1">{availableColores.length} colores disponibles</p>
-                  )}
-                </div>
+                {/* Filtro de Color con búsqueda */}
+                <SearchableSelect
+                  label="Color"
+                  options={availableColores}
+                  value={selectedColor}
+                  onChange={setSelectedColor}
+                  placeholder="Buscar o seleccionar color..."
+                />
               </div>
 
               {/* Botones de acción */}
