@@ -57,8 +57,8 @@ function SearchableSelect({ label, options, value, onChange, placeholder }: Sear
         setIsOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    (globalThis as any).document?.addEventListener('mousedown', handleClickOutside);
+    return () => (globalThis as any).document?.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleSelect = (option: string) => {
