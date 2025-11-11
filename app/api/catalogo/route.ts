@@ -28,8 +28,10 @@ export async function GET(req: NextRequest) {
     const subcategory = searchParams.get('subcategory') || undefined;
     const productType = searchParams.get('productType') || undefined;
     const search = searchParams.get('search') || undefined;
+    const talle = searchParams.get('talle') || undefined;
+    const color = searchParams.get('color') || undefined;
 
-    console.log('📦 Filtros recibidos:', { brand, category, subcategory, productType, search });
+    console.log('📦 Filtros recibidos:', { brand, category, subcategory, productType, search, talle, color });
 
     // ✅ CONSTRUIR CATEGORÍA COMPLETA
     let fullCategory: string | undefined = undefined;
@@ -48,13 +50,40 @@ export async function GET(req: NextRequest) {
     console.log('🎯 Categoría construida:', fullCategory);
 
     // ✅ USAR EL FILTRO CORRECTO DE getCachedProducts
-    const products = await getCachedProducts({
+    let products = await getCachedProducts({
       brand,
       category: fullCategory,
       search
     });
 
-    console.log(`✅ Productos filtrados: ${products.length}`);
+    console.log(`📦 Productos antes de filtrar por talle/color: ${products.length}`);
+
+    // ✅ FILTRAR POR TALLE Y COLOR (EN VARIANTES)
+    if (talle || color) {
+      products = products.filter((product: any) => {
+        if (!product.variants || !Array.isArray(product.variants)) {
+          return false;
+        }
+
+        // El producto debe tener al menos 1 variante que cumpla con los filtros
+        return product.variants.some((variant: any) => {
+          // Debe tener stock
+          if (variant.stock <= 0) return false;
+
+          // Si hay filtro de talle, debe coincidir
+          if (talle && variant.talle !== talle) return false;
+
+          // Si hay filtro de color, debe coincidir
+          if (color && variant.color !== color) return false;
+
+          return true;
+        });
+      });
+
+      console.log(`📦 Productos después de filtrar por talle/color: ${products.length}`);
+    }
+
+    console.log(`✅ Productos finales: ${products.length}`);
 
     return NextResponse.json(products);
   } catch (error) {
