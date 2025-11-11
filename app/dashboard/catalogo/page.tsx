@@ -605,7 +605,7 @@ export default function CatalogoPage() {
                     </label>
                     <select
                       value={selectedTalle}
-                      onChange={(e) => setSelectedTalle((e.target as HTMLSelectElement).value)}
+                      onChange={(e) => setSelectedTalle((e.target as any).value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
                     >
                       <option value="">Todos los talles</option>
@@ -627,7 +627,7 @@ export default function CatalogoPage() {
                     </label>
                     <select
                       value={selectedColor}
-                      onChange={(e) => setSelectedColor((e.target as HTMLSelectElement).value)}
+                      onChange={(e) => setSelectedColor((e.target as any).value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
                     >
                       <option value="">Todos los colores</option>
@@ -674,7 +674,7 @@ export default function CatalogoPage() {
             type="text"
             placeholder="Buscar por nombre o SKU..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm((e.target as HTMLInputElement).value)}
+            onChange={(e) => setSearchTerm((e.target as any).value)}
             onKeyPress={(e) => {
               if (e.key === 'Enter') {
                 loadProducts({
