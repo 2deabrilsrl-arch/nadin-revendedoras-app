@@ -1,13 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Eye, EyeOff, Search, Package, Tag, ChevronDown, ChevronUp, Filter } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Search, Package, Tag, ChevronDown, ChevronUp, Filter, Sparkles } from 'lucide-react';
 import { calcularPrecioVenta, formatCurrency } from '@/lib/precios';
 import ProductModal, { CartItem } from '@/components/ProductModal';
 import ProductCard from '@/components/ProductCard';
 import { useCart } from '@/components/CartContext';
 import BackToHomeButton from '@/components/BackToHomeButton';
 
-type ViewMode = 'initial' | 'brands' | 'categories' | 'subcategories' | 'producttypes' | 'products';
+type ViewMode = 'initial' | 'all' | 'brands' | 'categories' | 'subcategories' | 'producttypes' | 'products';
 
 interface Product {
   id: number;
@@ -57,8 +57,8 @@ export default function CatalogoPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // ✅ NUEVOS ESTADOS PARA FILTROS
-  const [showFilters, setShowFilters] = useState(false);
+  // Estados para filtros GLOBALES
+  const [showFilters, setShowFilters] = useState(true); // Filtros abiertos por defecto
   const [availableTalles, setAvailableTalles] = useState<string[]>([]);
   const [availableColores, setAvailableColores] = useState<string[]>([]);
   const [selectedTalle, setSelectedTalle] = useState('');
@@ -73,13 +73,102 @@ export default function CatalogoPage() {
       const user = JSON.parse(userStr);
       setUserMargen(user.margen || 60);
     }
+    
+    // Cargar filtros al inicio (todos los productos)
+    loadFilterOptions();
   }, []);
 
-  // Cargar marcas
+  // Cargar opciones de filtros disponibles
+  const loadFilterOptions = async () => {
+    setLoadingFilters(true);
+    try {
+      const params = new URLSearchParams();
+      if (selectedBrand) params.append('brand', selectedBrand);
+      if (selectedCategory) params.append('category', selectedCategory);
+      if (selectedSubcategory) params.append('subcategory', selectedSubcategory);
+      if (selectedProductType) params.append('productType', selectedProductType);
+
+      console.log('🔍 [FILTROS] Cargando opciones con params:', params.toString());
+      const res = await fetch(`/api/filtros?${params.toString()}`);
+      const data = await res.json() as any;
+
+      console.log('✅ [FILTROS] Respuesta recibida:', data);
+      
+      setAvailableTalles(data.talles || []);
+      setAvailableColores(data.colores || []);
+      
+      console.log('✅ [FILTROS] Talles disponibles:', data.talles?.length || 0);
+      console.log('✅ [FILTROS] Colores disponibles:', data.colores?.length || 0);
+    } catch (error) {
+      console.error('❌ [FILTROS] Error cargando opciones:', error);
+      setAvailableTalles([]);
+      setAvailableColores([]);
+    } finally {
+      setLoadingFilters(false);
+    }
+  };
+
+  // Aplicar filtros (recarga productos con talle/color seleccionados)
+  const applyFilters = () => {
+    if (viewMode === 'all' || viewMode === 'products') {
+      loadProducts({
+        brand: selectedBrand,
+        category: selectedCategory,
+        subcategory: selectedSubcategory,
+        productType: selectedProductType
+      });
+    } else if (viewMode === 'brands') {
+      loadBrands();
+    } else if (viewMode === 'categories') {
+      loadCategories();
+    }
+  };
+
+  // Limpiar filtros
+  const clearFilters = () => {
+    setSelectedTalle('');
+    setSelectedColor('');
+    // Recargar vista actual sin filtros
+    if (viewMode === 'all' || viewMode === 'products') {
+      loadProducts({
+        brand: selectedBrand,
+        category: selectedCategory,
+        subcategory: selectedSubcategory,
+        productType: selectedProductType
+      });
+    }
+  };
+
+  // Cargar TODO el catálogo
+  const loadAllProducts = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (selectedTalle) params.append('talle', selectedTalle);
+      if (selectedColor) params.append('color', selectedColor);
+
+      const res = await fetch(`/api/catalogo?${params.toString()}`);
+      const data = await res.json() as any;
+
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error cargando todos los productos:', error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cargar marcas (filtradas por talle/color si están seleccionados)
   const loadBrands = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/catalogo');
+      const params = new URLSearchParams();
+      if (selectedTalle) params.append('talle', selectedTalle);
+      if (selectedColor) params.append('color', selectedColor);
+      
+      const res = await fetch(`/api/catalogo?${params.toString()}`);
       const data: Product[] = await res.json() as any;
 
       const brandsArray: string[] = Array.from(new Set(
@@ -96,11 +185,15 @@ export default function CatalogoPage() {
     }
   };
 
-  // Cargar categorías principales
+  // Cargar categorías principales (filtradas por talle/color si están seleccionados)
   const loadCategories = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/catalogo');
+      const params = new URLSearchParams();
+      if (selectedTalle) params.append('talle', selectedTalle);
+      if (selectedColor) params.append('color', selectedColor);
+      
+      const res = await fetch(`/api/catalogo?${params.toString()}`);
       const data: Product[] = await res.json() as any;
 
       const catsSet = new Set<string>();
@@ -127,7 +220,12 @@ export default function CatalogoPage() {
   const loadSubcategories = async (category: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/catalogo?category=${encodeURIComponent(category)}`);
+      const params = new URLSearchParams();
+      params.append('category', category);
+      if (selectedTalle) params.append('talle', selectedTalle);
+      if (selectedColor) params.append('color', selectedColor);
+      
+      const res = await fetch(`/api/catalogo?${params.toString()}`);
       const data: Product[] = await res.json() as any;
 
       const subcatsSet = new Set<string>();
@@ -154,9 +252,13 @@ export default function CatalogoPage() {
   const loadProductTypes = async (category: string, subcategory: string) => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/catalogo?category=${encodeURIComponent(category)}&subcategory=${encodeURIComponent(subcategory)}`
-      );
+      const params = new URLSearchParams();
+      params.append('category', category);
+      params.append('subcategory', subcategory);
+      if (selectedTalle) params.append('talle', selectedTalle);
+      if (selectedColor) params.append('color', selectedColor);
+      
+      const res = await fetch(`/api/catalogo?${params.toString()}`);
       const data: Product[] = await res.json() as any;
 
       const typesSet = new Set<string>();
@@ -181,30 +283,6 @@ export default function CatalogoPage() {
     }
   };
 
-  // ✅ NUEVA FUNCIÓN: Cargar opciones de filtros disponibles
-  const loadFilterOptions = async () => {
-    setLoadingFilters(true);
-    try {
-      const params = new URLSearchParams();
-      if (selectedBrand) params.append('brand', selectedBrand);
-      if (selectedCategory) params.append('category', selectedCategory);
-      if (selectedSubcategory) params.append('subcategory', selectedSubcategory);
-      if (selectedProductType) params.append('productType', selectedProductType);
-
-      const res = await fetch(`/api/filtros?${params.toString()}`);
-      const data = await res.json() as any;
-
-      setAvailableTalles(data.talles || []);
-      setAvailableColores(data.colores || []);
-    } catch (error) {
-      console.error('Error cargando opciones de filtros:', error);
-      setAvailableTalles([]);
-      setAvailableColores([]);
-    } finally {
-      setLoadingFilters(false);
-    }
-  };
-
   // Cargar productos
   const loadProducts = async (filters: any = {}) => {
     setLoading(true);
@@ -215,8 +293,6 @@ export default function CatalogoPage() {
       if (filters.subcategory) params.append('subcategory', filters.subcategory);
       if (filters.productType) params.append('productType', filters.productType);
       if (searchTerm) params.append('search', searchTerm);
-      
-      // ✅ AGREGAR FILTROS DE TALLE Y COLOR
       if (selectedTalle) params.append('talle', selectedTalle);
       if (selectedColor) params.append('color', selectedColor);
 
@@ -225,7 +301,7 @@ export default function CatalogoPage() {
 
       setProducts(Array.isArray(data) ? data : []);
       
-      // ✅ Cargar opciones de filtros cuando hay productos
+      // Actualizar opciones de filtros según el contexto
       await loadFilterOptions();
     } catch (error) {
       console.error('Error cargando productos:', error);
@@ -257,6 +333,8 @@ export default function CatalogoPage() {
       } else {
         setViewMode('initial');
       }
+    } else if (viewMode === 'all') {
+      setViewMode('initial');
     } else if (viewMode === 'producttypes') {
       setViewMode('subcategories');
     } else if (viewMode === 'subcategories') {
@@ -273,46 +351,144 @@ export default function CatalogoPage() {
     setSelectedProductType('');
     setSearchTerm('');
     setProducts([]);
-    setSelectedTalle('');
-    setSelectedColor('');
-    setShowFilters(false);
     setViewMode('initial');
   };
 
-  // ✅ NUEVA FUNCIÓN: Limpiar filtros de talle y color
-  const clearFilters = () => {
-    setSelectedTalle('');
-    setSelectedColor('');
-    loadProducts({
-      brand: selectedBrand,
-      category: selectedCategory,
-      subcategory: selectedSubcategory,
-      productType: selectedProductType
-    });
-  };
+  // COMPONENTE: Panel de Filtros (se muestra en TODAS las vistas)
+  const FilterPanel = () => (
+    <div className="mb-4">
+      <button
+        onClick={() => setShowFilters(!showFilters)}
+        className="w-full flex items-center justify-between bg-white border-2 border-gray-200 rounded-lg px-4 py-3 hover:border-nadin-pink transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Filter size={20} className="text-nadin-pink" />
+          <span className="font-semibold">
+            Filtros
+            {(selectedTalle || selectedColor) && (
+              <span className="ml-2 text-sm text-nadin-pink">
+                ({[selectedTalle, selectedColor].filter(Boolean).length} activos)
+              </span>
+            )}
+          </span>
+        </div>
+        {showFilters ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+      </button>
 
-  // ✅ NUEVA FUNCIÓN: Aplicar filtros
-  const applyFilters = () => {
-    loadProducts({
-      brand: selectedBrand,
-      category: selectedCategory,
-      subcategory: selectedSubcategory,
-      productType: selectedProductType
-    });
-  };
+      {showFilters && (
+        <div className="mt-2 bg-white border-2 border-gray-200 rounded-lg p-4">
+          {loadingFilters ? (
+            <div className="text-center py-4 text-gray-500">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nadin-pink mx-auto mb-2"></div>
+              Cargando opciones...
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Filtro de Talle */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Talle
+                  </label>
+                  <select
+                    value={selectedTalle}
+                    onChange={(e) => setSelectedTalle((e.target as any).value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+                  >
+                    <option value="">Todos los talles</option>
+                    {availableTalles.map((talle) => (
+                      <option key={talle} value={talle}>
+                        {talle}
+                      </option>
+                    ))}
+                  </select>
+                  {availableTalles.length === 0 && (
+                    <p className="text-xs text-gray-400 mt-1">No hay talles disponibles</p>
+                  )}
+                  {availableTalles.length > 0 && (
+                    <p className="text-xs text-green-600 mt-1">{availableTalles.length} talles disponibles</p>
+                  )}
+                </div>
 
-  // Vista inicial
+                {/* Filtro de Color */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Color
+                  </label>
+                  <select
+                    value={selectedColor}
+                    onChange={(e) => setSelectedColor((e.target as any).value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+                  >
+                    <option value="">Todos los colores</option>
+                    {availableColores.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                  {availableColores.length === 0 && (
+                    <p className="text-xs text-gray-400 mt-1">No hay colores disponibles</p>
+                  )}
+                  {availableColores.length > 0 && (
+                    <p className="text-xs text-green-600 mt-1">{availableColores.length} colores disponibles</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex gap-2">
+                <button
+                  onClick={applyFilters}
+                  className="flex-1 bg-nadin-pink text-white px-4 py-2 rounded-lg font-semibold hover:bg-nadin-pink-dark transition-colors"
+                >
+                  Aplicar Filtros
+                </button>
+                {(selectedTalle || selectedColor) && (
+                  <button
+                    onClick={clearFilters}
+                    className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // Vista inicial - 3 opciones: Ver Todo, Por Marca, Por Categoría
   if (viewMode === 'initial') {
     return (
       <div className="max-w-4xl mx-auto p-4">
         <BackToHomeButton />
         
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-nadin-pink mb-2">Catálogo Completo</h1>
           <p className="text-gray-600">Elegí cómo querés navegar</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Filtros globales arriba */}
+        <FilterPanel />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Ver Todo */}
+          <button
+            onClick={() => {
+              setViewMode('all');
+              loadAllProducts();
+            }}
+            className="bg-gradient-to-br from-green-500 to-emerald-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105"
+          >
+            <Sparkles size={64} className="mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Ver Todo</h2>
+            <p className="text-green-100">Explorá el catálogo completo</p>
+          </button>
+
+          {/* Por Marca */}
           <button
             onClick={() => {
               setViewMode('brands');
@@ -325,6 +501,7 @@ export default function CatalogoPage() {
             <p className="text-pink-100">Explorá productos de marcas específicas</p>
           </button>
 
+          {/* Por Categoría */}
           <button
             onClick={() => {
               setViewMode('categories');
@@ -341,6 +518,108 @@ export default function CatalogoPage() {
     );
   }
 
+  // Vista "Ver Todo" - Muestra todos los productos
+  if (viewMode === 'all') {
+    return (
+      <div className="max-w-7xl mx-auto p-4">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={resetAndGoInitial}
+            className="flex items-center gap-2 text-nadin-pink hover:text-nadin-pink-dark"
+          >
+            <ArrowLeft size={20} />
+            Volver
+          </button>
+
+          <button
+            onClick={() => setShowCosts(!showCosts)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg"
+          >
+            {showCosts ? <EyeOff size={20} /> : <Eye size={20} />}
+            <span className="hidden sm:inline">{showCosts ? 'Ocultar' : 'Ver'} Costos</span>
+          </button>
+        </div>
+
+        <h2 className="text-2xl font-bold mb-4">Catálogo Completo</h2>
+
+        {/* Filtros arriba */}
+        <FilterPanel />
+
+        {/* Buscador */}
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm((e.target as any).value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  loadAllProducts();
+                }
+              }}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="mb-4 text-sm text-gray-600">
+          Mostrando {products.length} productos
+          {selectedTalle && ` | Talle: ${selectedTalle}`}
+          {selectedColor && ` | Color: ${selectedColor}`}
+        </div>
+
+        {/* Grid de productos */}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-nadin-pink"></div>
+          </div>
+        ) : products.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {products.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onClick={() => {
+                  setSelectedProduct(product);
+                  setIsModalOpen(true);
+                }}
+                userMargen={userMargen}
+                showCosts={showCosts}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-500">
+            <Package size={48} className="mx-auto mb-3 opacity-50" />
+            <p className="text-lg">No se encontraron productos</p>
+            {(selectedTalle || selectedColor) && (
+              <button
+                onClick={clearFilters}
+                className="mt-4 text-nadin-pink hover:underline"
+              >
+                Limpiar filtros y ver todos
+              </button>
+            )}
+          </div>
+        )}
+
+        <ProductModal
+          product={selectedProduct}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedProduct(null);
+          }}
+          userMargen={userMargen}
+          onAddToCart={handleAddToCart}
+        />
+      </div>
+    );
+  }
+
   // Vista de marcas
   if (viewMode === 'brands') {
     return (
@@ -353,7 +632,10 @@ export default function CatalogoPage() {
           Volver al inicio
         </button>
 
-        <h2 className="text-2xl font-bold mb-6">Seleccioná una Marca</h2>
+        <h2 className="text-2xl font-bold mb-4">Seleccioná una Marca</h2>
+
+        {/* Filtros arriba */}
+        <FilterPanel />
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -393,7 +675,10 @@ export default function CatalogoPage() {
           Volver al inicio
         </button>
 
-        <h2 className="text-2xl font-bold mb-6">Seleccioná una Categoría</h2>
+        <h2 className="text-2xl font-bold mb-4">Seleccioná una Categoría</h2>
+
+        {/* Filtros arriba */}
+        <FilterPanel />
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -436,7 +721,10 @@ export default function CatalogoPage() {
         </button>
 
         <h2 className="text-2xl font-bold mb-2">{selectedCategory}</h2>
-        <p className="text-gray-600 mb-6">Seleccioná una subcategoría</p>
+        <p className="text-gray-600 mb-4">Seleccioná una subcategoría</p>
+
+        {/* Filtros arriba */}
+        <FilterPanel />
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -488,7 +776,10 @@ export default function CatalogoPage() {
         </button>
 
         <h2 className="text-2xl font-bold mb-2">{selectedCategory} → {selectedSubcategory}</h2>
-        <p className="text-gray-600 mb-6">Seleccioná un tipo de producto</p>
+        <p className="text-gray-600 mb-4">Seleccioná un tipo de producto</p>
+
+        {/* Filtros arriba */}
+        <FilterPanel />
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -547,7 +838,7 @@ export default function CatalogoPage() {
     );
   }
 
-  // Vista de productos CON FILTROS
+  // Vista de productos
   return (
     <div className="max-w-7xl mx-auto p-4">
       <div className="flex items-center justify-between mb-4">
@@ -568,103 +859,8 @@ export default function CatalogoPage() {
         </button>
       </div>
 
-      {/* ✅ PANEL DE FILTROS COLAPSABLE */}
-      <div className="mb-4">
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="w-full flex items-center justify-between bg-white border-2 border-gray-200 rounded-lg px-4 py-3 hover:border-nadin-pink transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Filter size={20} className="text-nadin-pink" />
-            <span className="font-semibold">
-              Filtros
-              {(selectedTalle || selectedColor) && (
-                <span className="ml-2 text-sm text-nadin-pink">
-                  ({[selectedTalle, selectedColor].filter(Boolean).length} activos)
-                </span>
-              )}
-            </span>
-          </div>
-          {showFilters ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-        </button>
-
-        {showFilters && (
-          <div className="mt-2 bg-white border-2 border-gray-200 rounded-lg p-4">
-            {loadingFilters ? (
-              <div className="text-center py-4 text-gray-500">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nadin-pink mx-auto mb-2"></div>
-                Cargando opciones...
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  {/* Filtro de Talle */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Talle
-                    </label>
-                    <select
-                      value={selectedTalle}
-                      onChange={(e) => setSelectedTalle((e.target as any).value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-                    >
-                      <option value="">Todos los talles</option>
-                      {availableTalles.map((talle) => (
-                        <option key={talle} value={talle}>
-                          {talle}
-                        </option>
-                      ))}
-                    </select>
-                    {availableTalles.length === 0 && (
-                      <p className="text-xs text-gray-400 mt-1">No hay talles disponibles</p>
-                    )}
-                  </div>
-
-                  {/* Filtro de Color */}
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Color
-                    </label>
-                    <select
-                      value={selectedColor}
-                      onChange={(e) => setSelectedColor((e.target as any).value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-                    >
-                      <option value="">Todos los colores</option>
-                      {availableColores.map((color) => (
-                        <option key={color} value={color}>
-                          {color}
-                        </option>
-                      ))}
-                    </select>
-                    {availableColores.length === 0 && (
-                      <p className="text-xs text-gray-400 mt-1">No hay colores disponibles</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Botones de acción */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={applyFilters}
-                    className="flex-1 bg-nadin-pink text-white px-4 py-2 rounded-lg font-semibold hover:bg-nadin-pink-dark transition-colors"
-                  >
-                    Aplicar Filtros
-                  </button>
-                  {(selectedTalle || selectedColor) && (
-                    <button
-                      onClick={clearFilters}
-                      className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-                    >
-                      Limpiar
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Filtros arriba */}
+      <FilterPanel />
 
       {/* Buscador */}
       <div className="mb-4">
@@ -690,7 +886,7 @@ export default function CatalogoPage() {
         </div>
       </div>
 
-      {/* Info de productos */}
+      {/* Info */}
       <div className="mb-4 text-sm text-gray-600">
         Mostrando {products.length} productos
         {selectedBrand && ` de ${selectedBrand}`}
@@ -736,7 +932,6 @@ export default function CatalogoPage() {
         </div>
       )}
 
-      {/* Modal de producto */}
       <ProductModal
         product={selectedProduct}
         isOpen={isModalOpen}
