@@ -130,8 +130,7 @@ export async function processGamificationAfterSale(
 /**
  * Recalcula gamificación cuando se cancela un pedido
  * 
- * IMPORTANTE: NO resta puntos, simplemente recalcula TODO
- * basándose en pedidos NO cancelados
+ * IMPORTANTE: Revoca badges y recalcula puntos basándose SOLO en pedidos NO cancelados
  */
 export async function recalculateGamificationAfterCancel(userId: string) {
   const { prisma } = await import('@/lib/prisma');
@@ -177,32 +176,206 @@ export async function recalculateGamificationAfterCancel(userId: string) {
         }
       });
 
-      // Si bajó de nivel, informar (pero NO quitar puntos)
+      // Si bajó de nivel, informar
       if (oldLevel.currentLevel !== newLevel) {
         console.log(`   ⚠️ Cambio de nivel: ${oldLevel.currentLevel} → ${newLevel}`);
       }
     }
 
-    // 5. Agregar registro de cancelación (sin quitar puntos)
+    // 5. 🔥 REVOCAR BADGES que ya no califican
+    await revokeBadgesIfNeeded(userId, pedidosCompletados);
+
+    // 6. 🔥 RECALCULAR PUNTOS TOTALES desde cero
+    await recalculateTotalPoints(userId, pedidosCompletados);
+
+    // 7. Agregar registro de cancelación
     await prisma.point.create({
       data: {
         userId,
-        amount: 0, // 0 puntos = solo registro informativo
+        amount: 0,
         reason: 'cancel',
-        description: 'Pedido cancelado - gamificación recalculada'
+        description: 'Pedido cancelado - gamificación recalculada automáticamente'
       }
     });
 
-    console.log(`   ℹ️ Pedidos cancelados no afectan puntos acumulados`);
-    console.log(`   ℹ️ Badges permanecen (son logros permanentes)`);
     console.log(`   ✅ Recálculo completado`);
     console.log(`🔄 ========================================\n`);
 
-    return { success: true, level: newLevel };
+    return { success: true, level: newLevel, salesCount: pedidosCompletados };
   } catch (error) {
     console.error('❌ Error recalculando gamificación:', error);
     return { success: false, error };
   }
+}
+
+/**
+ * Revoca badges que el usuario ya no debería tener según sus ventas actuales
+ */
+async function revokeBadgesIfNeeded(userId: string, currentSales: number) {
+  const { prisma } = await import('@/lib/prisma');
+
+  const badgesToCheck: { slug: string; minSales: number }[] = [
+    { slug: 'primera-venta', minSales: 1 },
+    { slug: '10-ventas', minSales: 10 },
+    { slug: '50-ventas', minSales: 50 },
+    { slug: '100-ventas', minSales: 100 },
+    { slug: '200-ventas', minSales: 200 },
+    { slug: '500-ventas', minSales: 500 }
+  ];
+
+  for (const { slug, minSales } of badgesToCheck) {
+    // Si el usuario YA NO cumple el requisito
+    if (currentSales < minSales) {
+      const badge = await prisma.badge.findUnique({
+        where: { slug }
+      });
+
+      if (badge) {
+        const userBadge = await prisma.userBadge.findUnique({
+          where: {
+            userId_badgeId: {
+              userId,
+              badgeId: badge.id
+            }
+          }
+        });
+
+        // Si tiene el badge pero ya no califica, REVOCARLO
+        if (userBadge) {
+          await prisma.userBadge.delete({
+            where: {
+              id: userBadge.id
+            }
+          });
+
+          console.log(`   🚫 Badge revocado: ${badge.name} (necesita ${minSales} ventas, tiene ${currentSales})`);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Recalcula los puntos totales del usuario desde cero
+ * Borra todos los puntos antiguos y los regenera basándose en pedidos válidos
+ */
+async function recalculateTotalPoints(userId: string, currentSales: number) {
+  const { prisma } = await import('@/lib/prisma');
+
+  // 1. Obtener todos los pedidos completados NO cancelados
+  const pedidosValidos = await prisma.pedido.findMany({
+    where: {
+      userId,
+      estado: {
+        in: ['entregado']
+      },
+      paidByClient: true,
+      NOT: {
+        estado: 'cancelado'
+      }
+    },
+    include: {
+      lineas: true
+    },
+    orderBy: {
+      createdAt: 'asc'
+    }
+  });
+
+  // 2. Borrar TODOS los puntos anteriores (excepto los de cancelación)
+  await prisma.point.deleteMany({
+    where: {
+      userId,
+      reason: {
+        in: ['sale', 'badge', 'level_up']
+      }
+    }
+  });
+
+  console.log(`   🗑️ Puntos anteriores eliminados, recalculando...`);
+
+  // 3. Recalcular puntos por cada venta válida
+  let totalPuntosRecalculados = 0;
+  
+  for (let i = 0; i < pedidosValidos.length; i++) {
+    const pedido = pedidosValidos[i];
+    const isFirstSale = (i === 0);
+    
+    // Calcular monto total del pedido
+    const montoVenta = pedido.lineas.reduce((sum, linea) => {
+      return sum + (linea.venta * linea.qty);
+    }, 0);
+
+    const puntos = calculateSalePoints(montoVenta, isFirstSale);
+    
+    await prisma.point.create({
+      data: {
+        userId,
+        amount: puntos,
+        reason: 'sale',
+        description: `Venta de $${montoVenta} (recalculado)`
+      }
+    });
+
+    totalPuntosRecalculados += puntos;
+  }
+
+  // 4. Recalcular puntos por badges VIGENTES
+  const badgesVigentes = await prisma.userBadge.findMany({
+    where: { userId },
+    include: { badge: true }
+  });
+
+  for (const userBadge of badgesVigentes) {
+    await prisma.point.create({
+      data: {
+        userId,
+        amount: userBadge.badge.points,
+        reason: 'badge',
+        description: `Badge: ${userBadge.badge.name} (recalculado)`
+      }
+    });
+
+    totalPuntosRecalculados += userBadge.badge.points;
+  }
+
+  // 5. Recalcular puntos por nivel actual
+  const userLevel = await prisma.userLevel.findUnique({
+    where: { userId }
+  });
+
+  if (userLevel && userLevel.currentLevel !== 'principiante') {
+    // Puntos por haber alcanzado este nivel (100 puntos por nivel alcanzado)
+    const levelPoints = getLevelPoints(userLevel.currentLevel);
+    
+    await prisma.point.create({
+      data: {
+        userId,
+        amount: levelPoints,
+        reason: 'level_up',
+        description: `Nivel ${userLevel.currentLevel} (recalculado)`
+      }
+    });
+
+    totalPuntosRecalculados += levelPoints;
+  }
+
+  console.log(`   ✅ Puntos recalculados: ${totalPuntosRecalculados} pts`);
+}
+
+/**
+ * Obtiene los puntos correspondientes a un nivel
+ */
+function getLevelPoints(level: string): number {
+  const levelPointsMap: Record<string, number> = {
+    'bronce': 100,
+    'plata': 200,
+    'oro': 300,
+    'diamante': 400,
+    'leyenda': 500
+  };
+  
+  return levelPointsMap[level] || 0;
 }
 
 /**
