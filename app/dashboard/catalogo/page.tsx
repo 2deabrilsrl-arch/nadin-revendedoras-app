@@ -53,7 +53,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder }: Sear
   useEffect(() => {
     // Cerrar dropdown al hacer click afuera
     function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      if (wrapperRef.current && !(wrapperRef.current as any).contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
