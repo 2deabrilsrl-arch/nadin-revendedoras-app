@@ -83,7 +83,7 @@ export default function AnalyticsPage() {
       // Cargar consolidaciones para ganancias reales
       const consRes = await fetch(`/api/consolidar?userId=${uid}`);
       if (consRes.ok) {
-        const consData = await consRes.json();
+        const consData = await consRes.json() as Consolidacion[];
         setConsolidaciones(consData);
       }
     } catch (err) {
