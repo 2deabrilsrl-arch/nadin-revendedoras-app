@@ -378,6 +378,7 @@ export async function sendConsolidacionEmailMejorado(data: any) {
 
   await transporter.sendMail({
     from: process.env.FROM_EMAIL,
+    replyTo: `${revendedora.name} <${revendedora.email}>`, // Al responder, va a la revendedora
     to: 'nadinlenceria@gmail.com',
     subject,
     html,
