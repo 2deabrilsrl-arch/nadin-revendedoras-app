@@ -39,7 +39,7 @@ export default function ConsolidacionesPage() {
     try {
       const res = await fetch(`/api/consolidar?userId=${userId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as Consolidacion[];
         setConsolidaciones(data);
       }
     } catch (error) {
