@@ -26,7 +26,7 @@ interface Pedido {
   orderStatus: string;
   paidToNadin: boolean;
   paidByClient: boolean;
-  montoRealPagado: number | null;
+  // ❌ ELIMINADO: montoRealPagado (esto va en Consolidacion)
   createdAt: string;
   lineas: PedidoLinea[];
 }
@@ -47,8 +47,7 @@ export default function PedidosPage() {
   const [expandedPedido, setExpandedPedido] = useState<string | null>(null);
   const [userId, setUserId] = useState('');
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
-  const [editingMontoReal, setEditingMontoReal] = useState<string | null>(null);
-  const [tempMontoReal, setTempMontoReal] = useState<string>('');
+  // ❌ ELIMINADOS: editingMontoReal, tempMontoReal
 
   useEffect(() => {
     const userStr = (globalThis as any).localStorage?.getItem('user');
@@ -113,28 +112,7 @@ export default function PedidosPage() {
     }
   };
 
-  const handleEditMontoReal = (pedidoId: string, currentMonto: number | null) => {
-    setEditingMontoReal(pedidoId);
-    setTempMontoReal(currentMonto?.toString() || '');
-  };
-
-  const handleSaveMontoReal = async (pedidoId: string) => {
-    const montoReal = tempMontoReal.trim() === '' ? null : parseFloat(tempMontoReal);
-    
-    if (montoReal !== null && (isNaN(montoReal) || montoReal < 0)) {
-      (globalThis as any).alert?.('Ingresá un monto válido');
-      return;
-    }
-
-    await updateOrderStatus(pedidoId, { montoRealPagado: montoReal });
-    setEditingMontoReal(null);
-    setTempMontoReal('');
-  };
-
-  const handleCancelEditMontoReal = () => {
-    setEditingMontoReal(null);
-    setTempMontoReal('');
-  };
+  // ❌ ELIMINADAS: handleEditMontoReal, handleSaveMontoReal, handleCancelEditMontoReal
 
   const calcularTotalPedido = (lineas: PedidoLinea[]) => {
     return lineas.reduce((sum, linea) => sum + (linea.venta * linea.qty), 0);
@@ -144,14 +122,12 @@ export default function PedidosPage() {
     return lineas.reduce((sum, linea) => sum + (linea.mayorista * linea.qty), 0);
   };
 
-  const calcularGananciaPedido = (lineas: PedidoLinea[], montoRealPagado: number | null) => {
+  const calcularGananciaPedido = (lineas: PedidoLinea[]) => {
     const totalVenta = calcularTotalPedido(lineas);
-    const costoBase = calcularCostoMayorista(lineas);
+    const costoMayorista = calcularCostoMayorista(lineas);
     
-    // Si hay monto real pagado, usar ese; sino usar costo mayorista
-    const costoReal = montoRealPagado !== null ? montoRealPagado : costoBase;
-    
-    return totalVenta - costoReal;
+    // Ganancia estimada simple: venta - mayorista
+    return totalVenta - costoMayorista;
   };
 
   const formatearFecha = (fecha: string) => {
@@ -192,14 +168,8 @@ export default function PedidosPage() {
   if (error) {
     return (
       <div className="max-w-6xl mx-auto p-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-800">{error}</p>
-          <button
-            onClick={() => userId && loadPedidos(userId)}
-            className="mt-4 bg-nadin-pink text-white px-6 py-2 rounded-lg"
-          >
-            Reintentar
-          </button>
         </div>
       </div>
     );
@@ -208,154 +178,148 @@ export default function PedidosPage() {
   return (
     <div className="max-w-6xl mx-auto p-4 pb-24">
       <BackToHomeButton />
-      <div className="flex items-center justify-between mb-6">
+      
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Mis Pedidos</h2>
-          <p className="text-sm text-gray-600">Historial de pedidos realizados</p>
+          <h1 className="text-3xl font-bold mb-2">Mis Pedidos</h1>
+          <p className="text-gray-600">Historial de pedidos realizados</p>
         </div>
         <button
-          onClick={() => userId && loadPedidos(userId)}
-          className="text-nadin-pink hover:text-nadin-pink-dark font-medium text-sm"
+          onClick={() => loadPedidos(userId)}
+          className="flex items-center gap-2 px-4 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark"
         >
           🔄 Actualizar
         </button>
       </div>
 
+      {/* Filtros rápidos */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        <button className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium hover:bg-yellow-200">
+          ⏰ Pendiente
+        </button>
+        <button className="px-4 py-2 bg-orange-100 text-orange-800 rounded-full text-sm font-medium hover:bg-orange-200">
+          💳 Debe pagar a Nadin
+        </button>
+        <button className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium hover:bg-blue-200">
+          💰 Cliente debe pagar
+        </button>
+      </div>
+
       {pedidos.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <Package size={48} className="mx-auto mb-3 text-gray-400" />
-          <p className="text-lg text-gray-600 mb-2">No hay pedidos aún</p>
-          <p className="text-sm text-gray-500">Tus pedidos aparecerán aquí</p>
+        <div className="bg-white rounded-lg shadow p-12 text-center">
+          <Package className="mx-auto mb-4 text-gray-300" size={64} />
+          <p className="text-gray-500 mb-2">No hay pedidos todavía</p>
+          <p className="text-sm text-gray-400 mb-6">
+            Los pedidos que crees aparecerán aquí
+          </p>
+          <a
+            href="/dashboard/crear-pedido"
+            className="inline-block px-6 py-3 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark font-semibold"
+          >
+            Crear Primer Pedido
+          </a>
         </div>
       ) : (
         <div className="space-y-4">
           {pedidos.map((pedido) => {
-            const estaCancelado = pedido.estado === 'cancelado';
-            const costoMayorista = calcularCostoMayorista(pedido.lineas);
             const totalVenta = calcularTotalPedido(pedido.lineas);
-            const gananciaReal = calcularGananciaPedido(pedido.lineas, pedido.montoRealPagado);
-            
+            const costoMayorista = calcularCostoMayorista(pedido.lineas);
+            const ganancia = calcularGananciaPedido(pedido.lineas);
+            const estaCancelado = pedido.estado === 'cancelado';
+
             return (
-              <div 
-                key={pedido.id} 
-                className={`bg-white rounded-lg shadow hover:shadow-lg transition-shadow ${
-                  estaCancelado ? 'opacity-60' : ''
+              <div
+                key={pedido.id}
+                className={`bg-white rounded-lg shadow-md overflow-hidden border-2 ${
+                  estaCancelado ? 'border-red-300 opacity-60' : 'border-gray-100'
                 }`}
               >
-                {/* Header del pedido con estados */}
-                <div className="p-4">
-                  {/* Badges de estado superiores */}
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    {/* Badge de cancelado (si aplica) */}
-                    {estaCancelado ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        <XCircle size={14} />
-                        CANCELADO
-                      </span>
-                    ) : (
-                      <StatusBadge status={pedido.orderStatus || 'pending'} />
-                    )}
-                    
-                    {/* Badge de pago a Nadin */}
-                    {!estaCancelado && (
-                      pedido.paidToNadin ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <CheckCircle size={14} />
-                          Pagado a Nadin
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          <Clock size={14} />
-                          Debe pagar a Nadin
-                        </span>
-                      )
-                    )}
-
-                    {/* Badge de pago del cliente */}
-                    {!estaCancelado && (
-                      pedido.paidByClient ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <DollarSign size={14} />
-                          Cliente pagó
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          <Clock size={14} />
-                          Cliente debe pagar
-                        </span>
-                      )
-                    )}
-                  </div>
-
-                  {/* Info del pedido */}
-                  <div 
-                    className="cursor-pointer"
-                    onClick={() => setExpandedPedido(expandedPedido === pedido.id ? null : pedido.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
-                            estaCancelado ? 'bg-gray-400 text-white' : 'bg-nadin-pink text-white'
-                          }`}>
-                            <Package size={16} />
-                            Pedido #{pedido.id.slice(0, 8)}
+                <div className="p-6">
+                  {/* Header del pedido */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-bold">
+                          Pedido #{pedido.id.slice(-8)}
+                        </h3>
+                        {estaCancelado ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <XCircle size={14} />
+                            Cancelado
                           </span>
-                          <span className="text-xs text-gray-500">
-                            {formatearFecha(pedido.createdAt)}
-                          </span>
+                        ) : (
+                          <StatusBadge status={pedido.orderStatus || 'pending'} />
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <User size={16} />
+                          <span>{pedido.cliente}</span>
                         </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <User size={16} />
-                            <span className="font-medium">{pedido.cliente}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600">
+                        {pedido.telefono && (
+                          <div className="flex items-center gap-1">
                             <Phone size={16} />
                             <span>{pedido.telefono}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <FileText size={16} />
-                            <span>{pedido.lineas.length} producto{pedido.lineas.length !== 1 ? 's' : ''}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right ml-4">
-                        <p className={`text-2xl font-bold ${estaCancelado ? 'text-gray-400 line-through' : 'text-nadin-pink'}`}>
-                          {formatCurrency(totalVenta)}
-                        </p>
-                        {!estaCancelado && (
-                          <>
-                            <p className="text-sm text-green-600 font-semibold">
-                              Ganancia: {formatCurrency(gananciaReal)}
-                            </p>
-                            {pedido.montoRealPagado !== null && (
-                              <p className="text-xs text-gray-500">
-                                (Monto real pagado)
-                              </p>
-                            )}
-                          </>
                         )}
-                        <div className="mt-2">
-                          {expandedPedido === pedido.id ? (
-                            <ChevronUp size={20} className="text-gray-400" />
-                          ) : (
-                            <ChevronDown size={20} className="text-gray-400" />
-                          )}
+                        <div className="flex items-center gap-1">
+                          <Calendar size={16} />
+                          <span>{formatearFecha(pedido.createdAt)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Package size={16} />
+                          <span>{pedido.lineas.length} productos</span>
                         </div>
                       </div>
                     </div>
 
-                    {pedido.nota && (
-                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-gray-700">
-                          <strong>Nota:</strong> {pedido.nota}
-                        </p>
+                    <div className="text-right">
+                      <button
+                        onClick={() => setExpandedPedido(
+                          expandedPedido === pedido.id ? null : pedido.id
+                        )}
+                        className="text-nadin-pink hover:underline text-sm font-medium mb-2 flex items-center gap-1"
+                      >
+                        {expandedPedido === pedido.id ? 'Ocultar' : 'Ver'} detalle
+                        {expandedPedido === pedido.id ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        )}
+                      </button>
+                      <div className="text-3xl font-bold text-nadin-pink">
+                        {formatCurrency(totalVenta)}
                       </div>
-                    )}
+                      {!estaCancelado && (
+                        <>
+                          <div className="text-sm text-gray-500">
+                            Ganancia: {formatCurrency(ganancia)}
+                          </div>
+                          {ganancia === 0 && (
+                            <div className="mt-1 text-xs text-gray-400">
+                              (Monto real pagado)
+                            </div>
+                          )}
+                        </>
+                      )}
+                      <div className="mt-2">
+                        {expandedPedido === pedido.id ? (
+                          <ChevronUp size={20} className="text-gray-400" />
+                        ) : (
+                          <ChevronDown size={20} className="text-gray-400" />
+                        )}
+                      </div>
+                    </div>
                   </div>
+
+                  {pedido.nota && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-gray-700">
+                        <strong>Nota:</strong> {pedido.nota}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Gestión de estados - Solo si NO está cancelado */}
                   {!estaCancelado && (
@@ -417,55 +381,8 @@ export default function PedidosPage() {
                         </div>
                       </div>
 
-                      {/* 💰 MONTO REAL PAGADO A NADIN */}
-                      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          💰 Monto Real Pagado a Nadin
-                        </label>
-                        <p className="text-xs text-gray-600 mb-3">
-                          Costo mayorista: {formatCurrency(costoMayorista)} | 
-                          {pedido.montoRealPagado !== null 
-                            ? ` Monto real: ${formatCurrency(pedido.montoRealPagado)}`
-                            : ' No especificado (usa costo mayorista)'
-                          }
-                        </p>
-
-                        {editingMontoReal === pedido.id ? (
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              value={tempMontoReal}
-                              onChange={(e) => setTempMontoReal((e.target as any).value)}
-                              placeholder="Ingresá el monto real"
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
-                              step="0.01"
-                              min="0"
-                            />
-                            <button
-                              onClick={() => handleSaveMontoReal(pedido.id)}
-                              disabled={updatingOrder === pedido.id}
-                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-wait"
-                            >
-                              Guardar
-                            </button>
-                            <button
-                              onClick={handleCancelEditMontoReal}
-                              disabled={updatingOrder === pedido.id}
-                              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:cursor-wait"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleEditMontoReal(pedido.id, pedido.montoRealPagado)}
-                            disabled={updatingOrder === pedido.id}
-                            className="w-full px-4 py-2 bg-nadin-pink text-white rounded-lg hover:bg-nadin-pink-dark disabled:bg-gray-400 disabled:cursor-wait"
-                          >
-                            {pedido.montoRealPagado !== null ? 'Editar Monto Real' : 'Agregar Monto Real'}
-                          </button>
-                        )}
-                      </div>
+                      {/* ❌ ELIMINADA SECCIÓN: 💰 MONTO REAL PAGADO A NADIN */}
+                      {/* Esto ahora se maneja en /consolidaciones */}
 
                       {/* 🆕 BOTÓN DE CANCELAR */}
                       <div className="flex justify-end">

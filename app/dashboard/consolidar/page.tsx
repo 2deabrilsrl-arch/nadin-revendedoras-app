@@ -2,31 +2,61 @@
 import { useState, useEffect } from 'react';
 import BackToHomeButton from '@/components/BackToHomeButton';
 
+interface Pedido {
+  id: string;
+  cliente: string;
+  telefono: string;
+  estado: string;
+  createdAt: string;
+  lineas: Array<{
+    name: string;
+    talle: string;
+    color: string;
+    qty: number;
+    venta: number;
+    mayorista: number;
+  }>;
+}
+
 export default function ConsolidarPage() {
   const [formaPago, setFormaPago] = useState('');
   const [tipoEnvio, setTipoEnvio] = useState('');
   const [transporte, setTransporte] = useState('');
   const [descuentoTotal, setDescuentoTotal] = useState(0);
-  const [pedidos, setPedidos] = useState<any[]>([]);
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [selectedPedidos, setSelectedPedidos] = useState<string[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const userData = (globalThis as any).localStorage?.getItem('user');
     if (userData) {
       const u = JSON.parse(userData);
       setUser(u);
-      
-      // Cargar pedidos pendientes
-      fetch(`/api/pedidos?userId=${u.id}`)
-        .then(r => r.json())
-        .then((data: any) => {
-          // @ts-ignore - data es array de pedidos
-          const pendientes = data.filter((p: any) => p.estado === 'pendiente');
-          setPedidos(pendientes);
-        });
+      cargarPedidosPendientes(u.id);
     }
   }, []);
+
+  const cargarPedidosPendientes = async (userId: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/pedidos?userId=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        // Filtrar solo pedidos pendientes
+        const pendientes = data.filter((p: Pedido) => p.estado === 'pendiente');
+        setPedidos(pendientes);
+        console.log('Pedidos pendientes cargados:', pendientes.length);
+      } else {
+        console.error('Error al cargar pedidos:', res.status);
+      }
+    } catch (error) {
+      console.error('Error al cargar pedidos:', error);
+      (globalThis as any).alert?.('Error al cargar pedidos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleConsolidar = async () => {
     if (selectedPedidos.length === 0) {
@@ -67,8 +97,7 @@ export default function ConsolidarPage() {
       setTransporte('');
       setDescuentoTotal(0);
       // Recargar pedidos
-      // @ts-ignore - window is available in client components
-      window.location.reload();
+      if (user) cargarPedidosPendientes(user.id);
     } else {
       (globalThis as any).alert?.('❌ Error al consolidar pedidos');
     }
@@ -77,7 +106,7 @@ export default function ConsolidarPage() {
   const totales = pedidos
     .filter(p => selectedPedidos.includes(p.id))
     .reduce((acc, p) => {
-      p.lineas.forEach((l: any) => {
+      p.lineas.forEach((l) => {
         acc.venta += l.venta * l.qty;
         acc.mayorista += l.mayorista * l.qty;
       });
@@ -87,6 +116,17 @@ export default function ConsolidarPage() {
   const totalConDescuento = totales.venta - descuentoTotal;
   const ganancia = totalConDescuento - totales.mayorista;
 
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto p-4">
+        <BackToHomeButton />
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Cargando pedidos...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-4">
       <BackToHomeButton />
@@ -95,24 +135,24 @@ export default function ConsolidarPage() {
       {pedidos.length > 0 ? (
         <>
           <div className="bg-white rounded-lg shadow p-4 mb-4">
-            <h3 className="font-semibold mb-3">Seleccioná pedidos:</h3>
+            <h3 className="font-semibold mb-3">Seleccioná pedidos pendientes:</h3>
             <div className="space-y-2">
               {pedidos.map(pedido => {
-                const total = pedido.lineas.reduce((sum: number, l: any) => sum + (l.venta * l.qty), 0);
+                const total = pedido.lineas.reduce((sum, l) => sum + (l.venta * l.qty), 0);
                 const isSelected = selectedPedidos.includes(pedido.id);
                 
                 return (
                   <label 
                     key={pedido.id}
-                    className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer ${
-                      isSelected ? 'border-nadin-pink bg-pink-50' : 'border-gray-200'
+                    className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                      isSelected ? 'border-nadin-pink bg-pink-50' : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <input 
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => {
-                        if ((e.target as any).checked) {
+                        if ((e.target as HTMLInputElement).checked) {
                           setSelectedPedidos([...selectedPedidos, pedido.id]);
                         } else {
                           setSelectedPedidos(selectedPedidos.filter(id => id !== pedido.id));
@@ -123,8 +163,11 @@ export default function ConsolidarPage() {
                     <div className="flex-1">
                       <p className="font-semibold">{pedido.cliente}</p>
                       <p className="text-sm text-gray-600">
-                        {pedido.lineas.length} productos · ${total.toLocaleString('es-AR')}
+                        {pedido.lineas.length} producto(s) · ${total.toLocaleString('es-AR')}
                       </p>
+                      {pedido.telefono && (
+                        <p className="text-xs text-gray-500">Tel: {pedido.telefono}</p>
+                      )}
                     </div>
                   </label>
                 );
@@ -149,7 +192,7 @@ export default function ConsolidarPage() {
                     <input 
                       type="number"
                       value={descuentoTotal}
-                      onChange={(e) => setDescuentoTotal(Number((e.target as any).value))}
+                      onChange={(e) => setDescuentoTotal(Number((e.target as HTMLInputElement).value))}
                       placeholder="0"
                       className="w-32 px-3 py-1 border rounded text-right"
                       min="0"
@@ -183,7 +226,7 @@ export default function ConsolidarPage() {
                   <label className="block font-medium mb-2 text-sm">Forma de pago *</label>
                   <select
                     value={formaPago}
-                    onChange={(e) => setFormaPago((e.target as any).value)}
+                    onChange={(e) => setFormaPago((e.target as HTMLSelectElement).value)}
                     className="w-full p-3 border rounded-lg"
                   >
                     <option value="">Seleccionar...</option>
@@ -199,8 +242,8 @@ export default function ConsolidarPage() {
                   <select
                     value={tipoEnvio}
                     onChange={(e) => {
-                      setTipoEnvio((e.target as any).value);
-                      if ((e.target as any).value !== 'Cadete a Transporte') {
+                      setTipoEnvio((e.target as HTMLSelectElement).value);
+                      if ((e.target as HTMLSelectElement).value !== 'Cadete a Transporte') {
                         setTransporte('');
                       }
                     }}
@@ -219,7 +262,7 @@ export default function ConsolidarPage() {
                     <input
                       type="text"
                       value={transporte}
-                      onChange={(e) => setTransporte((e.target as any).value)}
+                      onChange={(e) => setTransporte((e.target as HTMLInputElement).value)}
                       placeholder="Completar nombre de Transporte a enviar"
                       className="w-full p-3 border rounded-lg"
                     />
@@ -239,7 +282,16 @@ export default function ConsolidarPage() {
         </>
       ) : (
         <div className="bg-white rounded-lg shadow p-12 text-center">
-          <p className="text-gray-500">No hay pedidos pendientes para consolidar</p>
+          <p className="text-gray-500 text-lg mb-2">No hay pedidos pendientes para consolidar</p>
+          <p className="text-sm text-gray-400">
+            Creá pedidos de tus clientas y aparecerán aquí
+          </p>
+          <a 
+            href="/dashboard/nuevo-pedido"
+            className="inline-block mt-4 bg-nadin-pink text-white px-6 py-2 rounded-lg font-semibold hover:bg-nadin-pink-dark"
+          >
+            Crear Pedido
+          </a>
         </div>
       )}
     </div>

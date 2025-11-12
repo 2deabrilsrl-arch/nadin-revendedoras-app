@@ -16,6 +16,29 @@ interface PagoBody {
   costoReal: number;
 }
 
+// GET - Obtener consolidaciones de un usuario
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'userId requerido' }, { status: 400 });
+    }
+
+    const consolidaciones = await prisma.consolidacion.findMany({
+      where: { userId },
+      orderBy: { enviadoAt: 'desc' }
+    });
+
+    return NextResponse.json(consolidaciones);
+  } catch (error) {
+    console.error('Error al obtener consolidaciones:', error);
+    return NextResponse.json({ error: 'Error al obtener consolidaciones' }, { status: 500 });
+  }
+}
+
+// POST - Crear nueva consolidación
 export async function POST(req: NextRequest) {
   try {
     const { 
@@ -93,7 +116,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Nueva función para registrar el pago
+// PATCH - Registrar pago real a Nadin
 export async function PATCH(req: NextRequest) {
   try {
     const { consolidacionId, costoReal } = await req.json() as PagoBody;
@@ -106,7 +129,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Consolidación no encontrada' }, { status: 404 });
     }
 
-    const gananciaNeta = (consolidacion.totalVenta - consolidacion.descuentoTotal) - costoReal;
+    // Calcular ganancia neta real
+    const totalFinal = consolidacion.totalVenta - consolidacion.descuentoTotal;
+    const gananciaNeta = totalFinal - costoReal;
 
     const updated = await prisma.consolidacion.update({
       where: { id: consolidacionId },

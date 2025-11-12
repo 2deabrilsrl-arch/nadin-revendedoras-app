@@ -65,8 +65,7 @@ model Pedido {
   paidToNadin    Boolean  @default(false)
   paidByClient   Boolean  @default(false)
   
-  // 💰 GANANCIA REAL - Monto real que la revendedora pagó a Nadin
-  montoRealPagado Float?
+  // ❌ ELIMINADO: montoRealPagado (esto va en Consolidacion)
   
   // Fechas de cambio de estado
   sentToNadinAt      DateTime?
@@ -104,16 +103,19 @@ model Linea {
 model Consolidacion {
   id              String   @id @default(cuid())
   userId          String
-  pedidoIds       String
+  pedidoIds       String   // JSON array de IDs de pedidos
   formaPago       String
   tipoEnvio       String
   transporteNombre String?
-  totalMayorista  Float
-  totalVenta      Float
-  ganancia        Float
+  totalMayorista  Float    // Costo mayorista total
+  totalVenta      Float    // Total vendido a clientas
+  ganancia        Float    // Ganancia estimada (venta - mayorista)
   descuentoTotal  Float    @default(0)
-  costoReal       Float?
-  gananciaNeta    Float?
+  
+  // 💰 GANANCIA REAL
+  costoReal       Float?   // Lo que REALMENTE pagaste a Nadin
+  gananciaNeta    Float?   // Ganancia real: (totalVenta - descuento) - costoReal
+  
   csvPath         String?
   enviadoAt       DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id])

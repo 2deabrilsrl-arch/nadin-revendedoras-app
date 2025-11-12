@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Users, ShoppingBag, DollarSign, TrendingUp, 
-  Award, Package, Calendar, ArrowUp, ArrowDown
+  Award, Package, Calendar, AlertCircle, CheckCircle
 } from 'lucide-react';
 import { 
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, 
+  LineChart, Line, XAxis, YAxis, 
   CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import BackToHomeButton from '@/components/BackToHomeButton';
@@ -40,11 +40,23 @@ interface Analytics {
   periodo: string;
 }
 
+interface Consolidacion {
+  id: string;
+  totalMayorista: number;
+  totalVenta: number;
+  ganancia: number;
+  descuentoTotal: number;
+  costoReal?: number;
+  gananciaNeta?: number;
+  enviadoAt: string;
+}
+
 export default function AnalyticsPage() {
   const router = useRouter();
   const [userId, setUserId] = useState('');
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [consolidaciones, setConsolidaciones] = useState<Consolidacion[]>([]);
   const [period, setPeriod] = useState('all');
 
   useEffect(() => {
@@ -55,20 +67,25 @@ export default function AnalyticsPage() {
     }
     const user = JSON.parse(userStr);
     setUserId(user.id);
-    loadAnalytics(user.id, period);
+    loadData(user.id, period);
   }, [period]);
 
-  const loadAnalytics = async (uid: string, selectedPeriod: string) => {
+  const loadData = async (uid: string, selectedPeriod: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/analytics?userId=${uid}&period=${selectedPeriod}`);
       
-      if (!response.ok) {
-        throw new Error('Error al cargar analytics');
-      }
+      // Cargar analytics existentes
+      const analyticsRes = await fetch(`/api/analytics?userId=${uid}&period=${selectedPeriod}`);
+      if (!analyticsRes.ok) throw new Error('Error al cargar analytics');
+      const analyticsData = await analyticsRes.json() as Analytics;
+      setAnalytics(analyticsData);
 
-      const data = await response.json() as Analytics;
-      setAnalytics(data);
+      // Cargar consolidaciones para ganancias reales
+      const consRes = await fetch(`/api/consolidar?userId=${uid}`);
+      if (consRes.ok) {
+        const consData = await consRes.json();
+        setConsolidaciones(consData);
+      }
     } catch (err) {
       console.error('Error:', err);
       (globalThis as any).alert?.('Error al cargar analytics');
@@ -92,6 +109,13 @@ export default function AnalyticsPage() {
       year: 'numeric'
     });
   };
+
+  // 💰 Calcular ganancias reales vs estimadas
+  const consolidacionesConPago = consolidaciones.filter(c => c.costoReal !== null && c.costoReal !== undefined);
+  const consolidacionesSinPago = consolidaciones.filter(c => c.costoReal === null || c.costoReal === undefined);
+  
+  const gananciaNetaReal = consolidacionesConPago.reduce((sum, c) => sum + (c.gananciaNeta || 0), 0);
+  const gananciaEstimada = consolidacionesSinPago.reduce((sum, c) => sum + c.ganancia, 0);
 
   if (loading || !analytics) {
     return (
@@ -131,6 +155,29 @@ export default function AnalyticsPage() {
         </select>
       </div>
 
+      {/* 🆕 Alerta de consolidaciones sin pago */}
+      {consolidacionesSinPago.length > 0 && (
+        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="text-yellow-600 flex-shrink-0" size={24} />
+            <div className="flex-1">
+              <p className="font-semibold text-yellow-800 mb-1">
+                ⚠️ Tenés {consolidacionesSinPago.length} consolidación(es) sin pago registrado
+              </p>
+              <p className="text-sm text-yellow-700 mb-2">
+                Las ganancias mostradas pueden no reflejar tu ganancia real. Registrá el monto que pagaste a Nadin.
+              </p>
+              <a 
+                href="/consolidaciones"
+                className="text-sm font-semibold text-yellow-800 underline hover:text-yellow-900"
+              >
+                → Ir a registrar pagos
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -163,6 +210,7 @@ export default function AnalyticsPage() {
           <div className="text-sm text-gray-600">Total Ventas</div>
         </div>
 
+        {/* 🆕 Card de Ganancia con diferenciación */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-2">
             <TrendingUp className="text-purple-600" size={24} />
@@ -170,7 +218,21 @@ export default function AnalyticsPage() {
           <div className="text-3xl font-bold text-gray-900">
             {formatCurrency(metricas.totalGanancia)}
           </div>
-          <div className="text-sm text-gray-600">Ganancia</div>
+          <div className="text-sm text-gray-600">Ganancia Total</div>
+          {consolidaciones.length > 0 && (
+            <div className="mt-2 pt-2 border-t text-xs">
+              <div className="flex items-center gap-1 text-green-600">
+                <CheckCircle size={12} />
+                <span>Real: {formatCurrency(gananciaNetaReal)}</span>
+              </div>
+              {gananciaEstimada > 0 && (
+                <div className="flex items-center gap-1 text-yellow-600">
+                  <AlertCircle size={12} />
+                  <span>Est: {formatCurrency(gananciaEstimada)}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -323,6 +385,26 @@ export default function AnalyticsPage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* 🆕 Info sobre ganancias */}
+      {consolidaciones.length > 0 && (
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mt-6">
+          <h4 className="font-semibold text-blue-900 mb-2">💡 Acerca de las ganancias</h4>
+          <ul className="space-y-1 text-sm text-blue-800">
+            <li>
+              <strong>Ganancia Real:</strong> Calculada con el monto que pagaste a Nadin (incluye descuentos, comisiones, etc.)
+            </li>
+            <li>
+              <strong>Ganancia Estimada:</strong> Basada en precios mayoristas del catálogo (puede diferir del monto real)
+            </li>
+            {consolidacionesSinPago.length > 0 && (
+              <li className="text-yellow-700">
+                <strong>⚠️ Importante:</strong> Registrá el pago real en tus consolidaciones para estadísticas precisas
+              </li>
+            )}
+          </ul>
         </div>
       )}
     </div>
