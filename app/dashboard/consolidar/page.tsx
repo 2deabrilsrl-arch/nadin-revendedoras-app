@@ -42,7 +42,7 @@ export default function ConsolidarPage() {
     try {
       const res = await fetch(`/api/pedidos?userId=${userId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as Pedido[];
         // Filtrar solo pedidos pendientes
         const pendientes = data.filter((p: Pedido) => p.estado === 'pendiente');
         setPedidos(pendientes);
@@ -151,8 +151,8 @@ export default function ConsolidarPage() {
                     <input 
                       type="checkbox"
                       checked={isSelected}
-                      onChange={(e) => {
-                        if ((e.target as HTMLInputElement).checked) {
+                      onChange={(e: any) => {
+                        if (e.target.checked) {
                           setSelectedPedidos([...selectedPedidos, pedido.id]);
                         } else {
                           setSelectedPedidos(selectedPedidos.filter(id => id !== pedido.id));
@@ -192,7 +192,7 @@ export default function ConsolidarPage() {
                     <input 
                       type="number"
                       value={descuentoTotal}
-                      onChange={(e) => setDescuentoTotal(Number((e.target as HTMLInputElement).value))}
+                      onChange={(e: any) => setDescuentoTotal(Number(e.target.value))}
                       placeholder="0"
                       className="w-32 px-3 py-1 border rounded text-right"
                       min="0"
@@ -226,7 +226,7 @@ export default function ConsolidarPage() {
                   <label className="block font-medium mb-2 text-sm">Forma de pago *</label>
                   <select
                     value={formaPago}
-                    onChange={(e) => setFormaPago((e.target as HTMLSelectElement).value)}
+                    onChange={(e: any) => setFormaPago(e.target.value)}
                     className="w-full p-3 border rounded-lg"
                   >
                     <option value="">Seleccionar...</option>
@@ -241,9 +241,9 @@ export default function ConsolidarPage() {
                   <label className="block font-medium mb-2 text-sm">Tipo de envío *</label>
                   <select
                     value={tipoEnvio}
-                    onChange={(e) => {
-                      setTipoEnvio((e.target as HTMLSelectElement).value);
-                      if ((e.target as HTMLSelectElement).value !== 'Cadete a Transporte') {
+                    onChange={(e: any) => {
+                      setTipoEnvio(e.target.value);
+                      if (e.target.value !== 'Cadete a Transporte') {
                         setTransporte('');
                       }
                     }}
@@ -262,7 +262,7 @@ export default function ConsolidarPage() {
                     <input
                       type="text"
                       value={transporte}
-                      onChange={(e) => setTransporte((e.target as HTMLInputElement).value)}
+                      onChange={(e: any) => setTransporte(e.target.value)}
                       placeholder="Completar nombre de Transporte a enviar"
                       className="w-full p-3 border rounded-lg"
                     />
