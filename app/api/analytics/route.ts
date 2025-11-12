@@ -48,18 +48,11 @@ export async function GET(req: NextRequest) {
       return sum + p.lineas.reduce((lineSum, l) => lineSum + (l.venta * l.qty), 0);
     }, 0);
     
-    // 💰 GANANCIA REAL: Usar montoRealPagado si existe, sino costo mayorista
+    // 💰 GANANCIA ESTIMADA: Usar costos mayoristas
+    // (Las ganancias reales se calculan en el frontend desde Consolidaciones)
     const totalGanancia = pedidos.reduce((sum, p) => {
       const totalVentaPedido = p.lineas.reduce((lineSum, l) => lineSum + (l.venta * l.qty), 0);
-      
-      // Si hay monto real pagado, usarlo; sino calcular con costos mayoristas
-      let costoPedido: number;
-      if (p.montoRealPagado !== null) {
-        costoPedido = p.montoRealPagado;
-      } else {
-        costoPedido = p.lineas.reduce((lineSum, l) => lineSum + (l.mayorista * l.qty), 0);
-      }
-      
+      const costoPedido = p.lineas.reduce((lineSum, l) => lineSum + (l.mayorista * l.qty), 0);
       const gananciaPedido = totalVentaPedido - costoPedido;
       return sum + gananciaPedido;
     }, 0);
