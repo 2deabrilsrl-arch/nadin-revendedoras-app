@@ -291,7 +291,7 @@ export default function ConsolidacionesPage() {
                                 <input
                                   type="number"
                                   value={costoReal}
-                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCostoReal(e.target.value)}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCostoReal(e.currentTarget.value)}
                                   placeholder="Ej: 45000"
                                   className="w-full px-4 py-2 border-2 border-yellow-300 rounded-lg focus:border-yellow-500 focus:outline-none"
                                   min="0"
