@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import InstallPWA from '@/components/InstallPWA';
 import OfflineBanner from '@/components/OfflineBanner';
+import WhatsAppButton from '@/components/WhatsAppButton';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -167,6 +168,7 @@ export default function RootLayout({
         <OfflineBanner />
         {children}
         <InstallPWA />
+        <WhatsAppButton />
       </body>
     </html>
   );
