@@ -259,6 +259,10 @@ function generarHTMLEmail(data: any, productosAgrupados: ProductoAgrupado[]) {
       <span>${revendedora.email}</span>
     </div>
     <div class="info-row">
+      <span class="label">DNI:</span>
+      <span><strong>${revendedora.dni}</strong></span>
+    </div>
+    <div class="info-row">
       <span class="label">Teléfono:</span>
       <span>${revendedora.telefono}</span>
     </div>

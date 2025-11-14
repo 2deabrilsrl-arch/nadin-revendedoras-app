@@ -117,6 +117,9 @@ export async function processGamificationAfterSale(
     // 7. Verificar y asignar badges basados en ventas completadas
     await checkAndAssignBadges(userId, pedidosCompletados);
 
+    // 8. 🎖️ NUEVO: Trackear ventas por marca y verificar badges de embajadora
+    await trackBrandSales(userId);
+
     console.log(`   ✅ Gamificación procesada`);
     console.log(`🎮 ========================================\n`);
 
@@ -188,7 +191,10 @@ export async function recalculateGamificationAfterCancel(userId: string) {
     // 6. 🔥 RECALCULAR PUNTOS TOTALES desde cero
     await recalculateTotalPoints(userId, pedidosCompletados);
 
-    // 7. Agregar registro de cancelación
+    // 7. 🎖️ NUEVO: Recalcular ventas por marca y revocar badges si es necesario
+    await trackBrandSales(userId);
+
+    // 8. Agregar registro de cancelación
     await prisma.point.create({
       data: {
         userId,
@@ -431,5 +437,204 @@ async function checkAndAssignBadges(userId: string, totalSales: number) {
         }
       }
     }
+  }
+}
+
+// ==========================================
+// 🎖️ EMBAJADORAS DE MARCAS - FUNCIONES
+// ==========================================
+
+/**
+ * Configuración de niveles para embajadoras de marca
+ */
+interface BrandLevelConfig {
+  level: 'bronce' | 'plata' | 'oro' | 'diamante';
+  minSales: number;
+  points: number;
+  emoji: string;
+}
+
+const BRAND_LEVELS: BrandLevelConfig[] = [
+  { level: 'bronce', minSales: 10, points: 150, emoji: '🥉' },
+  { level: 'plata', minSales: 25, points: 300, emoji: '🥈' },
+  { level: 'oro', minSales: 50, points: 500, emoji: '🥇' },
+  { level: 'diamante', minSales: 100, points: 1000, emoji: '💎' }
+];
+
+/**
+ * Trackea ventas por marca y asigna/revoca badges de embajadora automáticamente
+ * Se ejecuta después de cada venta completada o cancelación
+ */
+async function trackBrandSales(userId: string) {
+  const { prisma } = await import('@/lib/prisma');
+
+  try {
+    console.log(`\n🎖️  ========================================`);
+    console.log(`🎖️  TRACKING EMBAJADORAS DE MARCAS`);
+    console.log(`🎖️  ========================================`);
+
+    // 1. Obtener todas las marcas activas
+    const activeBrands = await prisma.brandAmbassador.findMany({
+      where: { isActive: true }
+    });
+
+    if (activeBrands.length === 0) {
+      console.log(`   ℹ️  No hay marcas activas en el programa`);
+      return;
+    }
+
+    console.log(`   📊 ${activeBrands.length} marcas activas`);
+
+    // 2. Para cada marca, contar ventas completadas del usuario
+    for (const brand of activeBrands) {
+      // Contar ventas SOLO de pedidos completados NO cancelados
+      const brandSalesCount = await prisma.linea.count({
+        where: {
+          brand: brand.brandName, // Comparar con el nombre de marca en Linea
+          pedido: {
+            userId,
+            estado: {
+              in: ['entregado']
+            },
+            paidByClient: true,
+            NOT: {
+              estado: 'cancelado'
+            }
+          }
+        }
+      });
+
+      console.log(`   🏷️  ${brand.brandName}: ${brandSalesCount} ventas`);
+
+      // 3. Actualizar o crear registro de ventas por marca
+      await prisma.userBrandSales.upsert({
+        where: {
+          userId_brandSlug: {
+            userId,
+            brandSlug: brand.brandSlug
+          }
+        },
+        create: {
+          userId,
+          brandSlug: brand.brandSlug,
+          salesCount: brandSalesCount
+        },
+        update: {
+          salesCount: brandSalesCount
+        }
+      });
+
+      // 4. Verificar y asignar/revocar badges de embajadora para esta marca
+      await checkBrandAmbassadorBadges(userId, brand, brandSalesCount);
+    }
+
+    console.log(`   ✅ Tracking de marcas completado`);
+    console.log(`🎖️  ========================================\n`);
+
+  } catch (error) {
+    console.error('❌ Error trackeando ventas por marca:', error);
+  }
+}
+
+/**
+ * Verifica y asigna/revoca badges de embajadora para una marca específica
+ */
+async function checkBrandAmbassadorBadges(
+  userId: string,
+  brand: any,
+  currentSales: number
+) {
+  const { prisma } = await import('@/lib/prisma');
+
+  for (const levelConfig of BRAND_LEVELS) {
+    const badgeSlug = `embajadora-${brand.brandSlug}-${levelConfig.level}`;
+
+    // Buscar si existe el badge (puede no existir aún si la marca es nueva)
+    const badge = await prisma.badge.findUnique({
+      where: { slug: badgeSlug }
+    });
+
+    if (!badge) {
+      // Si el badge no existe, lo creamos automáticamente
+      const newBadge = await prisma.badge.create({
+        data: {
+          slug: badgeSlug,
+          name: `Embajadora ${brand.brandName} ${levelConfig.emoji}`,
+          description: `Alcanzaste ${levelConfig.minSales} ventas de ${brand.brandName}`,
+          icon: `${brand.logoEmoji}${levelConfig.emoji}`,
+          category: 'embajadora',
+          condition: JSON.stringify({
+            type: 'brand_sales',
+            brandSlug: brand.brandSlug,
+            minSales: levelConfig.minSales
+          }),
+          points: levelConfig.points,
+          rarity: levelConfig.level === 'diamante' ? 'legendary' : 
+                  levelConfig.level === 'oro' ? 'epic' : 
+                  levelConfig.level === 'plata' ? 'rare' : 'common'
+        }
+      });
+
+      console.log(`      🆕 Badge creado: ${newBadge.name}`);
+      
+      // Ahora verificamos si el usuario califica
+      await assignOrRevokeBrandBadge(userId, newBadge, levelConfig, currentSales);
+    } else {
+      // Badge existe, verificar si asignar o revocar
+      await assignOrRevokeBrandBadge(userId, badge, levelConfig, currentSales);
+    }
+  }
+}
+
+/**
+ * Asigna o revoca un badge de embajadora según las ventas actuales
+ */
+async function assignOrRevokeBrandBadge(
+  userId: string,
+  badge: any,
+  levelConfig: BrandLevelConfig,
+  currentSales: number
+) {
+  const { prisma } = await import('@/lib/prisma');
+
+  const userBadge = await prisma.userBadge.findUnique({
+    where: {
+      userId_badgeId: {
+        userId,
+        badgeId: badge.id
+      }
+    }
+  });
+
+  // Si cumple el requisito y NO tiene el badge → ASIGNAR
+  if (currentSales >= levelConfig.minSales && !userBadge) {
+    await prisma.userBadge.create({
+      data: {
+        userId,
+        badgeId: badge.id
+      }
+    });
+
+    await prisma.point.create({
+      data: {
+        userId,
+        amount: levelConfig.points,
+        reason: 'badge',
+        description: `¡Embajadora ${levelConfig.level} desbloqueada! ${badge.name}`
+      }
+    });
+
+    console.log(`      🎖️  ¡Badge asignado! ${badge.name} (+${levelConfig.points} pts)`);
+  }
+
+  // Si NO cumple el requisito y SÍ tiene el badge → REVOCAR
+  if (currentSales < levelConfig.minSales && userBadge) {
+    await prisma.userBadge.delete({
+      where: {
+        id: userBadge.id
+      }
+    });
+
+    console.log(`      🚫 Badge revocado: ${badge.name} (necesita ${levelConfig.minSales}, tiene ${currentSales})`);
   }
 }

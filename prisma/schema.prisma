@@ -46,6 +46,7 @@ model User {
   level          UserLevel?
   points         Point[]
   rankings       Ranking[]
+  brandSales     UserBrandSales[]
 }
 
 model Pedido {
@@ -226,4 +227,38 @@ model Ranking {
   @@index([period])
   @@index([category])
   @@index([position])
+}
+
+// ==========================================
+// 🎖️ EMBAJADORAS DE MARCAS
+// ==========================================
+
+// 🏷️ Marcas participantes en el programa de embajadoras
+model BrandAmbassador {
+  id          String   @id @default(cuid())
+  brandSlug   String   @unique  // "besame", "cocot", "promise", etc.
+  brandName   String              // "Bésame", "Cocot", "Promise"
+  logoUrl     String?             // URL del logo (opcional por ahora)
+  logoEmoji   String   @default("🏷️") // Emoji temporal mientras no hay logo
+  isActive    Boolean  @default(true)  // Para activar/desactivar marcas
+  createdAt   DateTime @default(now())
+  
+  @@index([isActive])
+  @@index([brandSlug])
+}
+
+// 📊 Tracking de ventas por marca por usuario
+model UserBrandSales {
+  id          String   @id @default(cuid())
+  userId      String
+  brandSlug   String   // "besame", "cocot", etc.
+  salesCount  Int      @default(0)  // Ventas completadas de esta marca
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, brandSlug])
+  @@index([userId])
+  @@index([brandSlug])
+  @@index([salesCount])
 }
