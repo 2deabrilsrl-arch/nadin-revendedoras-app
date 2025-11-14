@@ -21,9 +21,9 @@ export async function GET() {
 
     // Para cada marca, obtener estadísticas de embajadoras
     const brandsWithStats = await Promise.all(
-      brands.map(async (brand) => {
+      brands.map(async (brand: any) => {
         // Contar usuarios con al menos 1 badge de esta marca
-        const ambassadorCount = await prisma.userBadge.count({
+        const uniqueAmbassadors = await prisma.userBadge.findMany({
           where: {
             badge: {
               slug: {
@@ -31,8 +31,13 @@ export async function GET() {
               }
             }
           },
-          distinct: ['userId']
+          select: {
+            userId: true
+          }
         });
+        
+        // Contar usuarios únicos usando Set
+        const ambassadorCount = new Set(uniqueAmbassadors.map((ub: any) => ub.userId)).size;
 
         // Contar total de ventas de esta marca
         const totalSales = await prisma.linea.count({
@@ -75,7 +80,7 @@ export async function GET() {
 // POST - Agregar nueva marca
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body: any = await req.json();
     const { brandSlug, brandName, logoEmoji, logoUrl, isActive } = body;
 
     // Validaciones
@@ -132,7 +137,7 @@ export async function POST(req: NextRequest) {
 // PATCH - Activar/desactivar marca
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body: any = await req.json();
     const { brandSlug, isActive } = body;
 
     if (!brandSlug) {
