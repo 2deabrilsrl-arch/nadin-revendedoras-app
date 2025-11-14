@@ -106,6 +106,7 @@ export default function LogrosPage() {
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'ventas': return '💰';
+      case 'embajadora': return '🎖️';
       case 'constancia': return '🔥';
       case 'tiempo': return '⏰';
       case 'especial': return '⭐';
@@ -120,6 +121,7 @@ export default function LogrosPage() {
   const categories = [
     { id: 'todos', name: 'Todos', icon: '🎯' },
     { id: 'ventas', name: 'Ventas', icon: '💰' },
+    { id: 'embajadora', name: 'Embajadoras', icon: '🎖️' },
     { id: 'constancia', name: 'Constancia', icon: '🔥' },
     { id: 'tiempo', name: 'Tiempo', icon: '⏰' },
     { id: 'especial', name: 'Especial', icon: '⭐' }
