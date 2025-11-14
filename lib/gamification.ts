@@ -556,12 +556,17 @@ async function checkBrandAmbassadorBadges(
 
     if (!badge) {
       // Si el badge no existe, lo creamos automáticamente
+      // Usar logoUrl si existe, sino emoji como fallback
+      const badgeIcon = brand.logoUrl 
+        ? `${brand.logoUrl}|${levelConfig.emoji}`  // Formato: "/logos/marca.jpg|🥉"
+        : `${brand.logoEmoji}${levelConfig.emoji}`; // Fallback: "💋🥉"
+      
       const newBadge = await prisma.badge.create({
         data: {
           slug: badgeSlug,
           name: `Embajadora ${brand.brandName} ${levelConfig.emoji}`,
           description: `Alcanzaste ${levelConfig.minSales} ventas de ${brand.brandName}`,
-          icon: `${brand.logoEmoji}${levelConfig.emoji}`,
+          icon: badgeIcon,
           category: 'embajadora',
           condition: JSON.stringify({
             type: 'brand_sales',

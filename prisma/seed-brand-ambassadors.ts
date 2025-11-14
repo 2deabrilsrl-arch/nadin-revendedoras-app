@@ -3,27 +3,37 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
- * Script para inicializar el sistema de Embajadoras de Marcas
+ * Script para inicializar el sistema de Embajadoras de Marcas CON LOGOS REALES
  * Ejecutar: npx ts-node prisma/seed-brand-ambassadors.ts
  */
 
-// 🏷️ Marcas iniciales (agregar más a medida que confirmen)
+// 🏷️ Marcas con logos reales
 const INITIAL_BRANDS = [
+  {
+    brandSlug: 'acrobata',
+    brandName: 'Acrobata',
+    logoUrl: '/logos/ACROBATA.jpg',  // ⬅️ Ruta de la imagen real
+    logoEmoji: '🤸',                   // Fallback emoji si falla la imagen
+    isActive: true
+  },
   {
     brandSlug: 'besame',
     brandName: 'Bésame',
+    logoUrl: '/logos/besame.jpg',    // ⬅️ Agregá esta imagen
     logoEmoji: '💋',
-    isActive: true // Cambiar a false si aún no confirmó
+    isActive: false
   },
   {
     brandSlug: 'cocot',
     brandName: 'Cocot',
+    logoUrl: '/logos/cocot.jpg',
     logoEmoji: '🌸',
-    isActive: false // Ejemplo: aún no confirmó
+    isActive: false
   },
   {
     brandSlug: 'promise',
     brandName: 'Promise',
+    logoUrl: '/logos/promise.jpg',
     logoEmoji: '💖',
     isActive: false
   }
@@ -32,7 +42,7 @@ const INITIAL_BRANDS = [
 
 async function main() {
   console.log('\n🎖️  ========================================');
-  console.log('🎖️  INICIALIZANDO EMBAJADORAS DE MARCAS');
+  console.log('🎖️  INICIALIZANDO EMBAJADORAS CON LOGOS');
   console.log('🎖️  ========================================\n');
 
   let brandsCreated = 0;
@@ -49,7 +59,8 @@ async function main() {
         where: { brandSlug: brand.brandSlug },
         data: {
           brandName: brand.brandName,
-          logoEmoji: brand.logoEmoji,
+          logoUrl: brand.logoUrl,      // ⬅️ Actualiza logoUrl
+          logoEmoji: brand.logoEmoji,  // ⬅️ Mantiene emoji como fallback
           isActive: brand.isActive
         }
       });
@@ -72,10 +83,10 @@ async function main() {
   console.log('🎉 ========================================\n');
 
   console.log('💡 PRÓXIMOS PASOS:');
-  console.log('   1. Ejecutar: npx prisma migrate dev --name add-brand-ambassadors');
+  console.log('   1. Asegurate que las imágenes estén en public/logos/');
   console.log('   2. Cuando una marca confirme, cambiar isActive: true');
-  console.log('   3. Los badges se crearán AUTOMÁTICAMENTE cuando una revendedora alcance el nivel');
-  console.log('   4. Usar POST /api/admin/brands para agregar marcas nuevas fácilmente\n');
+  console.log('   3. Los badges usarán el logo real + emoji de nivel');
+  console.log('   4. Ejemplo: Logo Acrobata + 🥉 para nivel bronce\n');
 }
 
 main()

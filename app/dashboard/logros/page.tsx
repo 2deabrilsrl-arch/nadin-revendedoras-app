@@ -47,6 +47,27 @@ const RARITY_CONFIG = {
   legendary: { color: 'bg-yellow-100 text-yellow-700 border-yellow-300', label: 'Legendario' }
 };
 
+// Componente para renderizar el ícono del badge (imagen o emoji)
+function BadgeIcon({ icon, size = 'text-4xl' }: { icon: string; size?: string }) {
+  // Detectar si el icon contiene una ruta de imagen (formato: "/logos/marca.jpg|🥉")
+  if (icon.includes('/logos/') && icon.includes('|')) {
+    const [logoUrl, emoji] = icon.split('|');
+    return (
+      <div className="flex items-center justify-center gap-1">
+        <img 
+          src={logoUrl} 
+          alt="Brand logo" 
+          className="w-8 h-8 rounded object-contain"
+        />
+        <span className="text-2xl">{emoji}</span>
+      </div>
+    );
+  }
+  
+  // Si no tiene formato de imagen, mostrar como emoji normal
+  return <div className={size}>{icon}</div>;
+}
+
 export default function LogrosPage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -316,7 +337,9 @@ export default function LogrosPage() {
               )}
               
               <div className="text-center">
-                <div className="text-4xl mb-2">{badge.icon}</div>
+                <div className="mb-2">
+                  <BadgeIcon icon={badge.icon} />
+                </div>
                 <h4 className="font-bold text-sm mb-1">{badge.name}</h4>
                 <p className="text-xs text-gray-600 mb-2">{badge.description}</p>
                 
