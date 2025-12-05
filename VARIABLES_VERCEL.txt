@@ -1,0 +1,24 @@
+# Variables de Entorno para Vercel
+# Copia cada línea (NOMBRE=VALOR) en Vercel
+
+DATABASE_URL=postgresql://postgres.xxmzbspazkyyqdwhvqfg:YHFJ1nqDKkSTn9sU@aws-1-us-east-1.pooler.supabase.com:5432/postgres
+
+TN_STORE_ID=6566743
+TN_ACCESS_TOKEN=accb4de2caf771902f651fe3c2d2877c6a6609c6
+TN_API_BASE=https://api.tiendanube.com/v1
+TN_USER_AGENT=NadinRevendedorasApp (nadinlenceria@gmail.com)
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=nadinlenceria@gmail.com
+SMTP_PASS=yfeukzccqzhcxavw
+FROM_EMAIL=nadinlenceria@gmail.com
+
+NEXTAUTH_SECRET=mi-secreto-super-seguro-nadin-123456789
+NEXTAUTH_URL=https://TU-PROYECTO.vercel.app
+BASE_URL=https://TU-PROYECTO.vercel.app
+
+# IMPORTANTE:
+# - Reemplaza "TU-PROYECTO" en NEXTAUTH_URL y BASE_URL con la URL real que te dé Vercel
+# - En Vercel, cada variable se agrega por separado: Nombre | Valor

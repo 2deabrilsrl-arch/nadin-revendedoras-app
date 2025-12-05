@@ -1,0 +1,337 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  password         String
+  name             String
+  dni              String           @unique
+  telefono         String
+  handle           String           @unique
+  margen           Float            @default(60)
+  cbu              String?
+  alias            String?
+  cvu              String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  profilePhoto     String?
+  bio              String?
+  instagram        String?
+  facebook         String?
+  tiktok           String?
+  whatsappBusiness String?
+  linkedin         String?
+  twitter          String?
+  youtube          String?
+  website          String?
+  rol              String           @default("revendedora")
+  consolidaciones  Consolidacion[]
+  notificaciones   Notificacion[]
+  pedidos          Pedido[]
+  points           Point[]
+  rankings         Ranking[]
+  badges           UserBadge[]
+  brandSales       UserBrandSales[]
+  level            UserLevel?
+}
+
+model Pedido {
+  id                  String             @id @default(cuid())
+  userId              String
+  cliente             String
+  telefono            String?
+  nota                String?
+  estado              String             @default("pendiente")
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  
+  // Estados del pedido (logística)
+  orderStatus         String             @default("pending")
+  
+  // Estados de pago
+  paidToNadin         Boolean            @default(false)
+  paidByClient        Boolean            @default(false)
+  
+  // ✅ FECHAS EXISTENTES - MANTENIDAS
+  deliveredAt         DateTime?
+  receivedNadinAt     DateTime?
+  sentToClientAt      DateTime?
+  
+  // ✅ FECHAS NUEVAS - AGREGADAS
+  sentToNadinAt       DateTime?
+  armadoIniciadoAt    DateTime?
+  armadoCompletoAt    DateTime?
+  pagadoAt            DateTime?
+  enviadoAt           DateTime?
+  entregadoAt         DateTime?
+  paidToNadinAt       DateTime?
+  paidByClientAt      DateTime?
+  
+  // Datos de armado
+  armadoEn            DateTime?
+  armadoPor           String?
+  productosArmados    Int?
+  productosFaltantes  Int?
+  productosOriginales Int?
+  
+  lineas              Linea[]
+  user                User               @relation(fields: [userId], references: [id])
+  PedidoAccessToken   PedidoAccessToken?
+  PedidoMensaje       PedidoMensaje[]
+
+  @@index([userId])
+  @@index([estado])
+  @@index([orderStatus])
+  @@index([createdAt])
+}
+
+model Linea {
+  id               String  @id @default(cuid())
+  pedidoId         String
+  productId        String
+  variantId        String
+  sku              String?
+  brand            String?
+  name             String
+  talle            String?
+  color            String?
+  qty              Int
+  mayorista        Float
+  venta            Float
+  cantidadOriginal Int?
+  cliente          String?
+  nota             String?
+  telefono         String?
+  pedido           Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+  @@index([productId])
+}
+
+model Consolidacion {
+  id                   String                    @id @default(cuid())
+  userId               String
+  pedidoIds            String
+  formaPago            String
+  tipoEnvio            String
+  transporteNombre     String?
+  totalMayorista       Float
+  totalVenta           Float
+  ganancia             Float
+  descuentoTotal       Float                     @default(0)
+  costoReal            Float?
+  gananciaNeta         Float?
+  csvPath              String?
+  enviadoAt            DateTime                  @default(now())
+  armadoIniciadoAt     DateTime?
+  armadoEn             DateTime?
+  completadoEn         DateTime?
+  estado               String                    @default("enviado")
+  pagadoEn             DateTime?
+  cerrado              Boolean                   @default(false)
+  user                 User                      @relation(fields: [userId], references: [id])
+  accessTokens         ConsolidacionAccessToken?
+  ConsolidacionMensaje ConsolidacionMensaje[]
+
+  @@index([userId])
+  @@index([enviadoAt])
+  @@index([estado])
+  @@index([cerrado])
+}
+
+model CatalogoCache {
+  id         String   @id @default(cuid())
+  productId  String   @unique
+  data       String
+  brand      String?
+  category   String?
+  sex        String?
+  salesCount Int      @default(0)
+  updatedAt  DateTime @default(now())
+
+  @@index([brand])
+  @@index([sex])
+  @@index([salesCount])
+  @@index([updatedAt])
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  name        String
+  description String
+  icon        String
+  category    String
+  condition   String
+  points      Int         @default(0)
+  rarity      String      @default("common")
+  createdAt   DateTime    @default(now())
+  users       UserBadge[]
+
+  @@index([category])
+  @@index([rarity])
+}
+
+model UserBadge {
+  id         String   @id @default(cuid())
+  userId     String
+  badgeId    String
+  unlockedAt DateTime @default(now())
+  badge      Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([unlockedAt])
+}
+
+model UserLevel {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  currentLevel String   @default("bronce")
+  currentXP    Int      @default(0)
+  totalSales   Int      @default(0)
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([currentLevel])
+  @@index([totalSales])
+}
+
+model Point {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int
+  reason      String
+  description String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([reason])
+}
+
+model Ranking {
+  id        String   @id @default(cuid())
+  userId    String
+  period    String
+  category  String
+  position  Int
+  value     Float
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, period, category])
+  @@index([period])
+  @@index([category])
+  @@index([position])
+}
+
+model BrandAmbassador {
+  id        String   @id @default(cuid())
+  brandSlug String   @unique
+  brandName String
+  logoUrl   String?
+  logoEmoji String   @default("👑")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([isActive])
+  @@index([brandSlug])
+}
+
+model UserBrandSales {
+  id         String   @id @default(cuid())
+  userId     String
+  brandSlug  String
+  salesCount Int      @default(0)
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, brandSlug])
+  @@index([userId])
+  @@index([brandSlug])
+  @@index([salesCount])
+}
+
+model Notificacion {
+  id        String   @id @default(cuid())
+  userId    String
+  tipo      String
+  titulo    String
+  mensaje   String
+  leida     Boolean  @default(false)
+  metadata  String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, leida])
+  @@index([createdAt])
+}
+
+model ConsolidacionAccessToken {
+  id              String        @id @default(cuid())
+  consolidacionId String        @unique
+  token           String        @unique
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime      @default(now())
+  consolidacion   Consolidacion @relation(fields: [consolidacionId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model ConsolidacionMensaje {
+  id              String        @id @default(cuid())
+  consolidacionId String
+  autorId         String?
+  autorNombre     String
+  autorTipo       String
+  mensaje         String
+  leido           Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  Consolidacion   Consolidacion @relation(fields: [consolidacionId], references: [id], onDelete: Cascade)
+
+  @@index([consolidacionId])
+  @@index([createdAt])
+  @@index([leido])
+}
+
+model PedidoAccessToken {
+  id        String    @id @default(cuid())
+  pedidoId  String    @unique
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  Pedido    Pedido    @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([token])
+}
+
+model PedidoMensaje {
+  id          String   @id @default(cuid())
+  pedidoId    String
+  autorId     String
+  autorNombre String
+  autorTipo   String
+  mensaje     String
+  leido       Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  Pedido      Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([leido])
+  @@index([pedidoId])
+}
