@@ -77,7 +77,7 @@ export default function BrandAmbassadorsPage() {
       setLoading(true);
       const res = await fetch('/api/admin/brand-ambassadors');
       const data = await res.json();
-      setOverview(data);
+      setOverview(data as any);
     } catch (error) {
       console.error('Error cargando overview:', error);
     } finally {
