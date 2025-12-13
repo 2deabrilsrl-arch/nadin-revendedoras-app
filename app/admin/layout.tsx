@@ -39,10 +39,14 @@ export default function AdminLayout({
       setUser(parsedUser);
       
       if (parsedUser.rol !== 'vendedora') {
-        (globalThis as any).window?.location?.href = '/dashboard';
+        if ((globalThis as any).window?.location) {
+          (globalThis as any).window.location.href = '/dashboard';
+        }
       }
     } else {
-      (globalThis as any).window?.location?.href = '/login';
+      if ((globalThis as any).window?.location) {
+        (globalThis as any).window.location.href = '/login';
+      }
     }
   }, []);
 
