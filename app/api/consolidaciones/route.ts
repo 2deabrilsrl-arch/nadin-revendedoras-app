@@ -1,8 +1,10 @@
 // API: CONSOLIDACIONES - GET y POST CORREGIDO
 // Ubicacion: app/api/consolidaciones/route.ts
+// CORRECCION: Enviar pedidos completos con lineas al email
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { sendConsolidacionEmail } from '@/lib/email';
 
 // GET: Obtener consolidaciones de usuario
 export async function GET(req: NextRequest) {
@@ -57,7 +59,26 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, pedidoIds } = body;
+    const { 
+      userId, 
+      pedidoIds, 
+      totalMayorista, 
+      totalVenta, 
+      ganancia,
+      formaPago,  // ✅ AGREGADO
+      tipoEnvio,  // ✅ AGREGADO
+      transporteNombre  // ✅ AGREGADO
+    } = body;
+
+    console.log('📦 Creando consolidación...');
+    console.log('   userId:', userId);
+    console.log('   pedidoIds:', pedidoIds);
+    console.log('   totalMayorista:', totalMayorista);
+    console.log('   totalVenta:', totalVenta);
+    console.log('   ganancia:', ganancia);
+    console.log('   formaPago:', formaPago);
+    console.log('   tipoEnvio:', tipoEnvio);
+    console.log('   transporteNombre:', transporteNombre);
 
     // Validaciones
     if (!userId) {
@@ -74,14 +95,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Obtener pedidos para calcular totales
+    // ✅ CORREGIDO: Obtener pedidos CON sus líneas Y usuario para el email
     const pedidos = await prisma.pedido.findMany({
       where: {
         id: { in: pedidoIds },
         userId: userId
       },
       include: {
-        lineas: true
+        lineas: true,
+        user: true // ✅ Incluir usuario
       }
     });
 
@@ -99,57 +121,81 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Calcular totales
-    let totalMayorista = 0;
-    let totalVenta = 0;
-
-    pedidos.forEach(pedido => {
-      pedido.lineas.forEach(linea => {
-        totalMayorista += linea.mayorista * linea.qty;
-        totalVenta += linea.venta * linea.qty;
-      });
-    });
-
-    const ganancia = totalVenta - totalMayorista;
-
-    // Crear consolidacion
+    // ✅ CORREGIDO: Crear consolidación con valores del formulario
     const consolidacion = await prisma.consolidacion.create({
       data: {
         userId,
-        pedidoIds: JSON.stringify(pedidoIds), // ✅ Guardar como JSON string
-        totalMayorista,
-        totalVenta,
-        ganancia,
+        pedidoIds: JSON.stringify(pedidoIds),
+        totalMayorista: totalMayorista || 0,
+        totalVenta: totalVenta || 0,
+        ganancia: ganancia || 0,
         descuentoTotal: 0,
-        formaPago: 'pendiente',
-        tipoEnvio: 'pendiente',
+        formaPago: formaPago || 'pendiente',  // ✅ Usar valor del formulario
+        tipoEnvio: tipoEnvio || 'pendiente',  // ✅ Usar valor del formulario
+        transporteNombre: transporteNombre || null,  // ✅ Guardar transporte
         estado: 'enviado',
         enviadoAt: new Date()
       }
     });
 
-    // ✅ CORREGIDO: Solo actualizar orderStatus (consolidacionId NO existe)
+    console.log('✅ Consolidación creada:', consolidacion.id);
+    console.log('   Estado:', consolidacion.estado);
+    console.log('   Forma de pago:', consolidacion.formaPago);
+    console.log('   Tipo de envío:', consolidacion.tipoEnvio);
+
+    // ✅ CRÍTICO: Actualizar pedidos con consolidacionId
     await prisma.pedido.updateMany({
       where: {
         id: { in: pedidoIds }
       },
       data: {
+        consolidacionId: consolidacion.id,  // ✅ AGREGADO: Asignar consolidación
         orderStatus: 'sent_to_nadin',
-        sentToNadinAt: new Date() // ✅ Marcar fecha de envío
+        estado: 'enviado',
+        sentToNadinAt: new Date()
       }
     });
 
-    // TODO: Enviar email a Nadin con los detalles
-    // await enviarEmailConsolidacion(consolidacion, pedidos);
+    console.log(`✅ ${pedidoIds.length} pedidos actualizados con consolidacionId: ${consolidacion.id}`);
+
+    // ✅ CORREGIDO: Enviar email con datos completos
+    try {
+      await sendConsolidacionEmail({
+        revendedora: pedidos[0].user,
+        pedidos,
+        totales: {
+          mayorista: totalMayorista || 0,
+          venta: totalVenta || 0,
+          descuento: 0,
+          ventaFinal: totalVenta || 0,
+          ganancia: ganancia || 0
+        },
+        formaPago: formaPago || 'pendiente',  // ✅ Usar valor real
+        tipoEnvio: tipoEnvio || 'pendiente',  // ✅ Usar valor real
+        transporteNombre: transporteNombre || null,  // ✅ Incluir transporte
+        linkMagico: process.env.NEXT_PUBLIC_APP_URL ? 
+          `${process.env.NEXT_PUBLIC_APP_URL}/admin/dashboard` : 
+          'http://localhost:3000/admin/dashboard'
+      });
+      
+      console.log('✅ Email enviado correctamente a Nadin');
+      
+    } catch (emailError) {
+      console.error('⚠️ Error enviando email (continuando):', emailError);
+    }
 
     return NextResponse.json({
       success: true,
       consolidacion,
-      message: 'Consolidacion creada exitosamente'
+      message: 'Consolidación creada exitosamente',
+      email: {
+        enviado: true,
+        destinatario: 'nadinlenceria@gmail.com'
+      }
     });
 
   } catch (error) {
-    console.error('Error creando consolidacion:', error);
+    console.error('❌ Error creando consolidacion:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

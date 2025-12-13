@@ -1,15 +1,18 @@
-// ADMIN: PENDIENTES DE ENTREGA - CON BÚSQUEDA
+// ADMIN: PENDIENTES DE ENTREGA - CON BOTÓN CANCELAR
 // Ubicación: app/admin/pendientes-entrega/page.tsx
 
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Truck, AlertCircle, Check, Search } from 'lucide-react';
+import { Truck, AlertCircle, Check, Search, Home, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function PendientesEntregaPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [consolidaciones, setConsolidaciones] = useState<any[]>([]);
   const [marcando, setMarcando] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState<string | null>(null); // 🔥 NUEVO
   const [user, setUser] = useState<any>(null);
   const [busqueda, setBusqueda] = useState('');
 
@@ -45,7 +48,6 @@ export default function PendientesEntregaPage() {
     }
   };
 
-  // ✅ USAR API CORRECTA: /api/consolidaciones/[id]/estado
   const marcarEntregado = async (consolidacionId: string) => {
     if (!user?.email) {
       (globalThis as any).alert?.('❌ Sesión expirada');
@@ -83,7 +85,35 @@ export default function PendientesEntregaPage() {
     }
   };
 
-  // ✅ FILTRADO CON BÚSQUEDA
+  // 🔥 NUEVO: Cancelar consolidación
+  const cancelarConsolidacion = async (consolidacionId: string, nombreRevendedora: string) => {
+    if (!(globalThis as any).confirm?.(`¿Estás segura de cancelar la consolidación de ${nombreRevendedora}?\n\nEsto marcará todos los pedidos como cancelados y recalculará la gamificación de la revendedora.`)) {
+      return;
+    }
+
+    try {
+      setCancelando(consolidacionId);
+
+      const res = await fetch(`/api/admin/consolidaciones/${consolidacionId}/cancelar-vendedora`, {
+        method: 'POST'
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al cancelar');
+      }
+
+      (globalThis as any).alert?.('✅ Consolidación cancelada. La revendedora fue notificada.');
+      await cargarPendientes();
+
+    } catch (error: any) {
+      console.error('Error cancelando:', error);
+      (globalThis as any).alert?.(`❌ ${error.message}`);
+    } finally {
+      setCancelando(null);
+    }
+  };
+
   const consolidacionesFiltradas = consolidaciones.filter(c => {
     if (busqueda.trim()) {
       const searchLower = busqueda.toLowerCase();
@@ -106,6 +136,15 @@ export default function PendientesEntregaPage() {
 
   return (
     <div className="space-y-6">
+      {/* Botón Volver */}
+      <button
+        onClick={() => router.push('/admin/dashboard')}
+        className="flex items-center gap-2 text-pink-600 hover:text-pink-700 font-medium transition-colors"
+      >
+        <Home size={20} />
+        <span>Volver al Inicio</span>
+      </button>
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center gap-3 mb-2">
@@ -117,7 +156,7 @@ export default function PendientesEntregaPage() {
         </p>
       </div>
 
-      {/* ✅ BUSCADOR */}
+      {/* Buscador */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="relative">
           <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -192,8 +231,13 @@ export default function PendientesEntregaPage() {
                         <div>
                           <div className="text-sm text-gray-600">Monto pagado</div>
                           <div className="text-xl font-bold text-green-600">
-                            ${consolidacion.totalMayorista.toLocaleString('es-AR')}
+                            ${(consolidacion.costoReal || consolidacion.totalMayorista).toLocaleString('es-AR')}
                           </div>
+                          {consolidacion.costoReal && consolidacion.costoReal !== consolidacion.totalMayorista && (
+                            <div className="text-xs text-green-600 mt-1">
+                              ✅ Descuento: ${(consolidacion.totalMayorista - consolidacion.costoReal).toFixed(2)}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <div className="text-sm text-gray-600">Pedidos incluidos</div>
@@ -236,6 +280,25 @@ export default function PendientesEntregaPage() {
                           <>
                             <Check size={18} />
                             Marcar Entregado
+                          </>
+                        )}
+                      </button>
+
+                      {/* 🔥 NUEVO: Botón Cancelar */}
+                      <button
+                        onClick={() => cancelarConsolidacion(consolidacion.id, consolidacion.user?.name)}
+                        disabled={cancelando === consolidacion.id}
+                        className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm flex items-center gap-2 justify-center"
+                      >
+                        {cancelando === consolidacion.id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Cancelando...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 size={16} />
+                            Cancelar
                           </>
                         )}
                       </button>

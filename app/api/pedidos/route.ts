@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { trackBrandSales } from '@/lib/brand-tracking'; // 🎖️ NUEVO
 
 // GET - Listar pedidos del usuario
 export async function GET(req: NextRequest) {
@@ -131,6 +132,17 @@ export async function POST(req: NextRequest) {
     });
 
     console.log('✅ Pedido creado exitosamente:', pedido.id);
+
+    // 🎖️ NUEVO: Trackear ventas por marca
+    try {
+      await trackBrandSales({
+        userId: userId,
+        lineas: items
+      });
+    } catch (trackError) {
+      console.error('⚠️ Error tracking brand sales (no crítico):', trackError);
+      // No fallar el pedido si falla el tracking
+    }
 
     return NextResponse.json(
       { 

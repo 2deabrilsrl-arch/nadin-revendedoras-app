@@ -1,15 +1,18 @@
-// ADMIN: PENDIENTES DE PAGO - CON BÚSQUEDA
+// ADMIN: PENDIENTES DE PAGO - CON BOTÓN CANCELAR
 // Ubicación: app/admin/pendientes-pago/page.tsx
 
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, AlertCircle, Check, X, Search } from 'lucide-react';
+import { DollarSign, AlertCircle, Check, X, Search, Home, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function PendientesPagoPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [consolidaciones, setConsolidaciones] = useState<any[]>([]);
   const [marcando, setMarcando] = useState<string | null>(null);
+  const [cancelando, setCancelando] = useState<string | null>(null); // 🔥 NUEVO
   const [user, setUser] = useState<any>(null);
   const [busqueda, setBusqueda] = useState('');
   
@@ -51,7 +54,8 @@ export default function PendientesPagoPage() {
 
   const abrirModalPago = (consolidacion: any) => {
     setConsolidacionSeleccionada(consolidacion);
-    setMontoReal(consolidacion.totalMayorista.toString());
+    // ✅ Usar costoReal si existe (ya tiene descuentos del armado), sino totalMayorista
+    setMontoReal((consolidacion.costoReal || consolidacion.totalMayorista).toString());
     setShowModal(true);
   };
 
@@ -72,7 +76,6 @@ export default function PendientesPagoPage() {
     try {
       setMarcando(consolidacionSeleccionada.id);
 
-      // ✅ USAR API CORRECTA: /api/consolidaciones/[id]/estado
       const resPago = await fetch(`/api/consolidaciones/${consolidacionSeleccionada.id}/estado`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -113,7 +116,35 @@ export default function PendientesPagoPage() {
     }
   };
 
-  // ✅ FILTRADO CON BÚSQUEDA
+  // 🔥 NUEVO: Cancelar consolidación
+  const cancelarConsolidacion = async (consolidacionId: string, nombreRevendedora: string) => {
+    if (!(globalThis as any).confirm?.(`¿Estás segura de cancelar la consolidación de ${nombreRevendedora}?\n\nEsto marcará todos los pedidos como cancelados y recalculará la gamificación de la revendedora.`)) {
+      return;
+    }
+
+    try {
+      setCancelando(consolidacionId);
+
+      const res = await fetch(`/api/admin/consolidaciones/${consolidacionId}/cancelar-vendedora`, {
+        method: 'POST'
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al cancelar');
+      }
+
+      (globalThis as any).alert?.('✅ Consolidación cancelada. La revendedora fue notificada.');
+      await cargarPendientes();
+
+    } catch (error: any) {
+      console.error('Error cancelando:', error);
+      (globalThis as any).alert?.(`❌ ${error.message}`);
+    } finally {
+      setCancelando(null);
+    }
+  };
+
   const consolidacionesFiltradas = consolidaciones.filter(c => {
     if (busqueda.trim()) {
       const searchLower = busqueda.toLowerCase();
@@ -136,6 +167,15 @@ export default function PendientesPagoPage() {
 
   return (
     <div className="space-y-6">
+      {/* Botón Volver */}
+      <button
+        onClick={() => router.push('/admin/dashboard')}
+        className="flex items-center gap-2 text-pink-600 hover:text-pink-700 font-medium transition-colors"
+      >
+        <Home size={20} />
+        <span>Volver al Inicio</span>
+      </button>
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center gap-3 mb-2">
@@ -147,7 +187,7 @@ export default function PendientesPagoPage() {
         </p>
       </div>
 
-      {/* ✅ BUSCADOR */}
+      {/* Buscador */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="relative">
           <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -222,7 +262,7 @@ export default function PendientesPagoPage() {
                         <div>
                           <div className="text-sm text-gray-600">Monto esperado</div>
                           <div className="text-xl font-bold text-pink-600">
-                            ${consolidacion.totalMayorista.toLocaleString('es-AR')}
+                            ${(consolidacion.costoReal || consolidacion.totalMayorista).toLocaleString('es-AR')}
                           </div>
                         </div>
                         <div>
@@ -263,6 +303,25 @@ export default function PendientesPagoPage() {
                           <>
                             <Check size={18} />
                             Marcar Pagado
+                          </>
+                        )}
+                      </button>
+
+                      {/* 🔥 NUEVO: Botón Cancelar */}
+                      <button
+                        onClick={() => cancelarConsolidacion(consolidacion.id, consolidacion.user?.name)}
+                        disabled={cancelando === consolidacion.id}
+                        className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm flex items-center gap-2 justify-center"
+                      >
+                        {cancelando === consolidacion.id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Cancelando...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 size={16} />
+                            Cancelar
                           </>
                         )}
                       </button>
@@ -312,10 +371,23 @@ export default function PendientesPagoPage() {
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">Monto esperado (mayorista)</p>
-                <p className="text-2xl font-bold text-gray-700">
-                  ${consolidacionSeleccionada.totalMayorista.toLocaleString('es-AR')}
+                <p className="text-sm text-gray-600 mb-1">
+                  Monto esperado {consolidacionSeleccionada.costoReal ? '(con descuentos del armado)' : '(mayorista)'}
                 </p>
+                <p className="text-2xl font-bold text-gray-700">
+                  ${(consolidacionSeleccionada.costoReal || consolidacionSeleccionada.totalMayorista).toLocaleString('es-AR')}
+                </p>
+                {consolidacionSeleccionada.costoReal && 
+                 consolidacionSeleccionada.costoReal !== consolidacionSeleccionada.totalMayorista && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-600">
+                      Total original: ${consolidacionSeleccionada.totalMayorista.toLocaleString('es-AR')}
+                    </p>
+                    <p className="text-xs text-green-600 font-semibold">
+                      ✅ Ya se aplicaron ${(consolidacionSeleccionada.totalMayorista - consolidacionSeleccionada.costoReal).toLocaleString('es-AR')} de descuento en el armado
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -336,11 +408,11 @@ export default function PendientesPagoPage() {
                 </p>
               </div>
 
-              {montoReal && parseFloat(montoReal) !== consolidacionSeleccionada.totalMayorista && (
+              {montoReal && parseFloat(montoReal) !== (consolidacionSeleccionada.costoReal || consolidacionSeleccionada.totalMayorista) && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-700">
-                    <strong>Diferencia:</strong> ${(consolidacionSeleccionada.totalMayorista - parseFloat(montoReal)).toLocaleString('es-AR')}
-                    {parseFloat(montoReal) < consolidacionSeleccionada.totalMayorista ? ' (descuento)' : ' (pago extra)'}
+                    <strong>Diferencia adicional:</strong> ${((consolidacionSeleccionada.costoReal || consolidacionSeleccionada.totalMayorista) - parseFloat(montoReal)).toLocaleString('es-AR')}
+                    {parseFloat(montoReal) < (consolidacionSeleccionada.costoReal || consolidacionSeleccionada.totalMayorista) ? ' (descuento adicional)' : ' (pago extra)'}
                   </p>
                 </div>
               )}

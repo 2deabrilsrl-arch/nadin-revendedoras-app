@@ -31,6 +31,24 @@ interface UserStats {
   badges: Badge[];
 }
 
+// 🎖️ NUEVO: Interface para Brand Progress
+interface BrandProgress {
+  brandSlug: string;
+  brandName: string;
+  logoUrl: string;
+  logoEmoji: string;
+  currentSales: number;
+  totalBadges: number;
+  unlockedBadges: number;
+  nextBadge: {
+    name: string;
+    icon: string;
+    required: number;
+    remaining: number;
+    progress: number;
+  } | null;
+}
+
 const LEVEL_CONFIG = {
   principiante: { name: 'Principiante', color: 'bg-gray-400', next: 'bronce', required: 10, icon: '🌱' },
   bronce: { name: 'Bronce', color: 'bg-orange-600', next: 'plata', required: 50, icon: '🥉' },
@@ -72,9 +90,11 @@ export default function LogrosPage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
+  const [brandProgress, setBrandProgress] = useState<BrandProgress[]>([]); // 🎖️ NUEVO
 
   useEffect(() => {
     loadStats();
+    loadBrandProgress(); // 🎖️ NUEVO
   }, []);
 
   const loadStats = async () => {
@@ -98,6 +118,24 @@ export default function LogrosPage() {
       console.error('Error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🎖️ NUEVO: Cargar progreso de Brand Ambassadors
+  const loadBrandProgress = async () => {
+    try {
+      const userStr = (globalThis as any).localStorage?.getItem('user');
+      if (!userStr) return;
+
+      const user = JSON.parse(userStr);
+      const res = await fetch(`/api/brand-sales/progress?userId=${user.id}`);
+      
+      if (res.ok) {
+        const data = await res.json();
+        setBrandProgress(data);
+      }
+    } catch (error) {
+      console.error('Error cargando progreso de marcas:', error);
     }
   };
 
@@ -293,6 +331,108 @@ export default function LogrosPage() {
           })}
         </div>
       </div>
+
+      {/* 🎖️ NUEVO: Brand Ambassadors Progress */}
+      {brandProgress.length > 0 && (
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            🎖️ Embajadoras de Marca
+          </h3>
+          
+          <div className="space-y-6">
+            {brandProgress.map(brand => (
+              <div key={brand.brandSlug} className="border-2 border-gray-200 rounded-lg p-4">
+                {/* Header con logo */}
+                <div className="flex items-center gap-3 mb-4">
+                  {brand.logoUrl ? (
+                    <img
+                      src={brand.logoUrl}
+                      alt={brand.brandName}
+                      className="w-12 h-12 rounded-lg object-contain bg-gray-50 p-1"
+                    />
+                  ) : (
+                    <div className="text-3xl">{brand.logoEmoji}</div>
+                  )}
+                  <div className="flex-1">
+                    <h4 className="font-bold text-lg">{brand.brandName}</h4>
+                    <p className="text-sm text-gray-600">
+                      {brand.currentSales} prendas vendidas
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-600">Badges</div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {brand.unlockedBadges}/{brand.totalBadges}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Próximo objetivo */}
+                {brand.nextBadge ? (
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">
+                          {brand.nextBadge.icon.includes('|') 
+                            ? brand.nextBadge.icon.split('|')[1] 
+                            : '🏆'}
+                        </span>
+                        <div>
+                          <div className="font-semibold text-gray-800">
+                            {brand.nextBadge.name}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Próximo objetivo
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-pink-600">
+                          {brand.nextBadge.remaining}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          prendas más
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Barra de progreso */}
+                    <div className="relative">
+                      <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 rounded-full"
+                          style={{ width: `${brand.nextBadge.progress}%` }}
+                        >
+                          <div className="h-full w-full bg-white opacity-20 animate-pulse"></div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1 text-center">
+                        {brand.currentSales} / {brand.nextBadge.required} ({brand.nextBadge.progress.toFixed(0)}%)
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 text-center">
+                    <div className="text-3xl mb-2">🎉</div>
+                    <div className="font-bold text-green-700">
+                      ¡Completaste todos los niveles!
+                    </div>
+                    <div className="text-sm text-green-600">
+                      Sos embajadora oficial de {brand.brandName}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600">
+              💡 Los premios se entregan cuando alcanzás los objetivos
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Badges Section */}
       <div className="bg-white rounded-lg shadow-lg p-6">

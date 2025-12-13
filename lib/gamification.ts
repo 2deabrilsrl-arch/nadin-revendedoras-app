@@ -41,16 +41,15 @@ export async function processGamificationAfterSale(
     console.log(`🎮 Venta de $${saleAmount}`);
 
     // 1. Contar SOLO pedidos completados NO cancelados
+    // ✅ CORREGIDO: Acepta AMBOS 'entregado' y 'completado'
+    // ✅ No necesita NOT cancelado porque el IN ya lo excluye
     const pedidosCompletados = await prisma.pedido.count({
       where: {
         userId,
         estado: {
-          in: ['entregado']
+          in: ['entregado', 'completado']  // ✅ Solo estos estados, cancelado queda afuera
         },
-        paidByClient: true,
-        NOT: {
-          estado: 'cancelado'
-        }
+        paidByClient: true
       }
     });
 
@@ -144,16 +143,15 @@ export async function recalculateGamificationAfterCancel(userId: string) {
     console.log(`🔄 ========================================`);
 
     // 1. Contar pedidos completados NO cancelados
+    // ✅ CORREGIDO: Acepta AMBOS 'entregado' y 'completado'
+    // ✅ No necesita NOT cancelado porque el IN ya lo excluye
     const pedidosCompletados = await prisma.pedido.count({
       where: {
         userId,
         estado: {
-          in: ['entregado']
+          in: ['entregado', 'completado']  // ✅ Solo estos estados, cancelado queda afuera
         },
-        paidByClient: true,
-        NOT: {
-          estado: 'cancelado'
-        }
+        paidByClient: true
       }
     });
 
@@ -273,12 +271,9 @@ async function recalculateTotalPoints(userId: string, currentSales: number) {
     where: {
       userId,
       estado: {
-        in: ['entregado']
+        in: ['entregado', 'completado']  // ✅ Acepta ambos
       },
-      paidByClient: true,
-      NOT: {
-        estado: 'cancelado'
-      }
+      paidByClient: true
     },
     include: {
       lineas: true
@@ -494,12 +489,9 @@ async function trackBrandSales(userId: string) {
           pedido: {
             userId,
             estado: {
-              in: ['entregado']
+              in: ['entregado', 'completado']  // ✅ Acepta ambos
             },
-            paidByClient: true,
-            NOT: {
-              estado: 'cancelado'
-            }
+            paidByClient: true
           }
         }
       });

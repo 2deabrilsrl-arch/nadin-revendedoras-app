@@ -53,6 +53,9 @@ model Pedido {
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   
+  // 🔥 NUEVO: Relación con consolidación
+  consolidacionId     String?
+  
   // Estados del pedido (logística)
   orderStatus         String             @default("pending")
   
@@ -84,6 +87,7 @@ model Pedido {
   
   lineas              Linea[]
   user                User               @relation(fields: [userId], references: [id])
+  consolidacion       Consolidacion?     @relation(fields: [consolidacionId], references: [id])
   PedidoAccessToken   PedidoAccessToken?
   PedidoMensaje       PedidoMensaje[]
 
@@ -91,6 +95,7 @@ model Pedido {
   @@index([estado])
   @@index([orderStatus])
   @@index([createdAt])
+  @@index([consolidacionId])
 }
 
 model Linea {
@@ -117,7 +122,7 @@ model Linea {
 }
 
 model Consolidacion {
-  id                   String                    @id @default(cuid())
+  id                   String                       @id @default(cuid())
   userId               String
   pedidoIds            String
   formaPago            String
@@ -126,18 +131,25 @@ model Consolidacion {
   totalMayorista       Float
   totalVenta           Float
   ganancia             Float
-  descuentoTotal       Float                     @default(0)
+  descuentoTotal       Float                        @default(0)
   costoReal            Float?
   gananciaNeta         Float?
   csvPath              String?
-  enviadoAt            DateTime                  @default(now())
+  enviadoAt            DateTime                     @default(now())
   armadoIniciadoAt     DateTime?
   armadoEn             DateTime?
   completadoEn         DateTime?
-  estado               String                    @default("enviado")
+  estado               String                       @default("enviado")
   pagadoEn             DateTime?
-  cerrado              Boolean                   @default(false)
-  user                 User                      @relation(fields: [userId], references: [id])
+  cerrado              Boolean                      @default(false)
+  
+  // 🔥 NUEVO: Relación inversa con pedidos
+  pedidos              Pedido[]
+  
+  // 🆕 NUEVO: Relación con documentos adjuntos (remitos PDF)
+  documentos           ConsolidacionDocumento[]
+  
+  user                 User                         @relation(fields: [userId], references: [id])
   accessTokens         ConsolidacionAccessToken?
   ConsolidacionMensaje ConsolidacionMensaje[]
 
@@ -334,4 +346,24 @@ model PedidoMensaje {
   @@index([createdAt])
   @@index([leido])
   @@index([pedidoId])
+}
+
+// 🆕 NUEVO: Tabla para documentos adjuntos (remitos PDF)
+model ConsolidacionDocumento {
+  id              String        @id @default(cuid())
+  consolidacionId String
+  consolidacion   Consolidacion @relation(fields: [consolidacionId], references: [id], onDelete: Cascade)
+  
+  filename        String        // Nombre único en storage: remito_cons123_1702380000.pdf
+  originalName    String        // Nombre original del archivo subido
+  storageUrl      String        // Path en Supabase Storage
+  publicUrl       String        // URL pública para descargar
+  fileSize        Int           // Tamaño en bytes
+  mimeType        String        // application/pdf
+  
+  uploadedBy      String        // userId de quien subió (Nadin)
+  uploadedAt      DateTime      @default(now())
+  
+  @@index([consolidacionId])
+  @@map("ConsolidacionDocumento")
 }

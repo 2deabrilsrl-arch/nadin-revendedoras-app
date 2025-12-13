@@ -1,5 +1,6 @@
-// API: Armar Consolidación - CORREGIDO SEGÚN SCHEMA
+// API: Armar Consolidación - PRECIOS CORREGIDOS
 // Ubicación: app/api/armar-consolidacion/[token]/route.ts
+// FIX: Ahora envía mayorista Y venta correctamente
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -18,14 +19,17 @@ export async function GET(
       );
     }
 
-    // ✅ Buscar consolidación con relaciones correctas según schema
+    console.log('\n📦 ========================================');
+    console.log('📦 CARGANDO CONSOLIDACIÓN PARA ARMADO');
+    console.log('📦 ========================================');
+    console.log(`🔑 Token: ${token}`);
+
+    // ✅ Buscar consolidación con relaciones correctas
     const consolidacion = await prisma.consolidacion.findFirst({
       where: {
         accessTokens: {
           token: token,
-          expiresAt: {
-            gt: new Date()
-          }
+          expiresAt: { gt: new Date() }
         }
       },
       include: {
@@ -47,37 +51,37 @@ export async function GET(
     });
 
     if (!consolidacion) {
+      console.log('❌ Consolidación no encontrada o token expirado');
       return NextResponse.json(
         { error: 'Consolidación no encontrada o token expirado' },
         { status: 404 }
       );
     }
 
-    // ✅ Parsear pedidoIds (es un string JSON con array de IDs)
+    console.log(`✅ Consolidación encontrada: ${consolidacion.id}`);
+
+    // ✅ Parsear pedidoIds
     let pedidoIds: string[] = [];
     try {
       pedidoIds = JSON.parse(consolidacion.pedidoIds);
+      console.log(`📋 Pedidos incluidos: ${pedidoIds.length}`);
     } catch (error) {
-      console.error('Error parseando pedidoIds:', error);
+      console.error('❌ Error parseando pedidoIds:', error);
       return NextResponse.json(
         { error: 'Error en formato de pedidos' },
         { status: 500 }
       );
     }
 
-    // ✅ Buscar los pedidos con sus líneas (items)
+    // ✅ Buscar los pedidos con sus líneas
     const pedidos = await prisma.pedido.findMany({
-      where: {
-        id: {
-          in: pedidoIds
-        }
-      },
-      include: {
-        lineas: true  // ✅ Incluir lineas (items del pedido)
-      }
+      where: { id: { in: pedidoIds } },
+      include: { lineas: true }
     });
 
-    // ✅ Calcular total correctamente
+    console.log(`✅ Pedidos cargados: ${pedidos.length}`);
+
+    // ✅ Calcular total
     const total = pedidos.reduce((sum, pedido) => {
       const pedidoTotal = pedido.lineas.reduce((itemSum, linea) => {
         return itemSum + (linea.mayorista * linea.qty);
@@ -85,36 +89,55 @@ export async function GET(
       return sum + pedidoTotal;
     }, 0);
 
-    // ✅ Transformar estructura para el frontend
-    const pedidosConItems = pedidos.map(pedido => ({
-      id: pedido.id,
-      cliente: pedido.cliente,
-      estado: pedido.estado,
-      createdAt: pedido.createdAt,
-      // Renombrar "lineas" a "items" para mantener compatibilidad con frontend
-      items: pedido.lineas.map(linea => ({
-        id: linea.id,
-        cantidad: linea.qty,
-        precioUnitario: linea.mayorista,
-        // Crear objeto "producto" con los datos que están en la linea
-        producto: {
-          id: linea.productId,
-          name: linea.name,
-          brand: linea.brand,
-          price: linea.mayorista,
-          // Agregar talle y color como variante
-          talle: linea.talle,
-          color: linea.color
-        }
-      }))
-    }));
+    console.log(`💰 Total consolidación: $${total}`);
 
-    // ✅ Agregar pedidos y total a la consolidación
+    // ✅ CORREGIDO: Transformar estructura para el frontend con AMBOS precios
+    const pedidosConItems = pedidos.map(pedido => {
+      const items = pedido.lineas.map(linea => {
+        // Log para debugging
+        console.log(`   📦 Producto: ${linea.name}`);
+        console.log(`      💵 Mayorista: $${linea.mayorista}`);
+        console.log(`      💵 Venta: $${linea.venta}`);
+        
+        return {
+          id: linea.id,
+          cantidad: linea.qty,
+          // ✅ Precios en el nivel del item
+          mayorista: linea.mayorista,
+          venta: linea.venta,
+          // ✅ Objeto producto con todos los datos
+          producto: {
+            id: linea.productId,
+            name: linea.name,
+            brand: linea.brand,
+            sku: linea.sku,
+            // ✅ AMBOS precios incluidos
+            mayorista: linea.mayorista,
+            venta: linea.venta,
+            talle: linea.talle,
+            color: linea.color
+          }
+        };
+      });
+
+      return {
+        id: pedido.id,
+        cliente: pedido.cliente,
+        estado: pedido.estado,
+        createdAt: pedido.createdAt,
+        items
+      };
+    });
+
+    // ✅ Consolidación completa para el frontend
     const consolidacionConPedidos = {
       ...consolidacion,
       pedidos: pedidosConItems,
       total
     };
+
+    console.log('✅ Consolidación preparada para frontend');
+    console.log('📦 ========================================\n');
 
     return NextResponse.json(
       { 
@@ -125,7 +148,7 @@ export async function GET(
     );
 
   } catch (error) {
-    console.error('Error en GET /api/armar-consolidacion/[token]:', error);
+    console.error('❌ Error en GET /api/armar-consolidacion/[token]:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

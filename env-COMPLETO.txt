@@ -1,0 +1,39 @@
+# Base de datos (Supabase)
+DATABASE_URL="postgresql://postgres.xxmzbspazkyyqdwhvqfg:YHFJ1nqDKkSTn9sU@aws-1-us-east-1.pooler.supabase.com:5432/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.xxmzbspazkyyqdwhvqfg:YHFJ1nqDKkSTn9sU@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
+
+# Cron Job
+CRON_SECRET=mi-secreto-super-seguro-123
+
+# Tiendanube API
+TN_STORE_ID=6566743
+TN_ACCESS_TOKEN=accb4de2caf771902f651fe3c2d2877c6a6609c6
+TN_API_BASE=https://api.tiendanube.com/v1
+TN_USER_AGENT=NadinRevendedorasApp (nadinlenceria@gmail.com)
+
+# Email (SMTP) - ✅ CORREGIDO para mejor compatibilidad con Gmail
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=nadinlenceria@gmail.com
+SMTP_PASS=yfeukzccqzhcxavw
+FROM_EMAIL=nadinlenceria@gmail.com
+
+# NextAuth
+NEXTAUTH_SECRET=mi-secreto-super-seguro-nadin-123456789
+NEXTAUTH_URL=http://localhost:3000
+
+# ✅ URLs públicas - CRÍTICO para links mágicos en emails
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+BASE_URL=http://localhost:3000
+
+# 🆕 SUPABASE STORAGE - Para adjuntar remitos PDF
+NEXT_PUBLIC_SUPABASE_URL=https://xxmzbspazkyyqdwhvqfg.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4bXpic3Bhemt5eXFkd2h2cWZnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MjE5MDc0MCwiZXhwIjoyMDc3NzY2NzQwfQ.pgFkPdibcFdMAky1r4nKFDbFjPXTa2RzeNBmLQP0MaA
+
+# ℹ️ NOTA: Para producción en Vercel, cambiar todas las URLs a:
+# NEXT_PUBLIC_BASE_URL=https://tu-app.vercel.app
+# NEXT_PUBLIC_APP_URL=https://tu-app.vercel.app
+# BASE_URL=https://tu-app.vercel.app
+# NEXTAUTH_URL=https://tu-app.vercel.app

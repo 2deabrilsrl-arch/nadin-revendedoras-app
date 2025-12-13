@@ -12,14 +12,14 @@ const INITIAL_BRANDS = [
   {
     brandSlug: 'Melifera',
     brandName: 'Melifera',
-    logoUrl: '/public/logos/MELIFERA.jpg',  // ⬅️ Ruta de la imagen real
-    logoEmoji: '🤸',                   // Fallback emoji si falla la imagen
+    logoUrl: '/logos/MELIFERA.jpg',  // ✅ CORREGIDO: sin /public
+    logoEmoji: '🤸',
     isActive: true
   },
   {
     brandSlug: 'besame',
     brandName: 'Bésame',
-    logoUrl: '/logos/besame.jpg',    // ⬅️ Agregá esta imagen
+    logoUrl: '/logos/besame.jpg',
     logoEmoji: '💋',
     isActive: false
   },
@@ -59,8 +59,8 @@ async function main() {
         where: { brandSlug: brand.brandSlug },
         data: {
           brandName: brand.brandName,
-          logoUrl: brand.logoUrl,      // ⬅️ Actualiza logoUrl
-          logoEmoji: brand.logoEmoji,  // ⬅️ Mantiene emoji como fallback
+          logoUrl: brand.logoUrl,      // ✅ Actualiza logoUrl CORRECTO
+          logoEmoji: brand.logoEmoji,
           isActive: brand.isActive
         }
       });
@@ -86,7 +86,7 @@ async function main() {
   console.log('   1. Asegurate que las imágenes estén en public/logos/');
   console.log('   2. Cuando una marca confirme, cambiar isActive: true');
   console.log('   3. Los badges usarán el logo real + emoji de nivel');
-  console.log('   4. Ejemplo: Logo Acrobata + 🥉 para nivel bronce\n');
+  console.log('   4. Ejemplo: Logo Melifera + 🥉 para nivel bronce\n');
 }
 
 main()

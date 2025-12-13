@@ -1,5 +1,6 @@
-// COMPONENTE: Notificaciones para Revendedora
+// COMPONENTE: Notificaciones para Revendedora - CORREGIDO
 // Ubicacion: components/NotificacionesRevendedora.tsx
+// CORRECCION: Redirige a /dashboard/chat?id=X en vez de /armar-consolidacion/token
 
 'use client';
 
@@ -60,14 +61,15 @@ export default function NotificacionesRevendedora({ userId }: { userId: string }
     // Cerrar dropdown
     setMostrarDropdown(false);
     
-    // Navegar al chat
+    // ✅ CORREGIDO: Navegar al chat correcto
     if (notif.tipo === 'mensaje_vendedora') {
       try {
         const metadata = JSON.parse(notif.metadata || '{}');
-        const token = metadata.consolidacionToken;
+        const consolidacionId = metadata.consolidacionId;
         
-        if (token) {
-          router.push(`/armar-consolidacion/${token}`);
+        if (consolidacionId) {
+          // ✅ Redirigir a /dashboard/chat?id=consolidacionId
+          router.push(`/dashboard/chat?id=${consolidacionId}`);
         }
       } catch (error) {
         console.error('Error navegando:', error);

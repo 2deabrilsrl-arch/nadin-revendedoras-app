@@ -1,9 +1,11 @@
-// API: CAMBIAR ESTADO DE CONSOLIDACION - CORREGIDO
-// Ubicacion: app/api/consolidaciones/[id]/estado/route.ts
+// API: CAMBIAR ESTADO DE CONSOLIDACION - GAMIFICACIÓN CORREGIDA
+// Ubicación: app/api/consolidaciones/[id]/estado/route.ts
+// CORRECCIÓN: Llama a gamificación UNA SOLA VEZ después de actualizar todos los pedidos
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { enviarNotificacionGeneral } from '@/lib/notifications';
+import { processGamificationAfterSale } from '@/lib/gamification';
 
 export async function PATCH(
   request: Request,
@@ -46,25 +48,27 @@ export async function PATCH(
     const pedidoIds = JSON.parse(consolidacion.pedidoIds);
     const ahora = new Date();
 
-    // Preparar data de actualizacion
+    console.log(`\n📄 ========================================`);
+    console.log(`📄 CAMBIO DE ESTADO: ${consolidacion.estado} → ${nuevoEstado}`);
+    console.log(`📄 Consolidación: ${id}`);
+    console.log(`📄 Pedidos: ${pedidoIds.length}`);
+    console.log(`📄 ========================================`);
+
+    // Preparar data de actualización para CONSOLIDACION
     const updateData: any = { estado: nuevoEstado };
 
-    // ✅ CORREGIDO: Agregar timestamps segun estado
+    // Agregar timestamps según estado
     if (nuevoEstado === 'armado') {
-      // Solo marca como armado, NO como completado
       updateData.armadoEn = ahora;
-      // ❌ REMOVIDO: updateData.completadoEn = ahora;
       
     } else if (nuevoEstado === 'pagado') {
       updateData.pagadoEn = ahora;
       
     } else if (nuevoEstado === 'completado') {
-      // ✅ AGREGADO: Marcar como cerrado para que no vuelva a aparecer
       updateData.completadoEn = ahora;
       updateData.cerrado = true;
       
     } else if (nuevoEstado === 'despachado') {
-      // ✅ AGREGADO: Marcar como cerrado para que no vuelva a aparecer
       updateData.completadoEn = ahora;
       updateData.cerrado = true;
     }
@@ -75,26 +79,37 @@ export async function PATCH(
       data: updateData
     });
 
-    // Actualizar estados de PEDIDOS también
+    // ✅ Actualizar AMBOS campos en PEDIDOS
     const pedidoUpdateData: any = {};
 
     switch (nuevoEstado) {
       case 'armado':
         pedidoUpdateData.orderStatus = 'armado_completo';
+        pedidoUpdateData.estado = 'armado';
         pedidoUpdateData.armadoCompletoAt = ahora;
         break;
+        
       case 'pagado':
-        pedidoUpdateData.orderStatus = 'pagado';
+        // 🎮 CLAVE: Cuando se paga, marcar como entregado + pagado para activar gamificación
+        pedidoUpdateData.orderStatus = 'entregado';
+        pedidoUpdateData.estado = 'entregado';
         pedidoUpdateData.paidToNadin = true;
         pedidoUpdateData.paidToNadinAt = ahora;
         pedidoUpdateData.pagadoAt = ahora;
+        pedidoUpdateData.paidByClient = true;  // ✅ ESTO ACTIVA GAMIFICACIÓN
+        pedidoUpdateData.paidByClientAt = ahora;
+        pedidoUpdateData.entregadoAt = ahora;
         break;
+        
       case 'despachado':
         pedidoUpdateData.orderStatus = 'despachado';
+        pedidoUpdateData.estado = 'despachado';
         pedidoUpdateData.enviadoAt = ahora;
         break;
+        
       case 'completado':
         pedidoUpdateData.orderStatus = 'entregado';
+        pedidoUpdateData.estado = 'completado';
         pedidoUpdateData.entregadoAt = ahora;
         break;
     }
@@ -108,7 +123,57 @@ export async function PATCH(
       console.log(`✅ ${pedidoIds.length} pedidos actualizados a estado: ${nuevoEstado}`);
     }
 
-    // Enviar notificacion a revendedora
+    // 🎮 GAMIFICACIÓN: Se activa SOLO cuando se marca como "pagado"
+    // ✅ CORRECCIÓN: Llamar UNA SOLA VEZ después de actualizar todos los pedidos
+    if (nuevoEstado === 'pagado') {
+      try {
+        console.log(`\n🎮 ========================================`);
+        console.log(`🎮 ACTIVANDO GAMIFICACIÓN`);
+        console.log(`🎮 ========================================`);
+        
+        // Obtener todos los pedidos de la consolidación con sus líneas
+        const pedidos = await prisma.pedido.findMany({
+          where: { id: { in: pedidoIds } },
+          include: { lineas: true }
+        });
+
+        // Calcular total de venta de TODA la consolidación
+        const totalVentaConsolidacion = pedidos.reduce((sum, pedido) => {
+          const totalPedido = pedido.lineas.reduce((lineSum, linea) => {
+            return lineSum + (linea.venta * linea.qty);
+          }, 0);
+          return sum + totalPedido;
+        }, 0);
+
+        console.log(`   💰 Total venta consolidación: $${totalVentaConsolidacion}`);
+        console.log(`   📦 Cantidad de pedidos: ${pedidos.length}`);
+
+        // 🎮 ✅ CORRECCIÓN: Llamar UNA SOLA VEZ
+        // La función processGamificationAfterSale ya recalcula TODO
+        const result = await processGamificationAfterSale(
+          consolidacion.userId,
+          totalVentaConsolidacion
+        );
+
+        if (result && result.success) {
+          console.log(`   ✅ Gamificación procesada exitosamente`);
+          console.log(`   🎯 Nivel actual: ${result.level}`);
+          console.log(`   💎 Puntos ganados: ${result.points || 0}`);
+        } else {
+          console.log(`   ⚠️ Error en gamificación:`, result?.error || 'Unknown error');
+        }
+
+        console.log(`\n🎮 ========================================`);
+        console.log(`🎮 GAMIFICACIÓN COMPLETADA`);
+        console.log(`🎮 ========================================\n`);
+        
+      } catch (gamError) {
+        console.error('⚠️ Error en gamificación (continuando):', gamError);
+        console.error('Stack trace:', (gamError as Error).stack);
+      }
+    }
+
+    // Enviar notificación a revendedora
     let tituloNotif = '';
     let mensajeNotif = '';
 
@@ -140,12 +205,12 @@ export async function PATCH(
       });
     }
 
-    console.log(`✅ Consolidacion ${id} cambió de estado: ${consolidacion.estado} -> ${nuevoEstado}`);
+    console.log(`✅ Consolidacion ${id} cambió de estado: ${consolidacion.estado} -> ${nuevoEstado}\n`);
 
     return NextResponse.json(actualizada);
 
   } catch (error) {
-    console.error('Error cambiando estado:', error);
+    console.error('❌ Error cambiando estado:', error);
     return NextResponse.json(
       { error: 'Error al cambiar estado' },
       { status: 500 }

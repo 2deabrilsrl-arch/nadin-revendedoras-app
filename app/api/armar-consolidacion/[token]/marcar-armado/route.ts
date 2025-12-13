@@ -1,5 +1,6 @@
-// API: Marcar Armado con Notificación Detallada
+// API: Marcar Armado CON Descuentos y Productos Agregados
 // Ubicación: app/api/armar-consolidacion/[token]/marcar-armado/route.ts
+// VERSIÓN: Con costoReal, gananciaNeta, descuentos y productos agregados
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -11,21 +12,28 @@ export async function POST(
   try {
     const { token } = params;
     const body = await request.json();
-    const { productosArmados, resumen } = body;
+    const { 
+      productosArmados, 
+      productosAgregados,
+      descuentoTotal,
+      tipoDescuentoTotal,
+      totales,
+      resumen 
+    } = body;
 
-    // Buscar consolidación
+    console.log('\n🔧 ========================================');
+    console.log('🔧 FINALIZANDO ARMADO CON DESCUENTOS');
+    console.log('🔧 ========================================');
+
+    // ✅ Buscar consolidación
     const consolidacion = await prisma.consolidacion.findFirst({
       where: {
         accessTokens: {
           token: token,
-          expiresAt: {
-            gt: new Date()
-          }
+          expiresAt: { gt: new Date() }
         }
       },
-      include: {
-        user: true
-      }
+      include: { user: true }
     });
 
     if (!consolidacion) {
@@ -35,23 +43,77 @@ export async function POST(
       );
     }
 
-    // Actualizar consolidación como armada
+    console.log(`📦 Consolidación: ${consolidacion.id}`);
+    console.log(`👤 Revendedora: ${consolidacion.user.name}`);
+    
+    // ✅ Información de totales (si están disponibles)
+    if (totales) {
+      console.log(`💰 Total original: $${totales.totalMayoristaOriginal?.toFixed(2) || '0.00'}`);
+      console.log(`💰 Total con descuentos: $${totales.totalFinal?.toFixed(2) || '0.00'}`);
+      const descuentoAplicado = (totales.totalMayoristaOriginal || 0) - (totales.totalFinal || 0);
+      if (descuentoAplicado > 0) {
+        console.log(`📊 Descuento total aplicado: $${descuentoAplicado.toFixed(2)}`);
+      }
+    }
+
+    const ahora = new Date();
+
+    // ✅ Parsear pedidoIds
+    const pedidoIds = JSON.parse(consolidacion.pedidoIds);
+    console.log(`📋 Pedidos incluidos: ${pedidoIds.length}`);
+
+    // ✅ NUEVO: Actualizar consolidación con datos de armado Y descuentos
+    const updateData: any = {
+      armadoEn: ahora,
+      estado: 'armado'
+    };
+
+    // ✅ Si hay totales, guardar costoReal y gananciaNeta
+    if (totales && totales.totalFinal !== undefined) {
+      updateData.costoReal = totales.totalFinal;
+      
+      // Calcular ganancia neta
+      if (totales.totalVenta !== undefined) {
+        updateData.gananciaNeta = totales.totalVenta - totales.totalFinal;
+        console.log(`💎 Ganancia neta: $${updateData.gananciaNeta.toFixed(2)}`);
+      }
+    }
+
     await prisma.consolidacion.update({
       where: { id: consolidacion.id },
+      data: updateData
+    });
+
+    console.log('✅ Consolidación actualizada con estado: armado');
+    if (updateData.costoReal !== undefined) {
+      console.log('✅ costoReal y gananciaNeta guardados en BD');
+    }
+
+    // ✅ Actualizar pedidos
+    await prisma.pedido.updateMany({
+      where: { id: { in: pedidoIds } },
       data: {
-        armadoEn: new Date(),
-        estado: 'armado'
+        estado: 'armado',
+        orderStatus: 'armado_completo',
+        armadoCompletoAt: ahora,
+        armadoEn: ahora
       }
     });
 
-    // ✅ Crear notificación DETALLADA para la revendedora
+    console.log(`✅ ${pedidoIds.length} pedidos actualizados`);
+
+    // ✅ Crear notificación DETALLADA
     let mensajeNotificacion = '📦 Tu consolidación ha sido armada\n\n';
 
     if (resumen.completos.length > 0) {
       mensajeNotificacion += `✅ Productos completos (${resumen.completos.length}):\n`;
-      resumen.completos.forEach((p: any) => {
+      // Mostrar máximo 5 productos, si hay más indicarlo
+      resumen.completos.slice(0, 5).forEach((p: any) => {
         mensajeNotificacion += `• ${p.nombre} - ${p.cantidadDisponible} unidad(es)\n`;
       });
+      if (resumen.completos.length > 5) {
+        mensajeNotificacion += `... y ${resumen.completos.length - 5} más\n`;
+      }
       mensajeNotificacion += '\n';
     }
 
@@ -72,13 +134,35 @@ export async function POST(
       mensajeNotificacion += '\n';
     }
 
+    // ✅ NUEVO: Informar sobre productos agregados
+    if (productosAgregados && productosAgregados.length > 0) {
+      mensajeNotificacion += `➕ Productos agregados durante el armado (${productosAgregados.length}):\n`;
+      productosAgregados.forEach((p: any) => {
+        mensajeNotificacion += `• ${p.nombre} - ${p.cantidad} unidad(es)\n`;
+      });
+      mensajeNotificacion += '\n';
+    }
+
+    // ✅ NUEVO: Informar sobre descuentos
+    if (totales) {
+      const descuentoAplicado = (totales.totalMayoristaOriginal || 0) - (totales.totalFinal || 0);
+      if (descuentoAplicado > 0) {
+        mensajeNotificacion += `💰 DESCUENTO APLICADO:\n`;
+        mensajeNotificacion += `• Total original: $${totales.totalMayoristaOriginal.toFixed(2)}\n`;
+        mensajeNotificacion += `• Descuento: -$${descuentoAplicado.toFixed(2)}\n`;
+        mensajeNotificacion += `• Total a pagar a Nadin: $${totales.totalFinal.toFixed(2)}\n\n`;
+      }
+    }
+
     if (resumen.parciales.length > 0 || resumen.sinStock.length > 0) {
       mensajeNotificacion += '💬 Revisá el chat para más detalles o consultas.';
+    } else if (productosAgregados && productosAgregados.length > 0) {
+      mensajeNotificacion += '💬 Se agregaron productos adicionales. Revisá el detalle arriba.';
     } else {
       mensajeNotificacion += '🎉 ¡Todo el pedido está completo!';
     }
 
-    // Crear notificación en la base de datos
+    // Crear notificación
     await prisma.notificacion.create({
       data: {
         userId: consolidacion.userId,
@@ -90,14 +174,23 @@ export async function POST(
           consolidacionId: consolidacion.id,
           completos: resumen.completos.length,
           parciales: resumen.parciales.length,
-          sinStock: resumen.sinStock.length
+          sinStock: resumen.sinStock.length,
+          agregados: productosAgregados?.length || 0,
+          descuentoAplicado: totales ? ((totales.totalMayoristaOriginal || 0) - (totales.totalFinal || 0)) > 0 : false,
+          totalFinal: totales?.totalFinal || null
         })
       }
     });
 
-    // ✅ Enviar mensaje automático al chat si hay cambios
-    if (resumen.parciales.length > 0 || resumen.sinStock.length > 0) {
-      let mensajeChat = 'El armado de tu consolidación está completo:\n\n';
+    console.log('✅ Notificación creada para la revendedora');
+
+    // ✅ Mensaje automático al chat si hay cambios o descuentos
+    if (resumen.parciales.length > 0 || 
+        resumen.sinStock.length > 0 || 
+        (productosAgregados && productosAgregados.length > 0) ||
+        (totales && ((totales.totalMayoristaOriginal || 0) - (totales.totalFinal || 0)) > 0)) {
+      
+      let mensajeChat = '🔔 El armado de tu consolidación está completo:\n\n';
       
       if (resumen.completos.length > 0) {
         mensajeChat += `✅ ${resumen.completos.length} producto(s) completo(s)\n`;
@@ -108,8 +201,20 @@ export async function POST(
       if (resumen.sinStock.length > 0) {
         mensajeChat += `❌ ${resumen.sinStock.length} producto(s) sin stock\n`;
       }
+      if (productosAgregados && productosAgregados.length > 0) {
+        mensajeChat += `➕ ${productosAgregados.length} producto(s) agregado(s)\n`;
+      }
       
-      mensajeChat += '\nRevisá los detalles arriba. Si tenés dudas, escribime.';
+      // Información de descuentos
+      if (totales) {
+        const descuentoAplicado = (totales.totalMayoristaOriginal || 0) - (totales.totalFinal || 0);
+        if (descuentoAplicado > 0) {
+          mensajeChat += `\n💰 Se aplicó un descuento de $${descuentoAplicado.toFixed(2)}\n`;
+          mensajeChat += `💵 Total a pagar: $${totales.totalFinal.toFixed(2)}\n`;
+        }
+      }
+      
+      mensajeChat += '\n📋 Revisá los detalles arriba. Si tenés dudas, escribime.';
 
       await prisma.consolidacionMensaje.create({
         data: {
@@ -120,18 +225,31 @@ export async function POST(
           leido: false
         }
       });
+
+      console.log('✅ Mensaje automático enviado al chat');
     }
+
+    console.log('🔧 ========================================');
+    console.log('🔧 ARMADO FINALIZADO EXITOSAMENTE');
+    console.log('🔧 ========================================\n');
 
     return NextResponse.json(
       { 
         success: true,
-        mensaje: 'Armado completado y notificación enviada'
+        mensaje: 'Armado completado y notificación enviada',
+        consolidacionId: consolidacion.id,
+        totales: totales ? {
+          totalOriginal: totales.totalMayoristaOriginal,
+          totalFinal: totales.totalFinal,
+          descuento: (totales.totalMayoristaOriginal || 0) - (totales.totalFinal || 0),
+          gananciaEstimada: totales.gananciaEstimada
+        } : null
       },
       { status: 200 }
     );
 
   } catch (error) {
-    console.error('Error en marcar-armado:', error);
+    console.error('❌ Error en marcar-armado:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

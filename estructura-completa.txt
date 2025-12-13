@@ -1,0 +1,320 @@
+Listado de rutas de carpetas
+El número de serie del volumen es 76BE-C2A0
+C:\USERS\NADIN LENCERIA\ONEDRIVE\DOCUMENTS\GITHUB\NADIN-REVENDEDORAS-APP\APP
+¦   globals.css
+¦   layout.tsx
+¦   page.tsx
+¦   
++---admin
+¦   ¦   layout.tsx
+¦   ¦   
+¦   +---armar-pedidos
+¦   ¦   ¦   page.tsx
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦           page.tsx
+¦   ¦           
+¦   +---conversaciones
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---dashboard
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---pendientes-armado
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---pendientes-entrega
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---pendientes-pago
+¦           page.tsx
+¦           
++---api
+¦   +---admin
+¦   ¦   +---brands
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---consolidaciones
+¦   ¦   ¦   ¦   route.ts
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---actualizar-ganancia
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---conversaciones
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---debug-categories
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---diagnostico-final
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---diagnostico-gamificacion
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---force-sync
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---init-gamification
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---limpiar-cache
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---mensajes-sin-leer
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---pedidos
+¦   ¦   ¦   +---finalizar-armado
+¦   ¦   ¦   ¦       route.ts
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---finalizar-armado-consolidacion
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---seed-badges
+¦   ¦   +---sync-status
+¦   ¦           route.ts
+¦   ¦           
+¦   +---analytics
+¦   ¦       route.ts
+¦   ¦       
+¦   +---armar
+¦   ¦   +---[token]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---armar-consolidacion
+¦   ¦   +---[token]
+¦   ¦       ¦   route.ts
+¦   ¦       ¦   
+¦   ¦       +---marcar-armado
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---mensajes
+¦   ¦               route.ts
+¦   ¦               
+¦   +---auth
+¦   ¦   +---login
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---recuperar
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---registro
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---reset-password
+¦   ¦           route.ts
+¦   ¦           
+¦   +---best-sellers
+¦   ¦       route.ts
+¦   ¦       
+¦   +---buscar-producto
+¦   ¦       route.ts
+¦   ¦       
+¦   +---catalogo
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---best-sellers
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---categories
+¦   ¦           route.ts
+¦   ¦           
+¦   +---clientas
+¦   ¦       route.ts
+¦   ¦       
+¦   +---consolidaciones
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦       ¦   route.ts
+¦   ¦       ¦   
+¦   ¦       +---access-token
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---armado-iniciado
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---estado
+¦   ¦       ¦       route.ts
+¦   ¦       ¦       
+¦   ¦       +---mensajes
+¦   ¦               route.ts
+¦   ¦               
+¦   +---consolidar
+¦   ¦       route.ts
+¦   ¦       
+¦   +---cron
+¦   ¦   +---sync-catalog
+¦   ¦           route.ts
+¦   ¦           
+¦   +---filtros
+¦   ¦       route.ts
+¦   ¦       
+¦   +---gamification
+¦   ¦   +---ranking
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---stats
+¦   ¦           route.ts
+¦   ¦           
+¦   +---notificaciones
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---admin
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---marcar-todas
+¦   ¦   ¦       notificaciones-marcar-todas-CORREGIDO.ts
+¦   ¦   ¦       
+¦   ¦   +---revendedora
+¦   ¦   ¦   +---[userId]
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---vendedora
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---[id]
+¦   ¦           route.ts
+¦   ¦           
+¦   +---pedidos
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---create
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---update-status
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---validar-stock
+¦   ¦   ¦       route.ts
+¦   ¦   ¦       
+¦   ¦   +---[id]
+¦   ¦       ¦   route.ts
+¦   ¦       ¦   
+¦   ¦       +---estado
+¦   ¦       +---mensajes
+¦   ¦               route.ts
+¦   ¦               
+¦   +---profile
+¦   ¦   ¦   route.ts
+¦   ¦   ¦   
+¦   ¦   +---public
+¦   ¦   ¦   +---[handle]
+¦   ¦   ¦           route.ts
+¦   ¦   ¦           
+¦   ¦   +---upload-photo
+¦   ¦           route.ts
+¦   ¦           
+¦   +---test-sync
+¦   ¦       route.ts
+¦   ¦       
+¦   +---user
+¦   ¦   +---update
+¦   ¦           route.ts
+¦   ¦           
+¦   +---verificar-categorias
+¦           route.ts
+¦           
++---armar
+¦   +---[token]
+¦           page.tsx
+¦           
++---armar-consolidacion
+¦   ¦   layout.tsx
+¦   ¦   
+¦   +---[token]
+¦           page.tsx
+¦           
++---chat-consolidacion
+¦   +---[token]
+¦           page.tsx
+¦           
++---consolidaciones
+¦       page.tsx
+¦       
++---dashboard
+¦   ¦   layout.tsx
+¦   ¦   page.tsx
+¦   ¦   
+¦   +---analytics
+¦   ¦   ¦   page.tsx
+¦   ¦   ¦   
+¦   ¦   +---clientas
+¦   ¦       ¦   page.tsx
+¦   ¦       ¦   
+¦   ¦       +---[nombre]
+¦   ¦               page.tsx
+¦   ¦               
+¦   +---best-sellers
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---catalogo
+¦   ¦   ¦   page.tsx
+¦   ¦   ¦   
+¦   ¦   +---subcategories
+¦   ¦           page.tsx
+¦   ¦           
+¦   +---catalogos-digitales
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---consolidar
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---diagnostico
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---diagnostico-categorias
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---historial
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---logros
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---notificaciones
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---nuevo-pedido
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---pedidos
+¦   ¦   ¦   page.tsx
+¦   ¦   ¦   
+¦   ¦   +---[id]
+¦   ¦       +---armado
+¦   ¦               page.tsx
+¦   ¦               
+¦   +---perfil
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---ranking
+¦   ¦       page.tsx
+¦   ¦       
+¦   +---recuperar
+¦           page.tsx
+¦           
++---login
+¦       layout.tsx
+¦       page.tsx
+¦       
++---offline
+¦       page.tsx
+¦       
++---pedido-finalizado
+¦       page.tsx
+¦       
++---perfil
+¦   +---[handle]
+¦           page.tsx
+¦           
++---recuperar
+¦   ¦   page.tsx
+¦   ¦   
+¦   +---nueva-password
+¦           page.tsx
+¦           
++---registro
+        page.tsx
+        

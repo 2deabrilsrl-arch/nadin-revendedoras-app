@@ -1,11 +1,11 @@
-// ADMIN: PENDIENTES DE ARMADO - CON BÚSQUEDA
+// ADMIN: PENDIENTES DE ARMADO - CON BÚSQUEDA Y BOTONES
 // Ubicación: app/admin/pendientes-armado/page.tsx
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, AlertCircle, CheckCircle, MessageCircle, Search } from 'lucide-react';
+import { Package, AlertCircle, CheckCircle, MessageCircle, Search, Home, Trash2 } from 'lucide-react';
 
 export default function PendientesArmadoPage() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function PendientesArmadoPage() {
   const [consolidaciones, setConsolidaciones] = useState<any[]>([]);
   const [mensajesSinLeer, setMensajesSinLeer] = useState<Record<string, number>>({});
   const [busqueda, setBusqueda] = useState('');
+  const [cancelando, setCancelando] = useState<string | null>(null);
 
   useEffect(() => {
     cargarDatos();
@@ -75,6 +76,34 @@ export default function PendientesArmadoPage() {
     }
   };
 
+  // 🔥 AGREGADO: Cancelar consolidación
+  const cancelarConsolidacion = async (consolidacionId: string) => {
+    if (!(globalThis as any).confirm?.('¿Estás segura de cancelar esta consolidación?\n\nEsto eliminará la consolidación y sus pedidos asociados.')) {
+      return;
+    }
+
+    try {
+      setCancelando(consolidacionId);
+
+      const res = await fetch(`/api/admin/consolidaciones/${consolidacionId}`, {
+        method: 'DELETE'
+      });
+
+      if (!res.ok) {
+        throw new Error('Error al cancelar');
+      }
+
+      (globalThis as any).alert?.('✅ Consolidación cancelada');
+      await cargarConsolidaciones();
+
+    } catch (error) {
+      console.error('Error cancelando consolidación:', error);
+      (globalThis as any).alert?.('❌ Error al cancelar la consolidación');
+    } finally {
+      setCancelando(null);
+    }
+  };
+
   // ✅ FILTRADO CON BÚSQUEDA
   const consolidacionesFiltradas = consolidaciones.filter(c => {
     if (busqueda.trim()) {
@@ -98,6 +127,15 @@ export default function PendientesArmadoPage() {
 
   return (
     <div className="space-y-6">
+      {/* 🔥 AGREGADO: Botón Volver al Inicio */}
+      <button
+        onClick={() => router.push('/admin/dashboard')}
+        className="flex items-center gap-2 text-pink-600 hover:text-pink-700 font-medium transition-colors"
+      >
+        <Home size={20} />
+        <span>Volver al Inicio</span>
+      </button>
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center gap-3 mb-2">
@@ -221,6 +259,25 @@ export default function PendientesArmadoPage() {
                       >
                         <Package size={18} />
                         Armar
+                      </button>
+
+                      {/* 🔥 AGREGADO: Botón Cancelar */}
+                      <button
+                        onClick={() => cancelarConsolidacion(consolidacion.id)}
+                        disabled={cancelando === consolidacion.id}
+                        className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm flex items-center gap-2 justify-center"
+                      >
+                        {cancelando === consolidacion.id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Cancelando...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 size={16} />
+                            Cancelar
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>

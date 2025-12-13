@@ -1,4 +1,4 @@
-// Layout Revendedora - CON RUTAS CORREGIDAS
+// Layout Revendedora - CON LINK AL CHAT
 // Ubicacion: app/dashboard/layout.tsx
 
 'use client';
@@ -21,7 +21,8 @@ import {
   LogOut,
   Menu,
   X,
-  Bell
+  Bell,
+  MessageCircle
 } from 'lucide-react';
 import NotificacionesRevendedora from '@/components/NotificacionesRevendedora';
 import FloatingCart from '@/components/FloatingCart';
@@ -69,14 +70,15 @@ export default function DashboardLayout({
 
   const menuItems = [
     { href: '/dashboard', icon: Home, label: 'Inicio', emoji: '🏠' },
-    { href: '/dashboard/catalogo', icon: ShoppingCart, label: 'Productos', emoji: '🛍️' }, // ✅ CORREGIDO
+    { href: '/dashboard/catalogo', icon: ShoppingCart, label: 'Productos', emoji: '🛍️' },
     { href: '/dashboard/best-sellers', icon: TrendingUp, label: 'Mas Vendidos', emoji: '⭐' },
-    { href: '/dashboard/pedidos', icon: Package, label: 'Mis Pedidos', emoji: '📦' }, // ✅ CORREGIDO
+    { href: '/dashboard/pedidos', icon: Package, label: 'Mis Pedidos', emoji: '📦' },
     { href: '/dashboard/consolidar', icon: PackageCheck, label: 'Consolidar', emoji: '📮' },
+    { href: '/dashboard/chat', icon: MessageCircle, label: 'Chat con Nadin', emoji: '💬' }, // 🆕 NUEVO
     { href: '/dashboard/notificaciones', icon: Bell, label: 'Notificaciones', emoji: '🔔' },
-    { href: '/dashboard/logros', icon: Trophy, label: 'Mis Logros', emoji: '🏆' }, // ✅ CORREGIDO
+    { href: '/dashboard/logros', icon: Trophy, label: 'Mis Logros', emoji: '🏆' },
     { href: '/dashboard/ranking', icon: BarChart3, label: 'Ranking', emoji: '📊' },
-    { href: '/dashboard/catalogos-digitales', icon: BookOpen, label: 'Catalogos Digitales', emoji: '📱' }, // ✅ CORREGIDO
+    { href: '/dashboard/catalogos-digitales', icon: BookOpen, label: 'Catalogos Digitales', emoji: '📱' },
     { href: '/dashboard/analytics', icon: LineChart, label: 'Analytics', emoji: '📈' },
     { href: '/dashboard/historial', icon: History, label: 'Historial', emoji: '📋' },
     { href: '/dashboard/perfil', icon: User, label: 'Mi Perfil', emoji: '👤' },
