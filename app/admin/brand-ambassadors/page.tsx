@@ -90,7 +90,7 @@ export default function BrandAmbassadorsPage() {
       setLoading(true);
       const res = await fetch(`/api/admin/brand-ambassadors?brand=${brandSlug}&limit=100`);
       const data = await res.json();
-      setRanking(data);
+      setRanking(data as any);
       setSelectedBrand(brandSlug);
       setView('ranking');
     } catch (error) {
