@@ -22,7 +22,7 @@ export default function ConversacionesPage() {
       setLoading(true);
       const res = await fetch('/api/admin/conversaciones');
       const data = await res.json();
-      setConversaciones(data.conversaciones || []);
+      setConversaciones((data as any).conversaciones || []);
     } catch (error) {
       console.error('Error cargando conversaciones:', error);
     } finally {
@@ -40,7 +40,7 @@ export default function ConversacionesPage() {
     try {
       const res = await fetch(`/api/consolidaciones/${consolidacionId}/mensajes`);
       const data = await res.json();
-      setMensajes(data.mensajes || []);
+      setMensajes((data as any).mensajes || []);
       setConversacionAbierta(consolidacionId);
     } catch (error) {
       console.error('Error cargando mensajes:', error);
