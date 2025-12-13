@@ -33,16 +33,16 @@ export default function AdminLayout({
   });
 
   useEffect(() => {
-    const userData = localStorage.getItem('user');
+    const userData = (globalThis as any).localStorage?.getItem('user');
     if (userData) {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
       
       if (parsedUser.rol !== 'vendedora') {
-        window.location.href = '/dashboard';
+        (globalThis as any).window?.location?.href = '/dashboard';
       }
     } else {
-      window.location.href = '/login';
+      (globalThis as any).window?.location?.href = '/login';
     }
   }, []);
 
@@ -67,9 +67,9 @@ export default function AdminLayout({
       ]);
 
       setBadges({
-        armado: dataArmado.consolidaciones?.length || 0,
-        pago: dataPago.consolidaciones?.length || 0,
-        entrega: dataEntrega.consolidaciones?.length || 0
+        armado: (dataArmado as any).consolidaciones?.length || 0,
+        pago: (dataPago as any).consolidaciones?.length || 0,
+        entrega: (dataEntrega as any).consolidaciones?.length || 0
       });
     } catch (error) {
       console.error('Error cargando badges:', error);
@@ -77,7 +77,7 @@ export default function AdminLayout({
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    (globalThis as any).localStorage?.removeItem('user');
     router.push('/login');
   };
 
