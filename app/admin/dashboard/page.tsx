@@ -38,9 +38,9 @@ export default function AdminDashboardPage() {
       ]);
 
       setEstadisticas({
-        armado: dataArmado.consolidaciones?.length || 0,
-        pago: dataPago.consolidaciones?.length || 0,
-        entrega: dataEntrega.consolidaciones?.length || 0
+        armado: (dataArmado as any).consolidaciones?.length || 0,
+        pago: (dataPago as any).consolidaciones?.length || 0,
+        entrega: (dataEntrega as any).consolidaciones?.length || 0
       });
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
