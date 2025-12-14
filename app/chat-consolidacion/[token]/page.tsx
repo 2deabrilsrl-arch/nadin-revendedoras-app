@@ -26,7 +26,7 @@ export default function ChatConsolidacionPage() {
       console.log('👤 Usuario:', u.name, 'Rol:', u.rol);
       
       if (u.rol !== 'revendedora') {
-        alert('❌ Esta página es solo para revendedoras');
+        ((globalThis as any).alert)?.('❌ Esta página es solo para revendedoras');
         router.push('/dashboard');
         return;
       }
@@ -57,7 +57,7 @@ export default function ChatConsolidacionPage() {
         throw new Error(`Error ${resConsolidacion.status}: ${errorText}`);
       }
       
-      const dataConsolidacion = await resConsolidacion.json();
+      const dataConsolidacion = await resConsolidacion.json() as any;
       console.log('✅ Datos recibidos:', dataConsolidacion);
       
       if (!dataConsolidacion.consolidacion) {
@@ -82,7 +82,7 @@ export default function ChatConsolidacionPage() {
       const res = await fetch(`/api/armar-consolidacion/${token}/mensajes`);
       
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as any;
         console.log('✅ Mensajes cargados:', data.mensajes?.length || 0);
         setMensajes(data.mensajes || []);
       } else {
@@ -116,13 +116,13 @@ export default function ChatConsolidacionPage() {
         setNuevoMensaje('');
         await cargarMensajes();
       } else {
-        const errorData = await res.json();
+        const errorData = await res.json() as any;
         console.error('❌ Error enviando:', errorData);
-        alert('Error al enviar mensaje: ' + (errorData.error || 'Error desconocido'));
+        ((globalThis as any).alert)?.('Error al enviar mensaje: ' + (errorData.error || 'Error desconocido'));
       }
     } catch (error) {
       console.error('❌ Error enviando mensaje:', error);
-      alert('Error al enviar mensaje');
+      ((globalThis as any).alert)?.('Error al enviar mensaje');
     } finally {
       setEnviando(false);
     }
