@@ -81,7 +81,7 @@ function DocumentosConsolidacion({ token, consolidacionId, userId }: DocumentosC
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
+    const file = (e.target as any).files?.[0];
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
@@ -97,7 +97,7 @@ function DocumentosConsolidacion({ token, consolidacionId, userId }: DocumentosC
     }
 
     await subirDocumento(file);
-    e.target.value = '';
+    (e.target as any).value = '';
   };
 
   const subirDocumento = async (file: File) => {
@@ -661,7 +661,7 @@ export default function ArmarConsolidacionPage() {
       
       // Redirigir a pendientes de armado después de 500ms
       setTimeout(() => {
-        window.location.href = '/admin/pendientes-armado';
+        if ((globalThis as any).window?.location) { (globalThis as any).window.location.href = "/admin/pendientes-armado"; }
       }, 500);
 
     } catch (error) {
