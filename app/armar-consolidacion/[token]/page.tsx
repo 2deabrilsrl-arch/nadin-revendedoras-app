@@ -134,7 +134,7 @@ function DocumentosConsolidacion({ token, consolidacionId, userId }: DocumentosC
   };
 
   const eliminarDocumento = async (docId: string, nombre: string) => {
-    if (!confirm(`¿Eliminar "${nombre}"?`)) return;
+    if (!(globalThis as any).confirm?.(`¿Eliminar "${nombre}"?`)) return;
 
     try {
       const res = await fetch(`/api/armar-consolidacion/${token}/documentos/${docId}`, {
@@ -667,7 +667,7 @@ export default function ArmarConsolidacionPage() {
     } catch (error) {
       console.error('Error finalizando armado:', error);
       // Solo mostrar alert en caso de error
-      alert('Error al finalizar el armado. Intentá de nuevo.');
+      ((globalThis as any).alert)?.('Error al finalizar el armado. Intentá de nuevo.');
       // No cerrar modal en caso de error para que el usuario pueda reintentar
     } finally {
       setMarcandoArmado(false);
@@ -695,7 +695,7 @@ export default function ArmarConsolidacionPage() {
       await cargarMensajes();
     } catch (error) {
       console.error('Error enviando mensaje:', error);
-      alert('Error al enviar el mensaje');
+      ((globalThis as any).alert)?.('Error al enviar el mensaje');
     } finally {
       setEnviandoMensaje(false);
     }
