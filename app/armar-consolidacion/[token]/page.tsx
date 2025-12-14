@@ -69,7 +69,7 @@ function DocumentosConsolidacion({ token, consolidacionId, userId }: DocumentosC
     try {
       setLoading(true);
       const res = await fetch(`/api/armar-consolidacion/${token}/documentos`);
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.success) {
         setDocumentos(data.documentos || []);
       }
@@ -116,7 +116,7 @@ function DocumentosConsolidacion({ token, consolidacionId, userId }: DocumentosC
         body: formData,
       });
 
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (!data.success) {
         throw new Error(data.error || 'Error al subir documento');
@@ -342,7 +342,7 @@ export default function ArmarConsolidacionPage() {
   const cargarConsolidacion = async () => {
     try {
       const res = await fetch(`/api/armar-consolidacion/${token}`);
-      const data = await res.json();
+      const data = await res.json() as any;
 
 
       if (data.consolidacion) {
@@ -404,7 +404,7 @@ export default function ArmarConsolidacionPage() {
   const cargarMensajes = async () => {
     try {
       const res = await fetch(`/api/armar-consolidacion/${token}/mensajes`);
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (data.mensajes) {
         setMensajes(data.mensajes);
@@ -486,7 +486,7 @@ export default function ArmarConsolidacionPage() {
     setBuscandoProductos(true);
     try {
       const res = await fetch(`/api/productos/buscar?q=${encodeURIComponent(query)}&limit=10`);
-      const data = await res.json();
+      const data = await res.json() as any;
       setProductosDisponibles(data.productos || []);
     } catch (error) {
       console.error('Error buscando productos:', error);
