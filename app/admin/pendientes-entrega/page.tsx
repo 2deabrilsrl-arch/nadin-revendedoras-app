@@ -40,7 +40,7 @@ export default function PendientesEntregaPage() {
       setLoading(true);
       const res = await fetch('/api/admin/consolidaciones?pendientesEntrega=true');
       const data = await res.json();
-      setConsolidaciones(data.consolidaciones || []);
+      setConsolidaciones((data as any).consolidaciones || []);
     } catch (error) {
       console.error('Error cargando pendientes:', error);
     } finally {
@@ -100,7 +100,7 @@ export default function PendientesEntregaPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Error al cancelar');
+        throw new Error((data as any).error || 'Error al cancelar');
       }
 
       (globalThis as any).alert?.('✅ Consolidación cancelada. La revendedora fue notificada.');
