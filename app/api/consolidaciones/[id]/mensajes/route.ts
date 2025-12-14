@@ -46,7 +46,7 @@ export async function POST(
 ) {
   try {
     const { id } = params;
-    const body = await request.json();
+    const body = await request.json() as any;
 
     const { autorId, autorNombre, autorTipo, mensaje } = body;
 
@@ -114,7 +114,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = params;
-    const body = await request.json();
+    const body = await request.json() as any;
 
     const { autorTipo } = body;
 
