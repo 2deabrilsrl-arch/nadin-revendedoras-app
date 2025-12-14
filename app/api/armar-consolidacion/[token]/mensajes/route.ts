@@ -79,7 +79,7 @@ export async function POST(
     const consolidacion = accessToken.consolidacion;
 
     // Verificar si consolidación está en estado donde NO se puede escribir
-    if (consolidacion.entregado || consolidacion.estado === 'entregado') {
+    if (consolidacion.estado === 'entregado' || consolidacion.estado === 'completado') {
       return NextResponse.json({
         error: 'pedido_finalizado',
         message: 'Este pedido ya fue enviado. Para consultas contactá a nadinlenceria@gmail.com'
