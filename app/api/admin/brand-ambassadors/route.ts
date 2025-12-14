@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as any;
     const { brandSlug, action } = body;
 
     if (!brandSlug || !action) {
