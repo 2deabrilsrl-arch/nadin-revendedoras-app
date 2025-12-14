@@ -80,7 +80,7 @@ export async function GET() {
 // POST - Agregar nueva marca
 export async function POST(req: NextRequest) {
   try {
-    const body: any = await req.json();
+    const body: any = await req.json() as any;
     const { brandSlug, brandName, logoEmoji, logoUrl, isActive } = body;
 
     // Validaciones
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
 // PATCH - Activar/desactivar marca
 export async function PATCH(req: NextRequest) {
   try {
-    const body: any = await req.json();
+    const body: any = await req.json() as any;
     const { brandSlug, isActive } = body;
 
     if (!brandSlug) {

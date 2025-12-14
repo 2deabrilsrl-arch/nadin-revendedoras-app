@@ -8,7 +8,7 @@ import crypto from 'crypto';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as any;
     const { pedidoIds, formaPago, tipoEnvio, transporteNombre, userId } = body;
 
     // Validar userId
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
 // PATCH: Marcar consolidación como pagada
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as any;
     const { consolidacionId, pagado, userEmail } = body;
 
     // Validar que es vendedora

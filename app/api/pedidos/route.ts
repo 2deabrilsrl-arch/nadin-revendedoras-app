@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 // POST - Crear nuevo pedido
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as any;
     const { cliente, telefono, nota, items } = body;
 
     // Validaciones

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 // PATCH: Marcar notificación(es) como leída(s)
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as any;
     const { notificacionId, userId, markAllAsRead } = body;
 
     if (markAllAsRead && userId) {

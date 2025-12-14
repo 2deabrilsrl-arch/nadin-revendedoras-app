@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as any;
     const { pedidoId, orderStatus, paidToNadin, paidByClient } = body;
 
     if (!pedidoId) {
