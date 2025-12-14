@@ -68,11 +68,11 @@ export default function PendientesArmadoPage() {
       if ((data as any).token) {
         router.push(`/armar-consolidacion/${(data as any).token}`);
       } else {
-        alert('Error obteniendo acceso a la consolidación');
+        (globalThis as any).alert?.('Error obteniendo acceso a la consolidación');
       }
     } catch (error) {
       console.error('Error abriendo consolidación:', error);
-      alert('Error al abrir la consolidación');
+      (globalThis as any).alert?.('Error al abrir la consolidación');
     }
   };
 
