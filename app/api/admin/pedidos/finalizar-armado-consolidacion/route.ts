@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json() as any;
     const { consolidacionId, productosArmados, productosFaltantes, productosParciales } = body;
 
     if (!consolidacionId) {
