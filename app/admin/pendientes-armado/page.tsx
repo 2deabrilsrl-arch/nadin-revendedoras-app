@@ -40,7 +40,7 @@ export default function PendientesArmadoPage() {
     try {
       const res = await fetch('/api/admin/consolidaciones?pendientesArmado=true');
       const data = await res.json();
-      setConsolidaciones(data.consolidaciones || []);
+      setConsolidaciones((data as any).consolidaciones || []);
     } catch (error) {
       console.error('Error cargando consolidaciones:', error);
     }
@@ -50,8 +50,8 @@ export default function PendientesArmadoPage() {
     try {
       const res = await fetch('/api/admin/mensajes-sin-leer');
       const data = await res.json();
-      if (data.success) {
-        setMensajesSinLeer(data.contadores || {});
+      if ((data as any).success) {
+        setMensajesSinLeer((data as any).contadores || {});
       }
     } catch (error) {
       console.error('Error cargando mensajes sin leer:', error);
@@ -65,8 +65,8 @@ export default function PendientesArmadoPage() {
       });
       const data = await res.json();
       
-      if (data.token) {
-        router.push(`/armar-consolidacion/${data.token}`);
+      if ((data as any).token) {
+        router.push(`/armar-consolidacion/${(data as any).token}`);
       } else {
         alert('Error obteniendo acceso a la consolidación');
       }
