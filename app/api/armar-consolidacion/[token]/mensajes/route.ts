@@ -55,7 +55,7 @@ export async function POST(
 ) {
   try {
     const { token } = params;
-    const { mensaje, autorTipo, autorNombre } = await req.json();
+    const { mensaje, autorTipo, autorNombre } = await req.json() as any;
 
     if (!mensaje || !autorTipo || !autorNombre) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
