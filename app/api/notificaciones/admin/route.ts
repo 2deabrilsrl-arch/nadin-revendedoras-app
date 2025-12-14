@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
   try {
-    // Obtener notificaciones de mensajes no leídos en consolidaciones activas
+    // Obtener consolidaciones activas
     const consolidacionesActivas = await prisma.consolidacion.findMany({
       where: {
         estado: {
@@ -14,29 +14,36 @@ export async function GET(request: Request) {
         }
       },
       include: {
-        user: true,
-        mensajes: {
-          where: {
-            leido: false,
-            autorTipo: 'revendedora' // Mensajes de revendedoras no leídos
-          },
-          orderBy: { createdAt: 'desc' }
-        }
+        user: true
       }
     });
 
-    // Crear notificaciones virtuales para cada mensaje no leído
-    const notificaciones = consolidacionesActivas.flatMap(cons =>
-      cons.mensajes.map(msg => ({
-        id: msg.id,
-        tipo: 'mensaje_consolidacion',
-        titulo: `Mensaje de ${cons.user.name}`,
-        mensaje: msg.mensaje.substring(0, 100),
-        leida: false,
-        consolidacionId: cons.id,
-        createdAt: msg.createdAt
-      }))
-    );
+    // Obtener mensajes no leídos para cada consolidación
+    const notificaciones = [];
+    
+    for (const cons of consolidacionesActivas) {
+      const mensajes = await prisma.consolidacionMensaje.findMany({
+        where: {
+          consolidacionId: cons.id,
+          leido: false,
+          autorTipo: 'revendedora'
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      // Crear notificaciones virtuales
+      for (const msg of mensajes) {
+        notificaciones.push({
+          id: msg.id,
+          tipo: 'mensaje_consolidacion',
+          titulo: `Mensaje de ${cons.user.name}`,
+          mensaje: msg.mensaje.substring(0, 100),
+          leida: false,
+          consolidacionId: cons.id,
+          createdAt: msg.createdAt
+        });
+      }
+    }
 
     return NextResponse.json({ notificaciones });
 
