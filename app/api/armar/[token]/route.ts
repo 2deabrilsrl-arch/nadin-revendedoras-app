@@ -17,7 +17,7 @@ export async function GET(
     const accessToken = await prisma.pedidoAccessToken.findUnique({
       where: { token },
       include: {
-        pedido: {
+        Pedido: {
           include: {
             lineas: true,
             user: true,
@@ -52,12 +52,12 @@ export async function GET(
       });
     }
 
-    console.log('✅ Token válido, pedido:', accessToken.pedido.id);
+    console.log('✅ Token válido, pedido:', accessToken.Pedido.id);
 
     return NextResponse.json({
       success: true,
-      pedido: accessToken.pedido,
-      revendedora: accessToken.pedido.user
+      pedido: accessToken.Pedido,
+      revendedora: accessToken.Pedido.user
     });
 
   } catch (error) {
