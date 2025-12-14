@@ -20,10 +20,7 @@ export async function GET(
         Pedido: {
           include: {
             lineas: true,
-            user: true,
-            mensajes: {
-              orderBy: { createdAt: 'asc' }
-            }
+            user: true
           }
         }
       }
