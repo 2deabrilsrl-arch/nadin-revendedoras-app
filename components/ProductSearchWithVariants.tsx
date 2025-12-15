@@ -161,7 +161,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
     }
 
     if (cantidad > varianteActual.stock) {
-      ((globalThis as any).alert)?(`Stock insuficiente. Disponible: ${varianteActual.stock}`);
+      ((globalThis as any).alert)?.(`Stock insuficiente. Disponible: ${varianteActual.stock}`);
       return;
     }
 
