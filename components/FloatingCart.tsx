@@ -30,10 +30,10 @@ export default function FloatingCart() {
     };
     
     // Escuchar cambios de ruta
-    window.addEventListener('popstate', handleRouteChange);
+    (globalThis as any).window?.addEventListener('popstate', handleRouteChange);
     
     return () => {
-      window.removeEventListener('popstate', handleRouteChange);
+      (globalThis as any).window?.removeEventListener('popstate', handleRouteChange);
     };
   }, []);
 
@@ -163,7 +163,7 @@ export default function FloatingCart() {
             <div className="p-4 border-t border-gray-200 space-y-3">
               <button
                 onClick={() => {
-                  if (confirm('¿Vaciar todo el carrito?')) {
+                  if ((globalThis as any).confirm?.('¿Vaciar todo el carrito?')) {
                     clearCart();
                     setIsOpen(false);
                   }
