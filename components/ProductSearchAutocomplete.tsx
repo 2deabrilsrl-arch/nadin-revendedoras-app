@@ -154,7 +154,7 @@ export default function ProductSearchAutocomplete({
     setShowResults(false);
     setSelectedIndex(-1);
     if (inputRef.current) {
-      inputRef.current.focus();
+      (inputRef.current as any)?.focus();
     }
   };
 
