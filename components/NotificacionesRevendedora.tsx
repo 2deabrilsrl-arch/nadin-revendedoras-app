@@ -27,7 +27,7 @@ export default function NotificacionesRevendedora({ userId }: { userId: string }
       const res = await fetch(`/api/notificaciones/revendedora/${userId}`);
       if (!res.ok) return;
       
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.notificaciones) {
         setNotificaciones(data.notificaciones);
         const count = data.notificaciones.filter((n: any) => !n.leida).length;
