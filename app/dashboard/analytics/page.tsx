@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
         setLoadingGamification(true);
         const gamRes = await fetch(`/api/user-level?userId=${uid}`);
         if (gamRes.ok) {
-          const gamData = await gamRes.json();
+          const gamData = await gamRes.json() as any;
           console.log('✅ Gamificación cargada:', gamData);
           setUserLevel(gamData.userLevel);
         } else {
