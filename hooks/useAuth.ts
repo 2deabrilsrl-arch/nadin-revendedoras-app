@@ -42,7 +42,7 @@ export function useAuth() {
     loadUser();
 
     // Escuchar cambios en localStorage (para sync entre tabs)
-    const handleStorageChange = (e: StorageEvent) => {
+    const handleStorageChange = (e: any) => {
       if (e.key === 'user') {
         if (e.newValue) {
           setUser(JSON.parse(e.newValue));
