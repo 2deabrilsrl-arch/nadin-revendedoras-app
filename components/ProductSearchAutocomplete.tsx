@@ -52,7 +52,7 @@ export default function ProductSearchAutocomplete({
   // Cerrar resultados al hacer click fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (searchRef.current && !(searchRef.current as any).contains(event.target as Node)) {
         setShowResults(false);
       }
     }
@@ -80,7 +80,7 @@ export default function ProductSearchAutocomplete({
     setLoading(true);
     try {
       const res = await fetch(`/api/productos/buscar?q=${encodeURIComponent(searchQuery)}&limit=20`);
-      const data = await res.json();
+      const data = await res.json() as any;
       
       if (data.success && data.productos) {
         setProductos(data.productos);
