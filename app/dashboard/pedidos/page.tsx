@@ -50,11 +50,11 @@ export default function MisPedidosPage() {
       
       // ✅ NUEVO: Cargar CONSOLIDACIONES
       const resConsolidaciones = await fetch(`/api/consolidaciones?userId=${userId}`);
-      const dataConsolidaciones = await resConsolidaciones.json();
+      const dataConsolidaciones = await resConsolidaciones.json() as any;
       
       // ✅ NUEVO: Cargar PEDIDOS
       const resPedidos = await fetch(`/api/pedidos?userId=${userId}`);
-      const dataPedidos = await resPedidos.json();
+      const dataPedidos = await resPedidos.json() as any;
       
       if (Array.isArray(dataPedidos)) {
         setPedidos(dataPedidos);
@@ -98,7 +98,7 @@ export default function MisPedidosPage() {
   };
 
   const cancelarPedido = async (pedidoId: string, cliente: string) => {
-    const confirmar = confirm(
+    const confirmar = (globalThis as any).confirm?.(
       `¿Estás segura de que querés cancelar el pedido de ${cliente}?\n\n` +
       'Esta acción NO se puede deshacer y el pedido se eliminará completamente.'
     );
@@ -111,17 +111,17 @@ export default function MisPedidosPage() {
         method: 'DELETE'
       });
 
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (res.ok && data.success) {
-        alert('✅ Pedido cancelado exitosamente');
+        ((globalThis as any).alert)?.('✅ Pedido cancelado exitosamente');
         cargarPedidos(user.id);
       } else {
         throw new Error(data.error || 'Error al cancelar pedido');
       }
     } catch (error) {
       console.error('Error cancelando pedido:', error);
-      alert('❌ Error al cancelar el pedido. Intentá de nuevo.');
+      ((globalThis as any).alert)?.('❌ Error al cancelar el pedido. Intentá de nuevo.');
     } finally {
       setCancelando(null);
     }
