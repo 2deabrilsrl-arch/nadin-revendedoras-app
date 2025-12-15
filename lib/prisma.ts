@@ -18,7 +18,7 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Cerrar conexiones al terminar (importante para evitar leaks)
-if (typeof window === 'undefined') {
+if (typeof (globalThis as any).window === 'undefined') {
   process.on('beforeExit', async () => {
     await prisma.$disconnect();
   });
