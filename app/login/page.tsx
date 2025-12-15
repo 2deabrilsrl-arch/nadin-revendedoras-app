@@ -25,13 +25,13 @@ export default function LoginPage() {
 
       if (res.ok && data.user) {
         // Guardar datos del usuario
-        localStorage.setItem('user', JSON.stringify(data.user));
+        (globalThis as any).localStorage?.setItem('user', JSON.stringify(data.user));
         
         // 🔥 REDIRECCIÓN SEGÚN ROL usando window.location
         if (data.user.rol === 'vendedora') {
-          window.location.href = '/admin/dashboard';
+          (globalThis as any).window?.location?.href = '/admin/dashboard';
         } else {
-          window.location.href = '/dashboard';
+          (globalThis as any).window?.location?.href = '/dashboard';
         }
       } else {
         setError(data.error || 'Email o contraseña incorrectos');
