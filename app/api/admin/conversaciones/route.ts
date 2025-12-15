@@ -57,8 +57,9 @@ export async function GET(req: NextRequest) {
       id: c.id,
       userId: c.userId,
       estado: c.estado,
-      totalPagar: c.totalPagar,
       enviadoAt: c.enviadoAt,
+      armadoIniciadoAt: c.armadoIniciadoAt,
+      cerrado: c.cerrado,
       user: c.user,
       cantidadMensajes: c.ConsolidacionMensaje.length
     }));
