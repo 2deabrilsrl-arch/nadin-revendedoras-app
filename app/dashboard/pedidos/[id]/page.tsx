@@ -34,11 +34,11 @@ export default function DetallePedidoPage({ params }: { params: { id: string } }
 
       // ✅ CORREGIDO: Usar endpoint correcto para revendedora
       const resPedido = await fetch(`/api/pedidos/${params.id}`);
-      const dataPedido = await resPedido.json();
+      const dataPedido = await resPedido.json() as any;
       
       if (!resPedido.ok) {
         console.error('Error cargando pedido:', dataPedido);
-        alert('Error al cargar el pedido');
+        ((globalThis as any).alert)?.('Error al cargar el pedido');
         router.push('/dashboard/pedidos');
         return;
       }
@@ -51,7 +51,7 @@ export default function DetallePedidoPage({ params }: { params: { id: string } }
         
         try {
           const resDocumentos = await fetch(`/api/pedidos/${params.id}/documentos`);
-          const dataDocumentos = await resDocumentos.json();
+          const dataDocumentos = await resDocumentos.json() as any;
           
           console.log('📄 Respuesta documentos:', dataDocumentos);
           
@@ -71,7 +71,7 @@ export default function DetallePedidoPage({ params }: { params: { id: string } }
       }
     } catch (error) {
       console.error('Error cargando datos:', error);
-      alert('Error al cargar los datos');
+      ((globalThis as any).alert)?.('Error al cargar los datos');
       router.push('/dashboard/pedidos');
     } finally {
       setLoading(false);
@@ -79,7 +79,7 @@ export default function DetallePedidoPage({ params }: { params: { id: string } }
   };
 
   const cancelarPedido = async () => {
-    const confirmar = confirm(
+    const confirmar = (globalThis as any).confirm?.(
       '¿Estás segura de que querés cancelar este pedido?\n\n' +
       'Esta acción NO se puede deshacer y el pedido se eliminará completamente.'
     );
@@ -92,17 +92,17 @@ export default function DetallePedidoPage({ params }: { params: { id: string } }
         method: 'DELETE'
       });
 
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (res.ok && data.success) {
-        alert('✅ Pedido cancelado exitosamente');
+        ((globalThis as any).alert)?.('✅ Pedido cancelado exitosamente');
         router.push('/dashboard/pedidos');
       } else {
         throw new Error(data.error || 'Error al cancelar pedido');
       }
     } catch (error) {
       console.error('Error cancelando pedido:', error);
-      alert('❌ Error al cancelar el pedido. Intentá de nuevo.');
+      ((globalThis as any).alert)?.('❌ Error al cancelar el pedido. Intentá de nuevo.');
     } finally {
       setCancelando(false);
     }
