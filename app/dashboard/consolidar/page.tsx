@@ -57,14 +57,14 @@ export default function ConsolidarPedidosPage() {
   const cargarPedidos = async () => {
     setLoading(true);
     try {
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const userData = JSON.parse((globalThis as any).localStorage?.getItem('user') || '{}');
       const res = await fetch(`/api/pedidos?userId=${userData.id}`);
       
       if (!res.ok) {
         throw new Error('Error al cargar pedidos');
       }
       
-      const data = await res.json();
+      const data = await res.json() as any;
       
       if (Array.isArray(data)) {
         const sinConsolidar = data.filter((p: any) => !p.consolidacionId && p.estado !== 'cancelado');
@@ -100,7 +100,7 @@ export default function ConsolidarPedidosPage() {
   };
 
   const handleCancelarPedido = async (pedidoId: string) => {
-    const confirmar = confirm('¿Seguro que querés cancelar este pedido?');
+    const confirmar = (globalThis as any).confirm?.('¿Seguro que querés cancelar este pedido?');
     if (!confirmar) return;
 
     setCancelando(pedidoId);
@@ -113,13 +113,13 @@ export default function ConsolidarPedidosPage() {
 
       if (!res.ok) throw new Error('Error al cancelar pedido');
 
-      alert('Pedido cancelado exitosamente');
+      ((globalThis as any).alert)?.('Pedido cancelado exitosamente');
       
       setPedidosSeleccionados(prev => prev.filter(id => id !== pedidoId));
       await cargarPedidos();
     } catch (error) {
       console.error('Error cancelando pedido:', error);
-      alert('Error al cancelar el pedido');
+      ((globalThis as any).alert)?.('Error al cancelar el pedido');
     } finally {
       setCancelando(null);
     }
@@ -164,7 +164,7 @@ export default function ConsolidarPedidosPage() {
 
       if (!res.ok) throw new Error('Error al validar stock');
 
-      const data = await res.json();
+      const data = await res.json() as any;
       
       console.log('✅ Validación completada:');
       console.log('   Disponibles:', data.conStock?.length || 0);
@@ -184,7 +184,7 @@ export default function ConsolidarPedidosPage() {
   const eliminarProductosSinStock = async () => {
     if (productosSinStock.length === 0) return;
 
-    const confirmar = confirm(
+    const confirmar = (globalThis as any).confirm?.(
       `¿Confirmar eliminación de ${productosSinStock.length} producto(s) sin stock?\n\n` +
       'Esta acción no se puede deshacer.'
     );
@@ -224,7 +224,7 @@ export default function ConsolidarPedidosPage() {
         console.log(`✅ Eliminadas ${lineasIds.length} líneas del pedido ${pedidoId}`);
       }
 
-      alert(`✅ Se eliminaron ${productosSinStock.length} producto(s) sin stock de tus pedidos.`);
+      ((globalThis as any).alert)?.(`✅ Se eliminaron ${productosSinStock.length} producto(s) sin stock de tus pedidos.`);
       
       // Recargar pedidos y cerrar modal
       await cargarPedidos();
@@ -233,7 +233,7 @@ export default function ConsolidarPedidosPage() {
 
     } catch (error) {
       console.error('❌ Error eliminando productos:', error);
-      alert('Error al eliminar productos. Intentá de nuevo.');
+      ((globalThis as any).alert)?.('Error al eliminar productos. Intentá de nuevo.');
     }
   };
 
@@ -242,7 +242,7 @@ export default function ConsolidarPedidosPage() {
    */
   const handleConsolidar = async () => {
     if (pedidosSeleccionados.length === 0) {
-      alert('Seleccioná al menos un pedido para consolidar');
+      ((globalThis as any).alert)?.('Seleccioná al menos un pedido para consolidar');
       return;
     }
 
@@ -267,7 +267,7 @@ export default function ConsolidarPedidosPage() {
 
     } catch (error) {
       console.error('❌ Error en validación:', error);
-      alert('Error al validar stock. ¿Querés continuar de todas formas?');
+      ((globalThis as any).alert)?.('Error al validar stock. ¿Querés continuar de todas formas?');
       setValidandoStock(false);
     }
   };
@@ -276,7 +276,7 @@ export default function ConsolidarPedidosPage() {
    * 🆕 PROCEDER CON LA CONSOLIDACIÓN (después de validar/resolver stock)
    */
   const procederConsolidacion = async () => {
-    const confirmar = confirm(
+    const confirmar = (globalThis as any).confirm?.(
       `Vas a consolidar ${pedidosSeleccionados.length} pedido(s).\n\n` +
       'Se enviará un email a Nadin con tu pedido.\n\n' +
       '¿Continuar?'
@@ -290,7 +290,7 @@ export default function ConsolidarPedidosPage() {
     setEnviando(true);
 
     try {
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      const userData = JSON.parse((globalThis as any).localStorage?.getItem('user') || '{}');
       
       console.log('📤 Enviando consolidación...');
       console.log('   Pedidos:', pedidosSeleccionados);
@@ -331,11 +331,11 @@ export default function ConsolidarPedidosPage() {
       });
 
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json() as any;
         throw new Error(errorData.error || 'Error al consolidar');
       }
 
-      const data = await res.json();
+      const data = await res.json() as any;
       console.log('✅ Respuesta:', data);
 
       let mensaje = '✅ ¡Pedidos consolidados exitosamente!\n\n';
@@ -350,14 +350,14 @@ export default function ConsolidarPedidosPage() {
 
       mensaje += '\n¿Qué querés hacer ahora?';
 
-      alert(mensaje);
+      ((globalThis as any).alert)?.(mensaje);
 
       setPedidosSeleccionados([]);
 
       // ✅ CORREGIDO: Recargar lista para que desaparezcan los pedidos consolidados
       await cargarPedidos();
 
-      const irAPedidos = confirm(
+      const irAPedidos = (globalThis as any).confirm?.(
         'OK = Ver mis pedidos\n' +
         'Cancelar = Volver al inicio'
       );
@@ -370,7 +370,7 @@ export default function ConsolidarPedidosPage() {
 
     } catch (error) {
       console.error('❌ Error consolidando:', error);
-      alert(
+      ((globalThis as any).alert)?.(
         '❌ Error al consolidar pedidos\n\n' +
         'Detalle: ' + ((error as any).message || 'Error desconocido') + '\n\n' +
         'Por favor, intentá de nuevo o contactá a soporte.'
@@ -777,11 +777,11 @@ export default function ConsolidarPedidosPage() {
               <button
                 onClick={() => {
                   if (!formaPago || !tipoEnvio) {
-                    alert('Por favor completá todos los campos obligatorios');
+                    ((globalThis as any).alert)?.('Por favor completá todos los campos obligatorios');
                     return;
                   }
                   if (tipoEnvio === 'envio' && !transporteNombre.trim()) {
-                    alert('Por favor ingresá el nombre del transporte');
+                    ((globalThis as any).alert)?.('Por favor ingresá el nombre del transporte');
                     return;
                   }
                   setMostrarModalPago(false);
