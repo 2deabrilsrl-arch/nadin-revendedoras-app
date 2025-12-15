@@ -160,6 +160,11 @@ export default function AnalyticsPage() {
   const gananciaNetaReal = consolidacionesConGananciaNeta.reduce((sum, c) => sum + c.gananciaNeta, 0);
   const gananciaEstimada = consolidacionesSinGananciaNeta.reduce((sum, c) => sum + c.ganancia, 0);
 
+  // Consolidaciones sin pago registrado
+  const consolidacionesSinPago = consolidaciones.filter(c => 
+    !c.pagadoEn && c.estado !== 'cancelado'
+  );
+
   if (loading || !analytics) {
     return (
       <div className="max-w-7xl mx-auto p-4">
