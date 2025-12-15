@@ -156,7 +156,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
 
     const ventaNum = parseFloat(precioVenta);
     if (isNaN(ventaNum) || ventaNum <= 0) {
-      ((globalThis as any).alert)?('Ingresá un precio de venta válido');
+      ((globalThis as any).alert)?.('Ingresá un precio de venta válido');
       return;
     }
 
