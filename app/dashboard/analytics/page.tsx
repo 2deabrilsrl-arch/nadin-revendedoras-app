@@ -53,6 +53,8 @@ interface Consolidacion {
   descuentoTotal: number;
   costoReal?: number;
   gananciaNeta?: number;
+  estado?: string;
+  pagadoEn?: Date | string | null;
 }
 
 export default function AnalyticsPage() {
@@ -157,11 +159,6 @@ export default function AnalyticsPage() {
   
   const gananciaNetaReal = consolidacionesConGananciaNeta.reduce((sum, c) => sum + c.gananciaNeta, 0);
   const gananciaEstimada = consolidacionesSinGananciaNeta.reduce((sum, c) => sum + c.ganancia, 0);
-
-  // Consolidaciones sin pago registrado
-  const consolidacionesSinPago = consolidaciones.filter(c => 
-    !c.pagadoEn && c.estado !== 'cancelado'
-  );
 
   if (loading || !analytics) {
     return (
