@@ -131,7 +131,7 @@ export default function LogrosPage() {
       const res = await fetch(`/api/brand-sales/progress?userId=${user.id}`);
       
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as any;
         setBrandProgress(data);
       }
     } catch (error) {
