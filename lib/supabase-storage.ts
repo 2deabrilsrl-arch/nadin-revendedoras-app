@@ -3,13 +3,17 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Cliente de Supabase Storage
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 const BUCKET_NAME = 'consolidaciones-remitos';
+
+/**
+ * Crear cliente de Supabase (lazy initialization para evitar errores en build)
+ */
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
 
 /**
  * Subir un archivo a Supabase Storage
@@ -26,6 +30,8 @@ export async function uploadDocumento(
   error?: string;
 }> {
   try {
+    const supabase = getSupabaseClient();
+    
     // Generar nombre único
     const timestamp = Date.now();
     const extension = file.name.split('.').pop();
@@ -90,6 +96,8 @@ export async function deleteDocumento(
   error?: string;
 }> {
   try {
+    const supabase = getSupabaseClient();
+    
     console.log('🗑️ Eliminando archivo de Supabase Storage...');
     console.log('   Path:', storageUrl);
 
@@ -131,6 +139,8 @@ export async function listDocumentos(
   error?: string;
 }> {
   try {
+    const supabase = getSupabaseClient();
+    
     console.log('📋 Listando archivos de consolidación:', consolidacionId);
 
     const { data, error } = await supabase.storage
@@ -166,6 +176,8 @@ export async function listDocumentos(
  */
 export async function ensureBucketExists(): Promise<boolean> {
   try {
+    const supabase = getSupabaseClient();
+    
     // Verificar si existe
     const { data: buckets } = await supabase.storage.listBuckets();
     const exists = buckets?.some(b => b.name === BUCKET_NAME);
