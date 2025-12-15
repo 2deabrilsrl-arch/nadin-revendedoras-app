@@ -25,7 +25,7 @@ export default function NotificacionesVendedora() {
       const res = await fetch('/api/notificaciones/vendedora');
       if (!res.ok) return;
       
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.notificaciones) {
         setNotificaciones(data.notificaciones);
         const count = data.notificaciones.filter((n: any) => !n.leida).length;
@@ -73,7 +73,7 @@ export default function NotificacionesVendedora() {
           const res = await fetch(`/api/consolidaciones/${consolidacionId}/access-token`, {
             method: 'POST'
           });
-          const data = await res.json();
+          const data = await res.json() as any;
           
           if (data.token) {
             router.push(`/armar-consolidacion/${data.token}`);
