@@ -93,7 +93,7 @@ export default function ChatPage() {
 
   // Auto-scroll
   useEffect(() => {
-    mensajesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    ((mensajesEndRef.current as any))?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes]);
 
   const cargarConsolidaciones = async () => {
@@ -101,7 +101,7 @@ export default function ChatPage() {
     
     try {
       const res = await fetch(`/api/consolidaciones?userId=${user.id}`);
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.success) {
         setConsolidaciones(data.consolidaciones);
       }
@@ -115,7 +115,7 @@ export default function ChatPage() {
 
     try {
       const res = await fetch(`/api/consolidaciones/${consolidacionSeleccionada}/mensajes`);
-      const data = await res.json();
+      const data = await res.json() as any;
       
       if (data.success) {
         setMensajes(data.mensajes);
@@ -316,7 +316,7 @@ export default function ChatPage() {
                       <div className="flex gap-2">
                         <textarea
                           value={nuevoMensaje}
-                          onChange={(e) => setNuevoMensaje(e.target.value)}
+                          onChange={(e) => setNuevoMensaje((e.target as any).value)}
                           onKeyPress={handleKeyPress}
                           placeholder="Escribí tu mensaje... [Enter para enviar]"
                           disabled={enviando}
