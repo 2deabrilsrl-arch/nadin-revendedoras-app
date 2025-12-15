@@ -16,7 +16,7 @@ export default function AuthWrapper({ children, allowedRole = 'revendedora' }: A
   useEffect(() => {
     const checkAuth = () => {
       try {
-        const userData = localStorage.getItem('user');
+        const userData = (globalThis as any).localStorage?.getItem('user');
         
         if (!userData) {
           // No hay usuario, redirigir al login
