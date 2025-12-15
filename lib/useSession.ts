@@ -27,7 +27,7 @@ export function useSession(): UseSessionReturn {
 
   useEffect(() => {
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = (globalThis as any).localStorage?.getItem('user');
       if (!userStr) {
         setSession({ data: null, status: 'unauthenticated' });
         return;
@@ -48,6 +48,6 @@ export function useSession(): UseSessionReturn {
 }
 
 export function signOut() {
-  localStorage.removeItem('user');
-  window.location.href = '/login';
+  (globalThis as any).localStorage?.removeItem('user');
+  (globalThis as any).window.location.href = '/login';
 }
