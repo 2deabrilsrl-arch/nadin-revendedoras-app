@@ -27,10 +27,8 @@ export default function NotificacionesPage() {
   const cargarNotificaciones = async (userId: string) => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/notificaciones?userId=${userId}`, {
-        cache: 'no-store'
-      });
-      const data = await res.json();
+      const res = await fetch(`/api/notificaciones?userId=${userId}`);
+      const data = await res.json() as any;
       setNotificaciones(data.notificaciones || []);
     } catch (error) {
       console.error('Error cargando notificaciones:', error);
@@ -98,7 +96,7 @@ export default function NotificacionesPage() {
     try {
       const res = await fetch(`/api/consolidaciones/${consolidacionId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as any;
         const token = data.consolidacion?.accessTokens?.token;
         
         if (token) {
@@ -113,15 +111,15 @@ export default function NotificacionesPage() {
           }
         } else {
           console.error('❌ No se encontró token');
-          alert('No se puede acceder al chat en este momento');
+          ((globalThis as any).alert)?.('No se puede acceder al chat en este momento');
         }
       } else {
         console.error('❌ Error obteniendo consolidación');
-        alert('Error al cargar el chat');
+        ((globalThis as any).alert)?.('Error al cargar el chat');
       }
     } catch (error) {
       console.error('❌ Error navegando:', error);
-      alert('Error al abrir el chat');
+      ((globalThis as any).alert)?.('Error al abrir el chat');
     }
   };
 
