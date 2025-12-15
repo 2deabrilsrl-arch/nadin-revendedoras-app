@@ -29,9 +29,9 @@ export default function LoginPage() {
         
         // 🔥 REDIRECCIÓN SEGÚN ROL usando window.location
         if (data.user.rol === 'vendedora') {
-          (globalThis as any).window?.location?.href = '/admin/dashboard';
+          (globalThis as any).window.location.href = '/admin/dashboard';
         } else {
-          (globalThis as any).window?.location?.href = '/dashboard';
+          (globalThis as any).window.location.href = '/dashboard';
         }
       } else {
         setError(data.error || 'Email o contraseña incorrectos');
