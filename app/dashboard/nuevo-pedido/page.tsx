@@ -95,22 +95,22 @@ export default function NuevoPedidoPage() {
   const handleCrearPedido = async () => {
     // Validaciones
     if (cart.length === 0) {
-      alert('El carrito esta vacio');
+      ((globalThis as any).alert)?.('El carrito esta vacio');
       return;
     }
 
     if (!cliente.trim()) {
-      alert('Por favor ingresa el nombre del cliente');
+      ((globalThis as any).alert)?.('Por favor ingresa el nombre del cliente');
       return;
     }
 
     if (!telefono.trim()) {
-      alert('Por favor ingresa el telefono del cliente');
+      ((globalThis as any).alert)?.('Por favor ingresa el telefono del cliente');
       return;
     }
 
     if (!user || !user.id) {
-      alert('Error: Usuario no autenticado');
+      ((globalThis as any).alert)?.('Error: Usuario no autenticado');
       return;
     }
 
@@ -148,18 +148,18 @@ export default function NuevoPedidoPage() {
       });
 
       if (!res.ok) {
-        const error = await res.json();
+        const error = await res.json() as any;
         throw new Error(error.error || 'Error al crear pedido');
       }
 
-      const data = await res.json();
+      const data = await res.json() as any;
       console.log('Pedido creado:', data);
 
       // Limpiar carrito
       clearCart();
 
       // Preguntar que hacer
-      const irAConsolidar = confirm(
+      const irAConsolidar = (globalThis as any).confirm?.(
         'Pedido creado exitosamente!\n\n' +
         'Cliente: ' + cliente + '\n' +
         'Total: ' + formatCurrency(calcularTotalConDescuentoGlobal()) + '\n\n' +
@@ -176,7 +176,7 @@ export default function NuevoPedidoPage() {
 
     } catch (error) {
       console.error('Error creando pedido:', error);
-      alert('Error al crear el pedido: ' + ((error as any).message || 'Error desconocido'));
+      ((globalThis as any).alert)?.('Error al crear el pedido: ' + ((error as any).message || 'Error desconocido'));
     } finally {
       setLoading(false);
     }
