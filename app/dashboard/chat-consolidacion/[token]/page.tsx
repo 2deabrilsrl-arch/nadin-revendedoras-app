@@ -43,13 +43,13 @@ export default function ChatConsolidacionPage() {
   }, [mensajes]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    ((messagesEndRef.current as any))?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const cargarConsolidacion = async () => {
     try {
       const res = await fetch(`/api/armar-consolidacion/${token}`);
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (data.consolidacion) {
         setConsolidacion(data.consolidacion);
@@ -65,7 +65,7 @@ export default function ChatConsolidacionPage() {
   const cargarMensajes = async () => {
     try {
       const res = await fetch(`/api/armar-consolidacion/${token}/mensajes`);
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (data.mensajes) {
         setMensajes(data.mensajes);
@@ -109,7 +109,7 @@ export default function ChatConsolidacionPage() {
 
     } catch (error) {
       console.error('Error enviando mensaje:', error);
-      alert('Error al enviar el mensaje');
+      ((globalThis as any).alert)?.('Error al enviar el mensaje');
     } finally {
       setEnviandoMensaje(false);
     }
