@@ -230,7 +230,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
                   setQuery('');
                   setProductos([]);
                   setShowDropdown(false);
-                  inputRef.current?.focus();
+                  (inputRef.current as any)?.focus();
                 }}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2"
               >
