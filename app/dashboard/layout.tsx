@@ -54,8 +54,8 @@ export default function DashboardLayout({
   }, [router]);
 
   const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user');
+    if (typeof (globalThis as any).window !== 'undefined') {
+      (globalThis as any).localStorage?.removeItem('user');
     }
     router.push('/login');
   };
