@@ -27,7 +27,7 @@ export function useAuth() {
     // Leer user de localStorage al montar
     const loadUser = () => {
       try {
-        const userStr = localStorage.getItem('user');
+        const userStr = (globalThis as any).localStorage?.getItem('user');
         if (userStr) {
           const userData = JSON.parse(userStr);
           setUser(userData);
@@ -52,23 +52,23 @@ export function useAuth() {
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
+    (globalThis as any).window?.addEventListener('storage', handleStorageChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      (globalThis as any).window?.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
   const logout = () => {
-    localStorage.removeItem('user');
+    (globalThis as any).localStorage?.removeItem('user');
     setUser(null);
-    window.location.href = '/login';
+    (globalThis as any).window.location.href = '/login';
   };
 
   const updateUser = (newData: Partial<User>) => {
     if (user) {
       const updated = { ...user, ...newData };
-      localStorage.setItem('user', JSON.stringify(updated));
+      (globalThis as any).localStorage?.setItem('user', JSON.stringify(updated));
       setUser(updated);
     }
   };
