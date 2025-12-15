@@ -52,7 +52,7 @@ export default function ProductSearchAutocomplete({
   // Cerrar resultados al hacer click fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (searchRef.current && !(searchRef.current as any).contains(event.target as Node)) {
+      if (searchRef.current && !(searchRef.current as any).contains(event.target as any)) {
         setShowResults(false);
       }
     }
