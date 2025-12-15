@@ -73,7 +73,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
       try {
         const res = await fetch(`/api/productos/buscar?q=${encodeURIComponent(query)}`);
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json() as any;
           setProductos(data);
           setShowDropdown(true);
         }
@@ -90,13 +90,13 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (searchRef.current && !(searchRef.current as any).contains(event.target as any)) {
         setShowDropdown(false);
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    (globalThis as any).document?.addEventListener('mousedown', handleClickOutside);
+    return () => (globalThis as any).document?.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Cuando se selecciona un producto
@@ -156,12 +156,12 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
 
     const ventaNum = parseFloat(precioVenta);
     if (isNaN(ventaNum) || ventaNum <= 0) {
-      alert('Ingresá un precio de venta válido');
+      ((globalThis as any).alert)?('Ingresá un precio de venta válido');
       return;
     }
 
     if (cantidad > varianteActual.stock) {
-      alert(`Stock insuficiente. Disponible: ${varianteActual.stock}`);
+      ((globalThis as any).alert)?(`Stock insuficiente. Disponible: ${varianteActual.stock}`);
       return;
     }
 
@@ -219,7 +219,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
               ref={inputRef}
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => setQuery((e.target as any).value)}
               placeholder="Buscar por SKU, nombre o marca..."
               className="w-full pl-10 pr-10 py-3 border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:outline-none"
               autoFocus
@@ -336,7 +336,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
                 <select
                   value={talleSeleccionado}
                   onChange={(e) => {
-                    setTalleSeleccionado(e.target.value);
+                    setTalleSeleccionado((e.target as any).value);
                     setColorSeleccionado(''); // Reset color
                   }}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
@@ -358,7 +358,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
                   </label>
                   <select
                     value={colorSeleccionado}
-                    onChange={(e) => setColorSeleccionado(e.target.value)}
+                    onChange={(e) => setColorSeleccionado((e.target as any).value)}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
                   >
                     <option value="">Seleccionar color</option>
@@ -404,7 +404,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
                     min="1"
                     max={varianteActual.stock}
                     value={cantidad}
-                    onChange={(e) => setCantidad(Math.max(1, parseInt(e.target.value) || 1))}
+                    onChange={(e) => setCantidad(Math.max(1, parseInt((e.target as any).value) || 1))}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
                   />
                 </div>
@@ -425,7 +425,7 @@ export default function ProductSearchWithVariants({ onAgregar, onCancelar, marge
                       min="0"
                       step="50"
                       value={precioVenta}
-                      onChange={(e) => setPrecioVenta(e.target.value)}
+                      onChange={(e) => setPrecioVenta((e.target as any).value)}
                       className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
                       placeholder="0"
                     />
