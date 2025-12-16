@@ -1,10 +1,11 @@
-// ADMIN: PENDIENTES DE PAGO - CON BOTÓN CANCELAR
+// ADMIN: PENDIENTES DE PAGO - CON BOTÓN CANCELAR Y VER/EDITAR PEDIDO
 // Ubicación: app/admin/pendientes-pago/page.tsx
+// ✅ NUEVO: Botón "Ver/Editar Pedido" para modificar consolidación antes del pago
 
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DollarSign, AlertCircle, Check, X, Search, Home, Trash2 } from 'lucide-react';
+import { DollarSign, AlertCircle, Check, X, Search, Home, Trash2, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function PendientesPagoPage() {
@@ -12,7 +13,7 @@ export default function PendientesPagoPage() {
   const [loading, setLoading] = useState(true);
   const [consolidaciones, setConsolidaciones] = useState<any[]>([]);
   const [marcando, setMarcando] = useState<string | null>(null);
-  const [cancelando, setCancelando] = useState<string | null>(null); // 🔥 NUEVO
+  const [cancelando, setCancelando] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [busqueda, setBusqueda] = useState('');
   
@@ -116,7 +117,7 @@ export default function PendientesPagoPage() {
     }
   };
 
-  // 🔥 NUEVO: Cancelar consolidación
+  // Cancelar consolidación
   const cancelarConsolidacion = async (consolidacionId: string, nombreRevendedora: string) => {
     if (!(globalThis as any).confirm?.(`¿Estás segura de cancelar la consolidación de ${nombreRevendedora}?\n\nEsto marcará todos los pedidos como cancelados y recalculará la gamificación de la revendedora.`)) {
       return;
@@ -190,150 +191,136 @@ export default function PendientesPagoPage() {
       {/* Buscador */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="relative">
-          <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
             placeholder="Buscar por nombre de revendedora..."
             value={busqueda}
             onChange={(e) => setBusqueda((e.target as any).value)}
-            className="w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
         </div>
-        {busqueda && (
-          <p className="text-sm text-gray-600 mt-2">
-            Mostrando {consolidacionesFiltradas.length} de {consolidaciones.length} resultados
-          </p>
-        )}
       </div>
 
-      {/* Estadística */}
-      <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
-        <div className="flex items-center gap-3">
-          <AlertCircle size={24} className="text-yellow-600" />
-          <div>
-            <div className="text-2xl font-bold text-yellow-700">{consolidacionesFiltradas.length}</div>
-            <div className="text-sm text-yellow-600">
-              {busqueda ? 'Resultados encontrados' : 'Consolidaciones pendientes de pago'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Lista */}
-      <div className="bg-white rounded-lg shadow">
+      {/* Lista de consolidaciones */}
+      <div>
         {consolidacionesFiltradas.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            {busqueda ? (
-              <>
-                <Search size={48} className="mx-auto mb-4 text-gray-400 opacity-50" />
-                <p className="text-lg font-semibold">No se encontraron resultados</p>
-                <p className="text-sm">Intentá con otro nombre</p>
-              </>
-            ) : (
-              <>
-                <Check size={48} className="mx-auto mb-4 text-green-500 opacity-50" />
-                <p className="text-lg font-semibold">¡Todo al día!</p>
-                <p className="text-sm">No hay consolidaciones pendientes de pago</p>
-              </>
-            )}
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-600 font-medium">
+              {busqueda.trim() ? 'No se encontraron coincidencias' : 'No hay consolidaciones pendientes de pago'}
+            </p>
           </div>
         ) : (
-          <div className="divide-y">
-            {consolidacionesFiltradas.map((consolidacion: any) => {
-              const pedidoIds = JSON.parse(consolidacion.pedidoIds);
-              const diasPendientes = Math.floor(
-                (Date.now() - new Date(consolidacion.completadoEn || consolidacion.enviadoAt).getTime()) / (1000 * 60 * 60 * 24)
-              );
+          <div className="space-y-4">
+            {consolidacionesFiltradas.map(consolidacion => {
+              const pedidoIds = JSON.parse(consolidacion.pedidoIds || '[]');
+              const diasPendientes = Math.floor((Date.now() - new Date(consolidacion.enviadoAt).getTime()) / (1000 * 60 * 60 * 24));
 
               return (
-                <div key={consolidacion.id} className="p-6 hover:bg-gray-50">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-bold text-lg">{consolidacion.user?.name || 'Usuario'}</h3>
-                        {diasPendientes > 7 && (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                            ⚠️ {diasPendientes} días
-                          </span>
-                        )}
-                      </div>
+                <div key={consolidacion.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                  <div className="p-6">
+                    <div className="flex justify-between gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <h3 className="text-xl font-bold text-gray-900">
+                            {consolidacion.user?.name}
+                          </h3>
+                          {diasPendientes > 7 && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                              ⚠️ {diasPendientes} días
+                            </span>
+                          )}
+                        </div>
 
-                      <div className="grid grid-cols-2 gap-4 mb-3">
-                        <div>
-                          <div className="text-sm text-gray-600">Monto esperado</div>
-                          <div className="text-xl font-bold text-pink-600">
-                            ${(consolidacion.costoReal || consolidacion.totalMayorista).toLocaleString('es-AR')}
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <div className="text-sm text-gray-600">Monto esperado</div>
+                            <div className="text-xl font-bold text-pink-600">
+                              ${(consolidacion.costoReal || consolidacion.totalMayorista).toLocaleString('es-AR')}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-gray-600">Pedidos incluidos</div>
+                            <div className="text-xl font-bold text-gray-700">{pedidoIds.length}</div>
                           </div>
                         </div>
-                        <div>
-                          <div className="text-sm text-gray-600">Pedidos incluidos</div>
-                          <div className="text-xl font-bold text-gray-700">{pedidoIds.length}</div>
+
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <p>
+                            <strong>Enviado:</strong> {new Date(consolidacion.enviadoAt).toLocaleDateString('es-AR')}
+                            {consolidacion.completadoEn && (
+                              <> | <strong>Armado:</strong> {new Date(consolidacion.completadoEn).toLocaleDateString('es-AR')}</>
+                            )}
+                          </p>
+                          <p>
+                            <strong>Forma de pago:</strong> {consolidacion.formaPago} | 
+                            <strong> Envío:</strong> {consolidacion.tipoEnvio}
+                          </p>
+                          <p>
+                            <strong>Contacto:</strong> {consolidacion.user?.telefono} | {consolidacion.user?.email}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>
-                          <strong>Enviado:</strong> {new Date(consolidacion.enviadoAt).toLocaleDateString('es-AR')}
-                          {consolidacion.completadoEn && (
-                            <> | <strong>Armado:</strong> {new Date(consolidacion.completadoEn).toLocaleDateString('es-AR')}</>
-                          )}
-                        </p>
-                        <p>
-                          <strong>Forma de pago:</strong> {consolidacion.formaPago} | 
-                          <strong> Envío:</strong> {consolidacion.tipoEnvio}
-                        </p>
-                        <p>
-                          <strong>Contacto:</strong> {consolidacion.user?.telefono} | {consolidacion.user?.email}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => abrirModalPago(consolidacion)}
-                        disabled={marcando === consolidacion.id}
-                        className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-semibold flex items-center gap-2"
-                      >
-                        {marcando === consolidacion.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Marcando...
-                          </>
-                        ) : (
-                          <>
-                            <Check size={18} />
-                            Marcar Pagado
-                          </>
-                        )}
-                      </button>
-
-                      {/* 🔥 NUEVO: Botón Cancelar */}
-                      <button
-                        onClick={() => cancelarConsolidacion(consolidacion.id, consolidacion.user?.name)}
-                        disabled={cancelando === consolidacion.id}
-                        className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm flex items-center gap-2 justify-center"
-                      >
-                        {cancelando === consolidacion.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Cancelando...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 size={16} />
-                            Cancelar
-                          </>
-                        )}
-                      </button>
-
-                      {consolidacion.accessTokens?.token && (
-                        <a
-                          href={`/armar-consolidacion/${consolidacion.accessTokens.token}`}
-                          className="bg-pink-500 text-white px-6 py-2 rounded-lg hover:bg-pink-600 text-center text-sm"
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => abrirModalPago(consolidacion)}
+                          disabled={marcando === consolidacion.id}
+                          className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-semibold flex items-center gap-2"
                         >
-                          Ver Chat
-                        </a>
-                      )}
+                          {marcando === consolidacion.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              Marcando...
+                            </>
+                          ) : (
+                            <>
+                              <Check size={18} />
+                              Marcar Pagado
+                            </>
+                          )}
+                        </button>
+
+                        {/* Botón Cancelar */}
+                        <button
+                          onClick={() => cancelarConsolidacion(consolidacion.id, consolidacion.user?.name)}
+                          disabled={cancelando === consolidacion.id}
+                          className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm flex items-center gap-2 justify-center"
+                        >
+                          {cancelando === consolidacion.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              Cancelando...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 size={16} />
+                              Cancelar
+                            </>
+                          )}
+                        </button>
+
+                        {/* ✅ NUEVO: Botón Ver/Editar Pedido */}
+                        {consolidacion.accessTokens?.token && (
+                          <button
+                            onClick={() => router.push(`/armar-consolidacion/${consolidacion.accessTokens.token}`)}
+                            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 text-sm flex items-center gap-2 justify-center font-medium"
+                          >
+                            <Package size={16} />
+                            Ver/Editar Pedido
+                          </button>
+                        )}
+
+                        {consolidacion.accessTokens?.token && (
+                          <a
+                            href={`/armar-consolidacion/${consolidacion.accessTokens.token}`}
+                            className="bg-pink-500 text-white px-6 py-2 rounded-lg hover:bg-pink-600 text-center text-sm"
+                          >
+                            Ver Chat
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

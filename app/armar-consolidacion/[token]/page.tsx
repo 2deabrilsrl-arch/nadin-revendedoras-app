@@ -899,8 +899,7 @@ export default function ArmarConsolidacionPage() {
             </div>
 
             {/* ✅ NUEVO: Productos Agregados */}
-            {!consolidacion.armadoEn && (
-              <div className="bg-white rounded-lg shadow-lg">
+            <div className="bg-white rounded-lg shadow-lg">
                 {mostrarAgregar ? (
                   // ✅ NUEVO: Componente integrado con búsqueda y modal
                   <div className="p-6">
@@ -1007,7 +1006,6 @@ export default function ArmarConsolidacionPage() {
                   </div>
                 )}
               </div>
-            )}
 
             {/* ✅ NUEVO: Descuento Total */}
             {!consolidacion.armadoEn && (
@@ -1041,18 +1039,16 @@ export default function ArmarConsolidacionPage() {
             )}
 
             {/* Botón finalizar */}
-            {!consolidacion.armadoEn && (
-              <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="bg-white rounded-lg shadow-lg p-6">
                 <button
                   onClick={handleFinalizarArmado}
                   disabled={marcandoArmado}
                   className="w-full bg-pink-500 text-white py-4 rounded-lg font-semibold hover:bg-pink-600 disabled:bg-gray-300 text-lg flex items-center justify-center gap-2"
                 >
                   <Send size={24} />
-                  Finalizar Armado y Notificar
+                  {consolidacion.armadoEn ? 'Guardar Cambios' : 'Finalizar Armado y Notificar'}
                 </button>
               </div>
-            )}
           </div>
 
           {/* Sidebar */}
@@ -1178,15 +1174,13 @@ export default function ArmarConsolidacionPage() {
         </div>
 
         {/* Documentos */}
-        {consolidacion.armadoEn && (
-          <div className="mt-6">
+        <div className="mt-6">
             <DocumentosConsolidacion
               token={token}
               consolidacionId={consolidacion.id}
               userId={consolidacion.userId}
             />
           </div>
-        )}
       </div>
 
       {/* Modal Resumen */}

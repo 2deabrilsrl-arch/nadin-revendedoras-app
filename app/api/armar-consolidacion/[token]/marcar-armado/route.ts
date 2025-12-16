@@ -102,6 +102,68 @@ export async function POST(
 
     console.log(`✅ ${pedidoIds.length} pedidos actualizados`);
 
+    // ✅ NUEVO: Guardar productos agregados en la BD
+    if (productosAgregados && productosAgregados.length > 0) {
+      console.log(`\n📦 ========================================`);
+      console.log(`📦 GUARDANDO PRODUCTOS AGREGADOS`);
+      console.log(`📦 ========================================`);
+      console.log(`📦 Cantidad de productos agregados: ${productosAgregados.length}`);
+
+      // Crear un nuevo pedido para productos agregados
+      const nuevoPedido = await prisma.pedido.create({
+        data: {
+          userId: consolidacion.userId,
+          cliente: '➕ Productos Agregados',
+          telefono: consolidacion.user.telefono,
+          nota: 'Productos agregados durante el armado de la consolidación',
+          estado: 'armado',
+          orderStatus: 'armado_completo',
+          consolidacionId: consolidacion.id,
+          armadoEn: ahora,
+          armadoCompletoAt: ahora,
+          sentToNadinAt: consolidacion.enviadoAt
+        }
+      });
+
+      console.log(`✅ Pedido creado: ${nuevoPedido.id}`);
+
+      // Crear las líneas de productos agregados
+      for (const prod of productosAgregados) {
+        await prisma.linea.create({
+          data: {
+            pedidoId: nuevoPedido.id,
+            productId: prod.sku || 'agregado-manual',
+            variantId: prod.sku || 'agregado-manual',
+            sku: prod.sku,
+            brand: prod.marca,
+            name: prod.nombre,
+            talle: prod.talle,
+            color: prod.color,
+            qty: prod.cantidad,
+            mayorista: prod.precioMayorista,
+            venta: prod.precioVenta,
+            cantidadOriginal: prod.cantidad,
+            cliente: '➕ Productos Agregados'
+          }
+        });
+
+        console.log(`   ✅ Línea creada: ${prod.nombre} (${prod.talle}/${prod.color}) x${prod.cantidad}`);
+      }
+
+      // Agregar el nuevo pedido a pedidoIds
+      const nuevoPedidoIds = [...pedidoIds, nuevoPedido.id];
+      await prisma.consolidacion.update({
+        where: { id: consolidacion.id },
+        data: {
+          pedidoIds: JSON.stringify(nuevoPedidoIds)
+        }
+      });
+
+      console.log(`✅ Consolidación actualizada con ${productosAgregados.length} productos agregados`);
+      console.log(`📦 ========================================\n`);
+    }
+
+
     // ✅ Crear notificación DETALLADA
     let mensajeNotificacion = '📦 Tu consolidación ha sido armada\n\n';
 
