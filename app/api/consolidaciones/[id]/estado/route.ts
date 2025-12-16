@@ -1,6 +1,6 @@
 // API: CAMBIAR ESTADO DE CONSOLIDACION - GAMIFICACIÓN CORREGIDA
 // Ubicación: app/api/consolidaciones/[id]/estado/route.ts
-// CORRECCIÓN: Llama a gamificación UNA SOLA VEZ después de actualizar todos los pedidos
+// CORRECCION: Llama a gamificación UNA SOLA VEZ después de actualizar todos los pedidos
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -124,35 +124,25 @@ export async function PATCH(
     }
 
     // 🎮 GAMIFICACIÓN: Se activa SOLO cuando se marca como "pagado"
-    // ✅ CORRECCIÓN: Llamar UNA SOLA VEZ después de actualizar todos los pedidos
+    // ✅ CORREGIDO: Usar totalVenta de la consolidación (ya incluye productos agregados)
     if (nuevoEstado === 'pagado') {
       try {
         console.log(`\n🎮 ========================================`);
         console.log(`🎮 ACTIVANDO GAMIFICACIÓN`);
         console.log(`🎮 ========================================`);
         
-        // Obtener todos los pedidos de la consolidación con sus líneas
-        const pedidos = await prisma.pedido.findMany({
-          where: { id: { in: pedidoIds } },
-          include: { lineas: true }
-        });
+        // ✅ CORREGIDO: Usar totalVenta de la consolidación
+        // Este campo ya fue actualizado en marcar-armado para incluir productos agregados
+        const montoParaGamificacion = consolidacion.totalVenta;
 
-        // Calcular total de venta de TODA la consolidación
-        const totalVentaConsolidacion = pedidos.reduce((sum, pedido) => {
-          const totalPedido = pedido.lineas.reduce((lineSum, linea) => {
-            return lineSum + (linea.venta * linea.qty);
-          }, 0);
-          return sum + totalPedido;
-        }, 0);
-
-        console.log(`   💰 Total venta consolidación: $${totalVentaConsolidacion}`);
-        console.log(`   📦 Cantidad de pedidos: ${pedidos.length}`);
+        console.log(`   💰 Total venta consolidación: $${montoParaGamificacion}`);
+        console.log(`   📦 Cantidad de pedidos: ${pedidoIds.length}`);
 
         // 🎮 ✅ CORRECCIÓN: Llamar UNA SOLA VEZ
         // La función processGamificationAfterSale ya recalcula TODO
         const result = await processGamificationAfterSale(
           consolidacion.userId,
-          totalVentaConsolidacion
+          montoParaGamificacion
         );
 
         if (result && result.success) {

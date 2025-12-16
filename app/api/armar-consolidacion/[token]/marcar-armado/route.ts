@@ -161,6 +161,40 @@ export async function POST(
 
       console.log(`✅ Consolidación actualizada con ${productosAgregados.length} productos agregados`);
       console.log(`📦 ========================================\n`);
+
+      // 💰 NUEVO: Recalcular venta total y ganancia neta correctamente
+      console.log(`\n💰 ========================================`);
+      console.log(`💰 RECALCULANDO GANANCIA REAL`);
+      console.log(`💰 ========================================`);
+
+      // Calcular venta de productos agregados
+      const totalVentaProductosAgregados = productosAgregados.reduce((sum: number, prod: any) => {
+        return sum + (prod.precioVenta * prod.cantidad);
+      }, 0);
+
+      console.log(`   💵 Venta original: $${totales.totalVenta.toFixed(2)}`);
+      console.log(`   ➕ Venta productos agregados: $${totalVentaProductosAgregados.toFixed(2)}`);
+
+      // Calcular venta total real
+      const totalVentaReal = totales.totalVenta + totalVentaProductosAgregados;
+      console.log(`   💰 Venta total real: $${totalVentaReal.toFixed(2)}`);
+
+      // Calcular ganancia neta correcta
+      const gananciaNeta = totalVentaReal - totales.totalFinal;
+      console.log(`   🏪 Costo real (mayorista): $${totales.totalFinal.toFixed(2)}`);
+      console.log(`   💎 Ganancia neta REAL: $${gananciaNeta.toFixed(2)}`);
+
+      // Actualizar consolidación con valores correctos
+      await prisma.consolidacion.update({
+        where: { id: consolidacion.id },
+        data: {
+          totalVenta: totalVentaReal,     // ✅ Incluye productos agregados
+          gananciaNeta: gananciaNeta       // ✅ Ganancia correcta
+        }
+      });
+
+      console.log(`✅ Consolidación actualizada con ganancia real`);
+      console.log(`💰 ========================================\n`);
     }
 
 
