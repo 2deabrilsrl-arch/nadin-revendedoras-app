@@ -250,7 +250,9 @@ export default function LogrosPage() {
         <div className="bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-lg p-4 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <TrendingUp className="w-6 h-6" />
-            <span className="text-2xl font-bold">{stats.level.totalSales}</span>
+            <span className="text-lg sm:text-xl md:text-2xl font-bold break-all">
+              {stats.level.totalSales.toLocaleString('es-AR')}
+            </span>
           </div>
           <p className="text-sm opacity-90">Ventas Realizadas</p>
         </div>
@@ -283,7 +285,9 @@ export default function LogrosPage() {
             )}
           </div>
           <div className="text-right">
-            <p className="text-3xl font-bold text-nadin-pink">{stats.level.totalSales}</p>
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold text-nadin-pink break-all">
+              {stats.level.totalSales.toLocaleString('es-AR')}
+            </p>
             <p className="text-xs text-gray-500">
               {nextLevelInfo ? `/ ${nextLevelInfo.required}` : 'ventas'}
             </p>

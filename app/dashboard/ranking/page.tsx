@@ -96,9 +96,9 @@ export default function RankingPage() {
       <BackToHomeButton />
       
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">🏆 Ranking de Revendedoras</h1>
-        <p className="text-gray-600">Tabla de posiciones y mejores vendedoras</p>
+      <div className="mb-6 mt-2">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">🏆 Ranking de Revendedoras</h1>
+        <p className="text-sm sm:text-base text-gray-600">Tabla de posiciones y mejores vendedoras</p>
       </div>
 
       {/* Period Selector */}
@@ -106,7 +106,7 @@ export default function RankingPage() {
         <div className="flex gap-3">
           <button
             onClick={() => setPeriod('month')}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
+            className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all text-sm sm:text-base ${
               period === 'month'
                 ? 'bg-nadin-pink text-white shadow-md'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -116,7 +116,7 @@ export default function RankingPage() {
           </button>
           <button
             onClick={() => setPeriod('all')}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all ${
+            className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-all text-sm sm:text-base ${
               period === 'all'
                 ? 'bg-nadin-pink text-white shadow-md'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -133,8 +133,10 @@ export default function RankingPage() {
           <h3 className="text-lg font-semibold mb-3">Tu Posición</h3>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-4xl font-bold">#{currentUser.position}</p>
-              <p className="text-sm opacity-90 mt-1">{currentUser.totalSales} ventas realizadas</p>
+              <p className="text-3xl sm:text-4xl font-bold">#{currentUser.position}</p>
+              <p className="text-sm opacity-90 mt-1">
+                {currentUser.totalSales.toLocaleString('es-AR')} ventas realizadas
+              </p>
             </div>
             <div className="text-right">
               <p className="text-2xl">{LEVEL_CONFIG[currentUser.level as keyof typeof LEVEL_CONFIG].icon}</p>
@@ -149,50 +151,56 @@ export default function RankingPage() {
 
       {/* Top 3 Podium */}
       {ranking.length >= 3 && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
           {/* 2nd Place */}
           <div className="order-1 flex flex-col items-center">
-            <div className={`bg-gradient-to-br ${getPositionColor(2)} w-full rounded-lg shadow-lg p-4 text-center`}>
-              <p className="text-3xl mb-2">🥈</p>
-              <p className="font-bold text-lg truncate">{ranking[1].userName}</p>
-              <p className="text-sm opacity-75 mb-2">@{ranking[1].userHandle}</p>
-              <div className="bg-white bg-opacity-20 rounded-lg py-2 px-3 mt-2">
-                <p className="text-2xl font-bold">{ranking[1].totalSales}</p>
+            <div className={`bg-gradient-to-br ${getPositionColor(2)} w-full rounded-lg shadow-lg p-2 sm:p-4 text-center`}>
+              <p className="text-2xl sm:text-3xl mb-1 sm:mb-2">🥈</p>
+              <p className="font-bold text-sm sm:text-lg truncate">{ranking[1].userName}</p>
+              <p className="text-xs opacity-75 mb-1 sm:mb-2 truncate">@{ranking[1].userHandle}</p>
+              <div className="bg-white bg-opacity-20 rounded-lg py-1 px-2 sm:py-2 sm:px-3 mt-1 sm:mt-2">
+                <p className="text-lg sm:text-2xl font-bold">
+                  {ranking[1].totalSales.toLocaleString('es-AR')}
+                </p>
                 <p className="text-xs opacity-75">ventas</p>
               </div>
             </div>
-            <div className="h-24 bg-gradient-to-b from-gray-300 to-gray-400 w-full rounded-b-lg"></div>
+            <div className="h-16 sm:h-24 bg-gradient-to-b from-gray-300 to-gray-400 w-full rounded-b-lg"></div>
           </div>
 
           {/* 1st Place */}
           <div className="order-2 flex flex-col items-center">
-            <div className={`bg-gradient-to-br ${getPositionColor(1)} w-full rounded-lg shadow-2xl p-6 text-center transform scale-110 relative`}>
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-yellow-900 rounded-full px-3 py-1 text-xs font-bold shadow-lg">
+            <div className={`bg-gradient-to-br ${getPositionColor(1)} w-full rounded-lg shadow-2xl p-3 sm:p-6 text-center transform scale-105 sm:scale-110 relative`}>
+              <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2 bg-yellow-400 text-yellow-900 rounded-full px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-bold shadow-lg">
                 CAMPEONA
               </div>
-              <p className="text-4xl mb-2">👑</p>
-              <p className="font-bold text-xl truncate">{ranking[0].userName}</p>
-              <p className="text-sm opacity-75 mb-3">@{ranking[0].userHandle}</p>
-              <div className="bg-white bg-opacity-20 rounded-lg py-3 px-4 mt-2">
-                <p className="text-3xl font-bold">{ranking[0].totalSales}</p>
+              <p className="text-3xl sm:text-4xl mb-1 sm:mb-2">👑</p>
+              <p className="font-bold text-base sm:text-xl truncate">{ranking[0].userName}</p>
+              <p className="text-xs opacity-75 mb-2 sm:mb-3 truncate">@{ranking[0].userHandle}</p>
+              <div className="bg-white bg-opacity-20 rounded-lg py-2 px-2 sm:py-3 sm:px-4 mt-1 sm:mt-2">
+                <p className="text-xl sm:text-3xl font-bold">
+                  {ranking[0].totalSales.toLocaleString('es-AR')}
+                </p>
                 <p className="text-xs opacity-75">ventas</p>
               </div>
             </div>
-            <div className="h-32 bg-gradient-to-b from-yellow-400 to-yellow-600 w-full rounded-b-lg"></div>
+            <div className="h-20 sm:h-32 bg-gradient-to-b from-yellow-400 to-yellow-600 w-full rounded-b-lg"></div>
           </div>
 
           {/* 3rd Place */}
           <div className="order-3 flex flex-col items-center">
-            <div className={`bg-gradient-to-br ${getPositionColor(3)} w-full rounded-lg shadow-lg p-4 text-center`}>
-              <p className="text-3xl mb-2">🥉</p>
-              <p className="font-bold text-lg truncate">{ranking[2].userName}</p>
-              <p className="text-sm opacity-75 mb-2">@{ranking[2].userHandle}</p>
-              <div className="bg-white bg-opacity-20 rounded-lg py-2 px-3 mt-2">
-                <p className="text-2xl font-bold">{ranking[2].totalSales}</p>
+            <div className={`bg-gradient-to-br ${getPositionColor(3)} w-full rounded-lg shadow-lg p-2 sm:p-4 text-center`}>
+              <p className="text-2xl sm:text-3xl mb-1 sm:mb-2">🥉</p>
+              <p className="font-bold text-sm sm:text-lg truncate">{ranking[2].userName}</p>
+              <p className="text-xs opacity-75 mb-1 sm:mb-2 truncate">@{ranking[2].userHandle}</p>
+              <div className="bg-white bg-opacity-20 rounded-lg py-1 px-2 sm:py-2 sm:px-3 mt-1 sm:mt-2">
+                <p className="text-lg sm:text-2xl font-bold">
+                  {ranking[2].totalSales.toLocaleString('es-AR')}
+                </p>
                 <p className="text-xs opacity-75">ventas</p>
               </div>
             </div>
-            <div className="h-16 bg-gradient-to-b from-orange-400 to-orange-600 w-full rounded-b-lg"></div>
+            <div className="h-12 sm:h-16 bg-gradient-to-b from-orange-400 to-orange-600 w-full rounded-b-lg"></div>
           </div>
         </div>
       )}
@@ -200,64 +208,125 @@ export default function RankingPage() {
       {/* Ranking Table */}
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="p-4 bg-gradient-to-r from-nadin-pink to-pink-600 text-white">
-          <h3 className="text-lg font-bold">📊 Tabla de Posiciones</h3>
+          <h3 className="text-base sm:text-lg font-bold">📊 Tabla de Posiciones</h3>
         </div>
         
         <div className="divide-y">
           {ranking.map((entry) => (
             <div
               key={entry.userId}
-              className={`p-4 flex items-center gap-4 transition-all ${
+              className={`p-3 sm:p-4 transition-all ${
                 entry.isCurrentUser 
                   ? 'bg-pink-50 border-l-4 border-nadin-pink' 
                   : 'hover:bg-gray-50'
               }`}
             >
-              {/* Position */}
-              <div className="w-16 text-center">
-                {entry.position <= 3 ? (
-                  <span className="text-3xl">{getMedalIcon(entry.position)}</span>
-                ) : (
-                  <span className="text-2xl font-bold text-gray-400">#{entry.position}</span>
-                )}
+              {/* Mobile Layout (< 640px) */}
+              <div className="sm:hidden">
+                <div className="flex items-center gap-3 mb-2">
+                  {/* Position */}
+                  <div className="w-12 text-center flex-shrink-0">
+                    {entry.position <= 3 ? (
+                      <span className="text-2xl">{getMedalIcon(entry.position)}</span>
+                    ) : (
+                      <span className="text-xl font-bold text-gray-400">#{entry.position}</span>
+                    )}
+                  </div>
+
+                  {/* User Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-base truncate">
+                        {entry.userName}
+                        {entry.isCurrentUser && (
+                          <span className="ml-2 text-xs bg-nadin-pink text-white px-2 py-0.5 rounded-full">
+                            Vos
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-500 truncate">@{entry.userHandle}</p>
+                  </div>
+
+                  {/* Level Icon */}
+                  <div className="text-center flex-shrink-0">
+                    <p className="text-xl">{LEVEL_CONFIG[entry.level as keyof typeof LEVEL_CONFIG].icon}</p>
+                  </div>
+                </div>
+
+                {/* Stats Row (Mobile) */}
+                <div className="flex justify-between items-center pl-15 text-center">
+                  <div className="flex-1">
+                    <p className="text-base font-bold text-nadin-pink">
+                      {entry.totalSales.toLocaleString('es-AR')}
+                    </p>
+                    <p className="text-xs text-gray-500">Ventas</p>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-base font-bold text-purple-600">
+                      {entry.totalPoints.toLocaleString('es-AR')}
+                    </p>
+                    <p className="text-xs text-gray-500">Puntos</p>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-base font-bold text-blue-600">{entry.badgesCount}</p>
+                    <p className="text-xs text-gray-500">Badges</p>
+                  </div>
+                </div>
               </div>
 
-              {/* User Info */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="font-bold text-lg">
-                    {entry.userName}
-                    {entry.isCurrentUser && (
-                      <span className="ml-2 text-xs bg-nadin-pink text-white px-2 py-1 rounded-full">
-                        Vos
-                      </span>
-                    )}
+              {/* Desktop Layout (>= 640px) */}
+              <div className="hidden sm:flex items-center gap-4">
+                {/* Position */}
+                <div className="w-16 text-center flex-shrink-0">
+                  {entry.position <= 3 ? (
+                    <span className="text-3xl">{getMedalIcon(entry.position)}</span>
+                  ) : (
+                    <span className="text-2xl font-bold text-gray-400">#{entry.position}</span>
+                  )}
+                </div>
+
+                {/* User Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-lg">
+                      {entry.userName}
+                      {entry.isCurrentUser && (
+                        <span className="ml-2 text-xs bg-nadin-pink text-white px-2 py-1 rounded-full">
+                          Vos
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <p className="text-sm text-gray-500">@{entry.userHandle}</p>
+                </div>
+
+                {/* Level */}
+                <div className="text-center flex-shrink-0">
+                  <p className="text-2xl">{LEVEL_CONFIG[entry.level as keyof typeof LEVEL_CONFIG].icon}</p>
+                  <p className={`text-xs font-semibold ${LEVEL_CONFIG[entry.level as keyof typeof LEVEL_CONFIG].color}`}>
+                    {LEVEL_CONFIG[entry.level as keyof typeof LEVEL_CONFIG].name}
                   </p>
                 </div>
-                <p className="text-sm text-gray-500">@{entry.userHandle}</p>
-              </div>
 
-              {/* Level */}
-              <div className="text-center">
-                <p className="text-2xl">{LEVEL_CONFIG[entry.level as keyof typeof LEVEL_CONFIG].icon}</p>
-                <p className={`text-xs font-semibold ${LEVEL_CONFIG[entry.level as keyof typeof LEVEL_CONFIG].color}`}>
-                  {LEVEL_CONFIG[entry.level as keyof typeof LEVEL_CONFIG].name}
-                </p>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-2xl font-bold text-nadin-pink">{entry.totalSales}</p>
-                  <p className="text-xs text-gray-500">Ventas</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-purple-600">{entry.totalPoints}</p>
-                  <p className="text-xs text-gray-500">Puntos</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-blue-600">{entry.badgesCount}</p>
-                  <p className="text-xs text-gray-500">Badges</p>
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 text-center flex-shrink-0">
+                  <div>
+                    <p className="text-xl font-bold text-nadin-pink">
+                      {entry.totalSales.toLocaleString('es-AR')}
+                    </p>
+                    <p className="text-xs text-gray-500">Ventas</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-purple-600">
+                      {entry.totalPoints.toLocaleString('es-AR')}
+                    </p>
+                    <p className="text-xs text-gray-500">Puntos</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-blue-600">{entry.badgesCount}</p>
+                    <p className="text-xs text-gray-500">Badges</p>
+                  </div>
                 </div>
               </div>
             </div>
