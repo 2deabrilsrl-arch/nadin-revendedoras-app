@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
     const conversacionesFormateadas = conversaciones.map(c => ({
       id: c.id,
       userId: c.userId,
+      pedidoIds: c.pedidoIds, // ✅ AGREGADO: necesario para el frontend
       estado: c.estado,
       enviadoAt: c.enviadoAt,
       armadoIniciadoAt: c.armadoIniciadoAt,

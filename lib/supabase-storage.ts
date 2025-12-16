@@ -9,8 +9,20 @@ const BUCKET_NAME = 'consolidaciones-remitos';
  * Crear cliente de Supabase (lazy initialization para evitar errores en build)
  */
 function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  // ✅ VALIDACIÓN: Verificar que las variables existen
+  if (!supabaseUrl || !supabaseServiceKey) {
+    const missing = [];
+    if (!supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL');
+    if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+    
+    throw new Error(
+      `❌ Faltan variables de entorno de Supabase: ${missing.join(', ')}\n` +
+      `Configurarlas en Vercel → Settings → Environment Variables`
+    );
+  }
   
   return createClient(supabaseUrl, supabaseServiceKey);
 }

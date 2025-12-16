@@ -1,6 +1,6 @@
 // API: CONSOLIDACIONES - GET y POST CORREGIDO
 // Ubicacion: app/api/consolidaciones/route.ts
-// CORRECCION: Enviar pedidos completos con lineas al email
+// CORRECCION: URL de producción hardcodeada
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -19,7 +19,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Obtener consolidaciones del usuario
     const consolidaciones = await prisma.consolidacion.findMany({
       where: { userId },
       include: {
@@ -65,22 +64,13 @@ export async function POST(req: NextRequest) {
       totalMayorista, 
       totalVenta, 
       ganancia,
-      formaPago,  // ✅ AGREGADO
-      tipoEnvio,  // ✅ AGREGADO
-      transporteNombre  // ✅ AGREGADO
+      formaPago,
+      tipoEnvio,
+      transporteNombre
     } = body;
 
     console.log('📦 Creando consolidación...');
-    console.log('   userId:', userId);
-    console.log('   pedidoIds:', pedidoIds);
-    console.log('   totalMayorista:', totalMayorista);
-    console.log('   totalVenta:', totalVenta);
-    console.log('   ganancia:', ganancia);
-    console.log('   formaPago:', formaPago);
-    console.log('   tipoEnvio:', tipoEnvio);
-    console.log('   transporteNombre:', transporteNombre);
 
-    // Validaciones
     if (!userId) {
       return NextResponse.json(
         { error: 'userId es requerido' },
@@ -95,7 +85,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ CORREGIDO: Obtener pedidos CON sus líneas Y usuario para el email
     const pedidos = await prisma.pedido.findMany({
       where: {
         id: { in: pedidoIds },
@@ -103,7 +92,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         lineas: true,
-        user: true // ✅ Incluir usuario
+        user: true
       }
     });
 
@@ -121,7 +110,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ CORREGIDO: Crear consolidación con valores del formulario
     const consolidacion = await prisma.consolidacion.create({
       data: {
         userId,
@@ -130,35 +118,33 @@ export async function POST(req: NextRequest) {
         totalVenta: totalVenta || 0,
         ganancia: ganancia || 0,
         descuentoTotal: 0,
-        formaPago: formaPago || 'pendiente',  // ✅ Usar valor del formulario
-        tipoEnvio: tipoEnvio || 'pendiente',  // ✅ Usar valor del formulario
-        transporteNombre: transporteNombre || null,  // ✅ Guardar transporte
+        formaPago: formaPago || 'pendiente',
+        tipoEnvio: tipoEnvio || 'pendiente',
+        transporteNombre: transporteNombre || null,
         estado: 'enviado',
         enviadoAt: new Date()
       }
     });
 
     console.log('✅ Consolidación creada:', consolidacion.id);
-    console.log('   Estado:', consolidacion.estado);
-    console.log('   Forma de pago:', consolidacion.formaPago);
-    console.log('   Tipo de envío:', consolidacion.tipoEnvio);
 
-    // ✅ CRÍTICO: Actualizar pedidos con consolidacionId
     await prisma.pedido.updateMany({
       where: {
         id: { in: pedidoIds }
       },
       data: {
-        consolidacionId: consolidacion.id,  // ✅ AGREGADO: Asignar consolidación
+        consolidacionId: consolidacion.id,
         orderStatus: 'sent_to_nadin',
         estado: 'enviado',
         sentToNadinAt: new Date()
       }
     });
 
-    console.log(`✅ ${pedidoIds.length} pedidos actualizados con consolidacionId: ${consolidacion.id}`);
+    console.log(`✅ ${pedidoIds.length} pedidos actualizados`);
 
-    // ✅ CORREGIDO: Enviar email con datos completos
+    // ✅ CORREGIDO: URL de producción hardcodeada
+    const linkMagico = 'https://nadin-revendedoras-app.vercel.app/admin/dashboard';
+
     try {
       await sendConsolidacionEmail({
         revendedora: pedidos[0].user,
@@ -170,12 +156,10 @@ export async function POST(req: NextRequest) {
           ventaFinal: totalVenta || 0,
           ganancia: ganancia || 0
         },
-        formaPago: formaPago || 'pendiente',  // ✅ Usar valor real
-        tipoEnvio: tipoEnvio || 'pendiente',  // ✅ Usar valor real
-        transporteNombre: transporteNombre || null,  // ✅ Incluir transporte
-        linkMagico: process.env.NEXT_PUBLIC_APP_URL ? 
-          `${process.env.NEXT_PUBLIC_APP_URL}/admin/dashboard` : 
-          'http://localhost:3000/admin/dashboard'
+        formaPago: formaPago || 'pendiente',
+        tipoEnvio: tipoEnvio || 'pendiente',
+        transporteNombre: transporteNombre || null,
+        linkMagico
       });
       
       console.log('✅ Email enviado correctamente a Nadin');
