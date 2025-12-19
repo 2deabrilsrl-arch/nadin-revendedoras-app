@@ -783,6 +783,30 @@ export default function ArmarConsolidacionPage() {
                     <h3 className="font-semibold text-gray-900">
                       Cliente: {pedido.cliente}
                     </h3>
+                    
+                    {/* ✅ NUEVO: Teléfono del cliente */}
+                    {pedido.telefono && (
+                      <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                        📞 {pedido.telefono}
+                      </p>
+                    )}
+                    
+                    {/* ✅ NUEVO: Nota del pedido */}
+                    {pedido.nota && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <MessageCircle size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-blue-800 mb-1">
+                              📝 Aclaración sobre el pedido:
+                            </p>
+                            <p className="text-sm text-blue-900">
+                              {pedido.nota}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-4 space-y-4">

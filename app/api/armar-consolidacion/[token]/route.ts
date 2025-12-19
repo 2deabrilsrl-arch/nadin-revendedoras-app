@@ -123,6 +123,8 @@ export async function GET(
       return {
         id: pedido.id,
         cliente: pedido.cliente,
+        telefono: pedido.telefono,    // ✅ AGREGADO: Teléfono del cliente
+        nota: pedido.nota,              // ✅ AGREGADO: Nota del pedido
         estado: pedido.estado,
         createdAt: pedido.createdAt,
         items
