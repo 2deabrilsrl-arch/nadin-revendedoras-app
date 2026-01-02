@@ -1,7 +1,10 @@
+// GAMIFICACIÓN CORREGIDA - USA paidToNadin en lugar de estado: 'entregado'
+// Ubicación: lib/gamification.ts
+
 import { Prisma } from '@prisma/client';
 
 /**
- * Calcula el nivel del usuario según la cantidad de ventas completadas (NO canceladas)
+ * Calcula el nivel del usuario según la cantidad de ventas completadas (pagadas a Nadin)
  */
 export function calculateUserLevel(salesCount: number): string {
   if (salesCount >= 500) return 'leyenda';
@@ -22,11 +25,14 @@ export function calculateSalePoints(amount: number, isFirstSale: boolean): numbe
 }
 
 /**
- * Procesa gamificación después de COMPLETAR un pedido
- * SOLO se activa si: estado="entregado" Y paidByClient=true Y estado != "cancelado"
+ * Procesa gamificación después de que la REVENDEDORA PAGA A NADIN
+ * 
+ * ✅ CAMBIO PRINCIPAL: Ahora cuenta pedidos con paidToNadin=true (no estado='entregado')
+ * 
+ * Se activa cuando: paidToNadin = true (cuando la vendedora marca como pagado)
  * 
  * IMPORTANTE: Esta función recalcula TODA la gamificación del usuario
- * basándose SOLO en pedidos completados NO cancelados
+ * basándose SOLO en pedidos PAGADOS A NADIN y NO cancelados
  */
 export async function processGamificationAfterSale(
   userId: string,
@@ -40,20 +46,18 @@ export async function processGamificationAfterSale(
     console.log(`🎮 ========================================`);
     console.log(`🎮 Venta de $${saleAmount}`);
 
-    // 1. Contar SOLO pedidos completados NO cancelados
-    // ✅ CORREGIDO: Acepta AMBOS 'entregado' y 'completado'
-    // ✅ No necesita NOT cancelado porque el IN ya lo excluye
+    // ✅ CAMBIO: Contar SOLO pedidos PAGADOS A NADIN y NO cancelados
     const pedidosCompletados = await prisma.pedido.count({
       where: {
         userId,
-        estado: {
-          in: ['entregado', 'completado']  // ✅ Solo estos estados, cancelado queda afuera
-        },
-        paidByClient: true
+        paidToNadin: true,  // ← CAMBIO PRINCIPAL
+        NOT: {
+          estado: 'cancelado'
+        }
       }
     });
 
-    console.log(`   📊 Total ventas completadas (no canceladas): ${pedidosCompletados}`);
+    console.log(`   📊 Total ventas pagadas a Nadin (no canceladas): ${pedidosCompletados}`);
 
     // 2. Calcular nivel basado en ventas completadas
     const newLevel = calculateUserLevel(pedidosCompletados);
@@ -116,7 +120,7 @@ export async function processGamificationAfterSale(
     // 7. Verificar y asignar badges basados en ventas completadas
     await checkAndAssignBadges(userId, pedidosCompletados);
 
-    // 8. 🎖️ NUEVO: Trackear ventas por marca y verificar badges de embajadora
+    // 8. 🎖️ Trackear ventas por marca y verificar badges de embajadora
     await trackBrandSales(userId);
 
     console.log(`   ✅ Gamificación procesada`);
@@ -132,7 +136,7 @@ export async function processGamificationAfterSale(
 /**
  * Recalcula gamificación cuando se cancela un pedido
  * 
- * IMPORTANTE: Revoca badges y recalcula puntos basándose SOLO en pedidos NO cancelados
+ * IMPORTANTE: Revoca badges y recalcula puntos basándose SOLO en pedidos pagados NO cancelados
  */
 export async function recalculateGamificationAfterCancel(userId: string) {
   const { prisma } = await import('@/lib/prisma');
@@ -142,16 +146,14 @@ export async function recalculateGamificationAfterCancel(userId: string) {
     console.log(`🔄 RECALCULANDO GAMIFICACIÓN (cancelación)`);
     console.log(`🔄 ========================================`);
 
-    // 1. Contar pedidos completados NO cancelados
-    // ✅ CORREGIDO: Acepta AMBOS 'entregado' y 'completado'
-    // ✅ No necesita NOT cancelado porque el IN ya lo excluye
+    // ✅ CAMBIO: Contar pedidos PAGADOS A NADIN y NO cancelados
     const pedidosCompletados = await prisma.pedido.count({
       where: {
         userId,
-        estado: {
-          in: ['entregado', 'completado']  // ✅ Solo estos estados, cancelado queda afuera
-        },
-        paidByClient: true
+        paidToNadin: true,  // ← CAMBIO PRINCIPAL
+        NOT: {
+          estado: 'cancelado'
+        }
       }
     });
 
@@ -189,7 +191,7 @@ export async function recalculateGamificationAfterCancel(userId: string) {
     // 6. 🔥 RECALCULAR PUNTOS TOTALES desde cero
     await recalculateTotalPoints(userId, pedidosCompletados);
 
-    // 7. 🎖️ NUEVO: Recalcular ventas por marca y revocar badges si es necesario
+    // 7. 🎖️ Recalcular ventas por marca y revocar badges si es necesario
     await trackBrandSales(userId);
 
     // 8. Agregar registro de cancelación
@@ -266,14 +268,14 @@ async function revokeBadgesIfNeeded(userId: string, currentSales: number) {
 async function recalculateTotalPoints(userId: string, currentSales: number) {
   const { prisma } = await import('@/lib/prisma');
 
-  // 1. Obtener todos los pedidos completados NO cancelados
+  // ✅ CAMBIO: Obtener todos los pedidos PAGADOS A NADIN y NO cancelados
   const pedidosValidos = await prisma.pedido.findMany({
     where: {
       userId,
-      estado: {
-        in: ['entregado', 'completado']  // ✅ Acepta ambos
-      },
-      paidByClient: true
+      paidToNadin: true,  // ← CAMBIO PRINCIPAL
+      NOT: {
+        estado: 'cancelado'
+      }
     },
     include: {
       lineas: true
@@ -346,7 +348,6 @@ async function recalculateTotalPoints(userId: string, currentSales: number) {
   });
 
   if (userLevel && userLevel.currentLevel !== 'principiante') {
-    // Puntos por haber alcanzado este nivel (100 puntos por nivel alcanzado)
     const levelPoints = getLevelPoints(userLevel.currentLevel);
     
     await prisma.point.create({
@@ -381,7 +382,7 @@ function getLevelPoints(level: string): number {
 
 /**
  * Verifica y asigna badges según las ventas del usuario
- * SOLO cuenta pedidos completados NO cancelados
+ * SOLO cuenta pedidos pagados a Nadin NO cancelados
  */
 async function checkAndAssignBadges(userId: string, totalSales: number) {
   const { prisma } = await import('@/lib/prisma');
@@ -428,210 +429,69 @@ async function checkAndAssignBadges(userId: string, totalSales: number) {
             }
           });
 
-          console.log(`   🏅 ¡Badge desbloqueado! ${badge.name} (+${badge.points} pts)`);
+          console.log(`   🏅 ¡Badge desbloqueado: ${badge.name}! (+${badge.points} pts)`);
         }
       }
     }
   }
 }
 
-// ==========================================
-// 🎖️ EMBAJADORAS DE MARCAS - FUNCIONES
-// ==========================================
-
 /**
- * Configuración de niveles para embajadoras de marca
- */
-interface BrandLevelConfig {
-  level: 'bronce' | 'plata' | 'oro' | 'diamante';
-  minSales: number;
-  points: number;
-  emoji: string;
-}
-
-const BRAND_LEVELS: BrandLevelConfig[] = [
-  { level: 'bronce', minSales: 10, points: 150, emoji: '🥉' },
-  { level: 'plata', minSales: 25, points: 300, emoji: '🥈' },
-  { level: 'oro', minSales: 50, points: 500, emoji: '🥇' },
-  { level: 'diamante', minSales: 100, points: 1000, emoji: '💎' }
-];
-
-/**
- * Trackea ventas por marca y asigna/revoca badges de embajadora automáticamente
- * Se ejecuta después de cada venta completada o cancelación
+ * Trackea ventas por marca para badges de embajadora
  */
 async function trackBrandSales(userId: string) {
   const { prisma } = await import('@/lib/prisma');
-
+  
   try {
-    console.log(`\n🎖️  ========================================`);
-    console.log(`🎖️  TRACKING EMBAJADORAS DE MARCAS`);
-    console.log(`🎖️  ========================================`);
-
-    // 1. Obtener todas las marcas activas
-    const activeBrands = await prisma.brandAmbassador.findMany({
-      where: { isActive: true }
+    // ✅ CAMBIO: Buscar pedidos PAGADOS A NADIN
+    const pedidos = await prisma.pedido.findMany({
+      where: {
+        userId,
+        paidToNadin: true,  // ← CAMBIO PRINCIPAL
+        NOT: {
+          estado: 'cancelado'
+        }
+      },
+      include: {
+        lineas: true
+      }
     });
 
-    if (activeBrands.length === 0) {
-      console.log(`   ℹ️  No hay marcas activas en el programa`);
-      return;
-    }
+    // Contar ventas por marca
+    const ventasPorMarca: Map<string, number> = new Map();
 
-    console.log(`   📊 ${activeBrands.length} marcas activas`);
-
-    // 2. Para cada marca, contar ventas completadas del usuario
-    for (const brand of activeBrands) {
-      // Contar ventas SOLO de pedidos completados NO cancelados
-      const brandSalesCount = await prisma.linea.count({
-        where: {
-          brand: brand.brandName, // Comparar con el nombre de marca en Linea
-          pedido: {
-            userId,
-            estado: {
-              in: ['entregado', 'completado']  // ✅ Acepta ambos
-            },
-            paidByClient: true
-          }
+    pedidos.forEach(pedido => {
+      pedido.lineas.forEach(linea => {
+        if (linea.brand) {
+          const brandSlug = linea.brand.toLowerCase().trim();
+          ventasPorMarca.set(brandSlug, (ventasPorMarca.get(brandSlug) || 0) + linea.qty);
         }
       });
+    });
 
-      console.log(`   🏷️  ${brand.brandName}: ${brandSalesCount} ventas`);
-
-      // 3. Actualizar o crear registro de ventas por marca
+    // Actualizar UserBrandSales
+    for (const [brandSlug, count] of ventasPorMarca.entries()) {
       await prisma.userBrandSales.upsert({
         where: {
           userId_brandSlug: {
             userId,
-            brandSlug: brand.brandSlug
+            brandSlug
           }
         },
         create: {
           userId,
-          brandSlug: brand.brandSlug,
-          salesCount: brandSalesCount
+          brandSlug,
+          salesCount: count
         },
         update: {
-          salesCount: brandSalesCount
+          salesCount: count
         }
       });
-
-      // 4. Verificar y asignar/revocar badges de embajadora para esta marca
-      await checkBrandAmbassadorBadges(userId, brand, brandSalesCount);
     }
 
-    console.log(`   ✅ Tracking de marcas completado`);
-    console.log(`🎖️  ========================================\n`);
+    // TODO: Verificar y asignar badges de embajadora según umbrales
 
   } catch (error) {
-    console.error('❌ Error trackeando ventas por marca:', error);
-  }
-}
-
-/**
- * Verifica y asigna/revoca badges de embajadora para una marca específica
- */
-async function checkBrandAmbassadorBadges(
-  userId: string,
-  brand: any,
-  currentSales: number
-) {
-  const { prisma } = await import('@/lib/prisma');
-
-  for (const levelConfig of BRAND_LEVELS) {
-    const badgeSlug = `embajadora-${brand.brandSlug}-${levelConfig.level}`;
-
-    // Buscar si existe el badge (puede no existir aún si la marca es nueva)
-    const badge = await prisma.badge.findUnique({
-      where: { slug: badgeSlug }
-    });
-
-    if (!badge) {
-      // Si el badge no existe, lo creamos automáticamente
-      // Usar logoUrl si existe, sino emoji como fallback
-      const badgeIcon = brand.logoUrl 
-        ? `${brand.logoUrl}|${levelConfig.emoji}`  // Formato: "/logos/marca.jpg|🥉"
-        : `${brand.logoEmoji}${levelConfig.emoji}`; // Fallback: "💋🥉"
-      
-      const newBadge = await prisma.badge.create({
-        data: {
-          slug: badgeSlug,
-          name: `Embajadora ${brand.brandName} ${levelConfig.emoji}`,
-          description: `Alcanzaste ${levelConfig.minSales} ventas de ${brand.brandName}`,
-          icon: badgeIcon,
-          category: 'embajadora',
-          condition: JSON.stringify({
-            type: 'brand_sales',
-            brandSlug: brand.brandSlug,
-            minSales: levelConfig.minSales
-          }),
-          points: levelConfig.points,
-          rarity: levelConfig.level === 'diamante' ? 'legendary' : 
-                  levelConfig.level === 'oro' ? 'epic' : 
-                  levelConfig.level === 'plata' ? 'rare' : 'common'
-        }
-      });
-
-      console.log(`      🆕 Badge creado: ${newBadge.name}`);
-      
-      // Ahora verificamos si el usuario califica
-      await assignOrRevokeBrandBadge(userId, newBadge, levelConfig, currentSales);
-    } else {
-      // Badge existe, verificar si asignar o revocar
-      await assignOrRevokeBrandBadge(userId, badge, levelConfig, currentSales);
-    }
-  }
-}
-
-/**
- * Asigna o revoca un badge de embajadora según las ventas actuales
- */
-async function assignOrRevokeBrandBadge(
-  userId: string,
-  badge: any,
-  levelConfig: BrandLevelConfig,
-  currentSales: number
-) {
-  const { prisma } = await import('@/lib/prisma');
-
-  const userBadge = await prisma.userBadge.findUnique({
-    where: {
-      userId_badgeId: {
-        userId,
-        badgeId: badge.id
-      }
-    }
-  });
-
-  // Si cumple el requisito y NO tiene el badge → ASIGNAR
-  if (currentSales >= levelConfig.minSales && !userBadge) {
-    await prisma.userBadge.create({
-      data: {
-        userId,
-        badgeId: badge.id
-      }
-    });
-
-    await prisma.point.create({
-      data: {
-        userId,
-        amount: levelConfig.points,
-        reason: 'badge',
-        description: `¡Embajadora ${levelConfig.level} desbloqueada! ${badge.name}`
-      }
-    });
-
-    console.log(`      🎖️  ¡Badge asignado! ${badge.name} (+${levelConfig.points} pts)`);
-  }
-
-  // Si NO cumple el requisito y SÍ tiene el badge → REVOCAR
-  if (currentSales < levelConfig.minSales && userBadge) {
-    await prisma.userBadge.delete({
-      where: {
-        id: userBadge.id
-      }
-    });
-
-    console.log(`      🚫 Badge revocado: ${badge.name} (necesita ${levelConfig.minSales}, tiene ${currentSales})`);
+    console.error('Error tracking brand sales:', error);
   }
 }

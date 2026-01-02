@@ -1,3 +1,6 @@
+// RANKING CORREGIDO - USA paidToNadin en lugar de estado: 'entregado'
+// Ubicación: app/api/gamification/ranking/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -18,8 +21,7 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // 🔥 OPTIMIZACIÓN: Una sola query con agregaciones
-    // En lugar de hacer Promise.all con múltiples queries por usuario
+    // 1. Obtener todos los usuarios con sus niveles
     const users = await prisma.user.findMany({
       select: {
         id: true,
@@ -31,7 +33,6 @@ export async function GET(req: NextRequest) {
             totalSales: true
           }
         },
-        // Incluir relaciones necesarias
         _count: {
           select: {
             badges: true
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // 🔥 OPTIMIZACIÓN: Obtener todos los puntos de una vez
+    // 2. Obtener todos los puntos de una vez
     const allPoints = await prisma.point.groupBy({
       by: ['userId'],
       _sum: {
@@ -52,10 +53,9 @@ export async function GET(req: NextRequest) {
       allPoints.map(p => [p.userId, p._sum.amount || 0])
     );
 
-    // 🔥 OPTIMIZACIÓN: Obtener pedidos agrupados por usuario
+    // 3. ✅ CAMBIO: Obtener pedidos PAGADOS A NADIN (no cancelados)
     const whereCondition: any = {
-      estado: 'entregado',
-      paidByClient: true,
+      paidToNadin: true,  // ← CAMBIO PRINCIPAL
       NOT: {
         estado: 'cancelado'
       }
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
       pedidosAgrupados.map(p => [p.userId, p._count.id])
     );
 
-    // Construir ranking con datos pre-cargados
+    // 4. Construir ranking con datos pre-cargados
     const rankingData = users.map(user => ({
       userId: user.id,
       userName: user.name,
@@ -91,29 +91,31 @@ export async function GET(req: NextRequest) {
       isCurrentUser: user.id === userId
     }));
 
-    // Ordenar por ventas y puntos
+    // 5. Ordenar por total de ventas (descendente)
     rankingData.sort((a, b) => {
       if (b.totalSales !== a.totalSales) {
         return b.totalSales - a.totalSales;
       }
+      // Si tienen las mismas ventas, ordenar por puntos
       return b.totalPoints - a.totalPoints;
     });
 
-    // Asignar posiciones
+    // 6. Asignar posiciones
     const ranking = rankingData.map((entry, index) => ({
       ...entry,
       position: index + 1
     }));
 
-    // Top 50 + usuario actual si está fuera
+    // 7. Retornar solo top 50 (pero asegurar que el usuario actual esté incluido)
     let finalRanking = ranking.slice(0, 50);
-    const currentUserRank = ranking.find(r => r.isCurrentUser);
     
+    const currentUserRank = ranking.find(r => r.isCurrentUser);
     if (currentUserRank && currentUserRank.position > 50) {
       finalRanking.push(currentUserRank);
     }
 
     return NextResponse.json(finalRanking);
+
   } catch (error) {
     console.error('❌ Error obteniendo ranking:', error);
     return NextResponse.json(
