@@ -160,18 +160,20 @@ model Consolidacion {
 }
 
 model CatalogoCache {
-  id         String   @id @default(cuid())
-  productId  String   @unique
-  data       String
-  brand      String?
-  category   String?
-  sex        String?
-  salesCount Int      @default(0)
-  updatedAt  DateTime @default(now())
+  id              String   @id @default(cuid())
+  productId       String   @unique
+  data            String
+  brand           String?
+  category        String?
+  sex             String?
+  salesCount      Int      @default(0)
+  bestSellerRank  Int?                    // 🆕 NUEVO: Posición en ranking de TN (1 = más vendido)
+  updatedAt       DateTime @default(now())
 
   @@index([brand])
   @@index([sex])
   @@index([salesCount])
+  @@index([bestSellerRank])              // 🆕 NUEVO: Índice para ordenar rápido
   @@index([updatedAt])
 }
 

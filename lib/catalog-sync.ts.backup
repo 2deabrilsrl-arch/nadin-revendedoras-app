@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { getAllProducts, getCategories, getBestSellingProducts } from './tiendanube';
+import { getAllProducts, getCategories } from './tiendanube';
 
 interface TiendanubeCategory {
   id: number;
@@ -165,9 +165,9 @@ function findDeepestCategory(
  * Formatea productos con jerarquía completa construida por parent
  */
 export async function formatProductsWithFullCategories(products: any[]) {
-  console.log('\n📄 ========================================');
-  console.log('📄 FORMATEANDO PRODUCTOS');
-  console.log('📄 ========================================');
+  console.log('\n🔄 ========================================');
+  console.log('🔄 FORMATEANDO PRODUCTOS');
+  console.log('🔄 ========================================');
   console.log(`📦 Total productos: ${products.length}\n`);
 
   // Obtener mapa de categorías
@@ -266,84 +266,19 @@ export async function formatProductsWithFullCategories(products: any[]) {
     console.log(`   - "${p.name}": "${p.category}"`);
   });
 
-  console.log('\n📄 ========================================\n');
+  console.log('\n🔄 ========================================\n');
 
   return formatted;
 }
 
 /**
- * 🆕 NUEVO: Sincroniza los productos más vendidos de TN
- */
-async function syncBestSellers() {
-  try {
-    console.log('\n🔥 ========================================');
-    console.log('🔥 SINCRONIZANDO BEST SELLERS DE TN');
-    console.log('🔥 ========================================\n');
-
-    // Obtener los 200 productos más vendidos de TN
-    const bestSellers = await getBestSellingProducts(200);
-    
-    if (!bestSellers || bestSellers.length === 0) {
-      console.log('⚠️ No se obtuvieron best sellers de TN');
-      return { success: false, count: 0 };
-    }
-
-    console.log(`📦 ${bestSellers.length} productos más vendidos obtenidos de TN\n`);
-
-    // Primero, limpiar todos los rankings previos
-    await prisma.catalogoCache.updateMany({
-      data: {
-        bestSellerRank: null
-      }
-    });
-    console.log('✅ Rankings previos limpiados\n');
-
-    // Actualizar el ranking de cada producto
-    let updatedCount = 0;
-    
-    for (let i = 0; i < bestSellers.length; i++) {
-      const product = bestSellers[i];
-      const rank = i + 1; // Posición en el ranking (1 = más vendido)
-
-      try {
-        await prisma.catalogoCache.updateMany({
-          where: {
-            productId: product.id.toString()
-          },
-          data: {
-            bestSellerRank: rank,
-            salesCount: 200 - i // Mayor salesCount = más vendido (para backwards compatibility)
-          }
-        });
-        
-        updatedCount++;
-        
-        if (i < 10) {
-          console.log(`  ${rank}° - ID ${product.id}: "${product.name?.es || product.name}"`);
-        }
-      } catch (error) {
-        console.error(`❌ Error actualizando ranking de producto ${product.id}:`, error);
-      }
-    }
-
-    console.log(`\n✅ ${updatedCount} productos actualizados con ranking`);
-    console.log('🔥 ========================================\n');
-
-    return { success: true, count: updatedCount };
-  } catch (error) {
-    console.error('❌ Error sincronizando best sellers:', error);
-    return { success: false, count: 0 };
-  }
-}
-
-/**
- * Sincroniza el catálogo completo + best sellers
+ * Sincroniza el catálogo completo
  */
 export async function syncCatalogWithFullCategories() {
   try {
-    console.log('\n📄 ========================================');
-    console.log('📄 SINCRONIZACIÓN INICIADA');
-    console.log('📄 ========================================');
+    console.log('\n🔄 ========================================');
+    console.log('🔄 SINCRONIZACIÓN INICIADA');
+    console.log('🔄 ========================================');
     console.log(`⏰ Timestamp: ${new Date().toISOString()}\n`);
 
     // 1. Obtener productos de TN
@@ -358,7 +293,7 @@ export async function syncCatalogWithFullCategories() {
     console.log(`✅ ${formatted.length} productos formateados`);
 
     // 3. Limpiar cache
-    console.log('\n🗑️ Limpiando cache...');
+    console.log('\n🗑️  Limpiando cache...');
     await prisma.catalogoCache.deleteMany({});
     console.log('✅ Cache limpio');
 
@@ -370,7 +305,6 @@ export async function syncCatalogWithFullCategories() {
       category: product.category,
       sex: inferSex(product.category),
       salesCount: 0,
-      bestSellerRank: null, // Se actualizará después
       updatedAt: new Date()
     }));
 
@@ -393,15 +327,10 @@ export async function syncCatalogWithFullCategories() {
       console.log(`  ✅ Lote ${batchNum}/${totalBatches}: ${insertedCount}/${dataToInsert.length}`);
     }
 
-    // 6. 🆕 Sincronizar best sellers
-    console.log('\n🔥 Sincronizando rankings de best sellers...');
-    const bestSellersResult = await syncBestSellers();
-    
     console.log('\n🎉 ========================================');
     console.log('🎉 SINCRONIZACIÓN COMPLETADA');
     console.log('🎉 ========================================');
     console.log(`📊 Total guardado: ${insertedCount} productos`);
-    console.log(`🔥 Best sellers actualizados: ${bestSellersResult.count}`);
     console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
     console.log('🎉 ========================================\n');
 
@@ -503,25 +432,6 @@ export async function getCachedProducts(filters?: {
 }
 
 /**
- * 🆕 NUEVO: Obtiene los productos más vendidos desde el cache
- */
-export async function getCachedBestSellers(limit: number = 50) {
-  const cached = await prisma.catalogoCache.findMany({
-    where: {
-      bestSellerRank: {
-        not: null
-      }
-    },
-    orderBy: {
-      bestSellerRank: 'asc' // Menor número = mejor ranking
-    },
-    take: limit
-  });
-
-  return cached.map(item => JSON.parse(item.data));
-}
-
-/**
  * Fuerza sincronización manual
  */
 export async function forceSyncCatalog() {
@@ -538,17 +448,8 @@ export async function getCacheStats() {
     select: { updatedAt: true }
   });
 
-  const bestSellersCount = await prisma.catalogoCache.count({
-    where: {
-      bestSellerRank: {
-        not: null
-      }
-    }
-  });
-
   return {
     totalProducts: count,
-    bestSellersCount,
     lastUpdate: lastUpdate?.updatedAt,
     cacheActive: count > 0
   };
