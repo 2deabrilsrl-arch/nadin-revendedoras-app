@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     // ✅ Enviar email con Resend (funciona en Vercel, sin bloqueos SMTP)
     await resend.emails.send({
-      from: 'Nadin Lencería <onboarding@resend.dev>',
+      from: 'Nadin Lencería <noreply@nadinlenceria.com>',
       to: email,
       subject: 'Recuperar Contraseña - Nadin Lencería',
       html: `
