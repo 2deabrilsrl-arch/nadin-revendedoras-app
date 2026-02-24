@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import crypto from 'crypto';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface RecuperarBody {
   email: string;
@@ -38,20 +40,9 @@ export async function POST(req: NextRequest) {
 
     const resetUrl = `${process.env.NEXT_PUBLIC_URL || 'https://nadin-revendedoras-app.vercel.app'}/recuperar/nueva-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
-    // ✅ Variables SMTP correctas (consistentes con el resto del sistema)
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    // Enviar email
-    await transporter.sendMail({
-      from: `"Nadin Lencería" <${process.env.FROM_EMAIL}>`,
+    // ✅ Enviar email con Resend (funciona en Vercel, sin bloqueos SMTP)
+    await resend.emails.send({
+      from: 'Nadin Lencería <onboarding@resend.dev>',
       to: email,
       subject: 'Recuperar Contraseña - Nadin Lencería',
       html: `
