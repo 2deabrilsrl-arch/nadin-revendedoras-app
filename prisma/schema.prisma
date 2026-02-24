@@ -33,6 +33,9 @@ model User {
   youtube          String?
   website          String?
   rol              String           @default("revendedora")
+  // 🔑 NUEVO: Campos para recuperación de contraseña
+  resetToken       String?
+  resetTokenExpiry DateTime?
   consolidaciones  Consolidacion[]
   notificaciones   Notificacion[]
   pedidos          Pedido[]

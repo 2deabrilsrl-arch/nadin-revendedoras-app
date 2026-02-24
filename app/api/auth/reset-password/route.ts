@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
 
 interface ResetPasswordBody {
   email: string;
@@ -28,34 +26,48 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verificar que el usuario existe
+    // ✅ Buscar usuario y validar token + expiración
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Usuario no encontrado' },
-        { status: 404 }
+        { error: 'Link inválido o expirado' },
+        { status: 400 }
       );
     }
 
-    // TODO: Validar token de recuperación y expiración
-    // Por ahora, como no tenemos los campos en la BD, solo actualizamos la contraseña
+    // ✅ Validar que el token coincida y no haya expirado
+    if (
+      !user.resetToken ||
+      !user.resetTokenExpiry ||
+      user.resetToken !== token ||
+      user.resetTokenExpiry < new Date()
+    ) {
+      return NextResponse.json(
+        { error: 'El link de recuperación es inválido o ya expiró. Solicitá uno nuevo.' },
+        { status: 400 }
+      );
+    }
 
-    // Hashear la nueva contraseña
+    // ✅ Hashear la nueva contraseña y limpiar el token usado
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Actualizar contraseña
     await prisma.user.update({
       where: { email },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        resetToken: null,       // Invalidar token después de usarlo
+        resetTokenExpiry: null,
+      },
     });
 
     return NextResponse.json(
       { message: 'Contraseña actualizada exitosamente' },
       { status: 200 }
     );
+
   } catch (error: any) {
     console.error('Error al resetear contraseña:', error);
     return NextResponse.json(

@@ -24,24 +24,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generar token de recuperación
+    // ✅ Generar token y guardarlo en la BD con expiración de 1 hora
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetUrl = `${process.env.NEXT_PUBLIC_URL || 'https://nadin-revendedoras-app.vercel.app'}/recuperar/nueva-password?token=${resetToken}&email=${email}`;
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
 
-    // Configurar transportador de email
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: Number(process.env.EMAIL_PORT) || 587,
-      secure: false, // true para 465, false para otros puertos
-      auth: {
-        user: process.env.EMAIL_USER || 'nadinlenceria@gmail.com',
-        pass: process.env.EMAIL_PASS
+    await prisma.user.update({
+      where: { email },
+      data: {
+        resetToken,
+        resetTokenExpiry,
       }
+    });
+
+    const resetUrl = `${process.env.NEXT_PUBLIC_URL || 'https://nadin-revendedoras-app.vercel.app'}/recuperar/nueva-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+
+    // ✅ Variables SMTP correctas (consistentes con el resto del sistema)
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
     });
 
     // Enviar email
     await transporter.sendMail({
-      from: `"Nadin Lencería" <${process.env.EMAIL_USER || 'nadinlenceria@gmail.com'}>`,
+      from: `"Nadin Lencería" <${process.env.FROM_EMAIL}>`,
       to: email,
       subject: 'Recuperar Contraseña - Nadin Lencería',
       html: `
