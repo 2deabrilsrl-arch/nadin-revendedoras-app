@@ -53,16 +53,14 @@ export async function GET(req: NextRequest) {
       allPoints.map(p => [p.userId, p._sum.amount || 0])
     );
 
-    // 3. ✅ CAMBIO: Obtener pedidos PAGADOS A NADIN (no cancelados)
+    // 3. Contar pedidos enviados a Nadin (consolidados y no cancelados)
+    // Se cuenta desde que el pedido fue enviado (consolidado), no requiere pago explícito
     const whereCondition: any = {
-      paidToNadin: true,  // ← CAMBIO PRINCIPAL
-      NOT: {
-        estado: 'cancelado'
-      }
+      estado: { notIn: ['pendiente', 'cancelado'] }
     };
 
     if (period === 'month') {
-      whereCondition.createdAt = {
+      whereCondition.sentToNadinAt = {
         gte: startOfMonth
       };
     }
