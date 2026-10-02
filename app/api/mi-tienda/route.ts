@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserAndTienda, noAuth, bad, s, sOrNull, num, bool, RESERVED_SLUGS } from '@/lib/mi-tienda';
 import { slugify, getTiendaBaseUrl } from '@/lib/tienda';
+import { normalizarDiseno } from '@/lib/tienda-diseno';
 
 export const dynamic = 'force-dynamic';
 const MARGEN_MINIMO = Number(process.env.TIENDA_MARGEN_MINIMO || 0);
@@ -13,7 +14,7 @@ export async function GET() {
   if (!ctx) return noAuth();
   const { tienda, user } = ctx;
   return NextResponse.json({
-    tienda,
+    tienda: { ...tienda, diseno: normalizarDiseno(tienda.diseno) },
     url: getTiendaBaseUrl(tienda),
     urlApp: `/t/${tienda.slug}`,
     margenUsuaria: user.margen,
@@ -79,7 +80,9 @@ export async function PUT(req: Request) {
     if (!pagos) return bad('Para publicar la tienda activá al menos un medio de pago.');
   }
 
+  if (b.diseno !== undefined) data.diseno = normalizarDiseno(b.diseno);
+
   Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
   const updated = await prisma.tienda.update({ where: { id: tienda.id }, data });
-  return NextResponse.json({ tienda: updated, url: getTiendaBaseUrl(updated) });
+  return NextResponse.json({ tienda: { ...updated, diseno: normalizarDiseno(updated.diseno) }, url: getTiendaBaseUrl(updated) });
 }

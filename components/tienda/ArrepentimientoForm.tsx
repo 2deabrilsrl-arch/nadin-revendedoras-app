@@ -8,7 +8,7 @@ export default function ArrepentimientoForm({ apiBase }: { apiBase: string }) {
   const [codigo, setCodigo] = useState('');
   const [error, setError] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const input = 'w-full rounded-lg border border-gray-300 px-3 py-2.5';
+  const input = 'w-full rounded-[var(--t-btn-radius)] border border-gray-300 px-3 py-2.5';
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -25,7 +25,7 @@ export default function ArrepentimientoForm({ apiBase }: { apiBase: string }) {
 
   if (codigo) {
     return (
-      <div className="rounded-xl bg-green-50 p-5 text-green-900" role="status">
+      <div className="rounded-[var(--t-radius)] bg-green-50 p-5 text-green-900" role="status">
         <p className="font-semibold">Recibimos tu solicitud.</p>
         <p className="mt-1 text-sm">Código de trámite: <strong>{codigo}</strong>. Te vamos a contactar para coordinar la devolución.</p>
       </div>
@@ -37,7 +37,7 @@ export default function ArrepentimientoForm({ apiBase }: { apiBase: string }) {
       <label className="block text-sm">Email o teléfono con el que compraste *<input required className={input} value={contacto} onChange={(e) => setContacto((e.target as any).value)} /></label>
       <label className="block text-sm">Motivo (opcional)<textarea className={input} rows={3} value={motivo} onChange={(e) => setMotivo((e.target as any).value)} maxLength={500} /></label>
       {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
-      <button disabled={enviando} className="rounded-full px-6 py-3 font-semibold text-white disabled:opacity-50" style={{ background: 'var(--t-primary)' }}>
+      <button disabled={enviando} className="t-btn">
         {enviando ? 'Enviando…' : 'Solicitar cancelación'}
       </button>
     </form>

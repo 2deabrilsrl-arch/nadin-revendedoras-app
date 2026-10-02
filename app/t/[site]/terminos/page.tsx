@@ -9,7 +9,7 @@ export default async function Page({ params }: { params: { site: string } }) {
   if (!tienda) notFound();
   const prefix = getLinkPrefix(tienda.slug);
   return (
-    <article className="prose mx-auto max-w-2xl text-gray-700">
+    <article className="prose mx-auto max-w-2xl px-4 py-10 text-gray-700 [&_h2]:mt-6 [&_p]:mt-2">
       <h1 className="t-title text-3xl font-bold text-gray-900">Términos y condiciones</h1>
       <p><strong>{tienda.nombre}</strong> es la vendedora de los productos ofrecidos en esta tienda y la responsable de la venta, el cobro y la atención.</p>
       <h2 className="text-xl font-semibold text-gray-900">Precios y stock</h2>

@@ -12,11 +12,12 @@ export async function POST(req: Request) {
   if (!ctx) return noAuth();
   const form = await req.formData().catch(() => null);
   const file = form?.get('file') as any;
-  const kind = String(form?.get('kind') || 'logo') === 'banner' ? 'banner' : 'logo';
+  const k = String(form?.get('kind') || 'logo');
+  const kind = ['logo', 'banner', 'slide'].includes(k) ? k : 'logo';
   if (!file || typeof file.arrayBuffer !== 'function') return bad('No llegó la imagen.');
   const ext = TIPOS[file.type];
   if (!ext) return bad('La imagen tiene que ser PNG, JPG o WEBP.');
-  if (file.size > 3 * 1024 * 1024) return bad('La imagen pesa más de 3 MB.');
+  if (file.size > 5 * 1024 * 1024) return bad('La imagen pesa más de 5 MB.');
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   const buffer = Buffer.from(await file.arrayBuffer());
   let up = await supabase.storage.from(BUCKET).upload(path, buffer, { contentType: file.type, upsert: true });
   if (up.error && /not found/i.test(up.error.message)) {
-    await supabase.storage.createBucket(BUCKET, { public: true, fileSizeLimit: 3 * 1024 * 1024 });
+    await supabase.storage.createBucket(BUCKET, { public: true, fileSizeLimit: 5 * 1024 * 1024 });
     up = await supabase.storage.from(BUCKET).upload(path, buffer, { contentType: file.type, upsert: true });
   }
   if (up.error) return bad('No se pudo subir la imagen.', 500);

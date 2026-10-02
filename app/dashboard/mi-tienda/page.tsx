@@ -2,8 +2,9 @@
 
 // Panel "Mi Tienda Web" de la revendedora
 import { useCallback, useEffect, useState } from 'react';
+import { ESTILOS, ICONOS, DISENO_DEFAULT } from '@/lib/tienda-diseno';
 
-type Tab = 'pedidos' | 'diseno' | 'pagos' | 'envios' | 'cupones';
+type Tab = 'pedidos' | 'portada' | 'diseno' | 'pagos' | 'envios' | 'cupones';
 
 const fmt = (n: number) => `$${Math.round(n || 0).toLocaleString('es-AR')}`;
 const val = (e: any) => (e.target as any).value;
@@ -79,14 +80,15 @@ export default function MiTiendaPage() {
   const t = info.tienda;
   const tabs: { id: Tab; label: string }[] = [
     { id: 'pedidos', label: 'Pedidos web' },
-    { id: 'diseno', label: 'Diseño y datos' },
+    { id: 'portada', label: 'Portada' },
+    { id: 'diseno', label: 'Marca y datos' },
     { id: 'pagos', label: 'Cobros' },
     { id: 'envios', label: 'Entregas' },
     { id: 'cupones', label: 'Cupones' },
   ];
 
   return (
-    <div className="mx-auto max-w-4xl p-4 pb-24">
+    <div className="mx-auto min-h-screen max-w-4xl bg-gray-50/60 p-4 pb-24">
       <div className="mb-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 p-5 text-white">
         <p className="text-sm opacity-90">Mi tienda web</p>
         <h1 className="text-2xl font-bold">{t.nombre}</h1>
@@ -122,14 +124,15 @@ export default function MiTiendaPage() {
             role="tab"
             aria-selected={tab === x.id}
             onClick={() => setTab(x.id)}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ${tab === x.id ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${tab === x.id ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 ring-1 ring-black/5 hover:text-gray-900'}`}
           >
             {x.label}
           </button>
         ))}
       </nav>
 
-      {tab === 'pedidos' && <Pedidos onToast={setToast} />}
+      {tab === 'pedidos' && <Pedidos onToast={setToast} tienda={t} onTienda={(nt: any) => setInfo({ ...info, tienda: { ...t, ...nt } })} />}
+      {tab === 'portada' && <Portada info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Portada guardada'); }} onToast={setToast} />}
       {tab === 'diseno' && <Diseno info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Guardado'); }} />}
       {tab === 'pagos' && <Pagos onToast={setToast} />}
       {tab === 'envios' && <Envios onToast={setToast} />}
@@ -157,7 +160,7 @@ const ESTADOS: Record<string, { label: string; color: string }> = {
   cancelada: { label: 'Cancelado', color: 'bg-red-100 text-red-700' },
 };
 
-function Pedidos({ onToast }: { onToast: (s: string) => void }) {
+function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; tienda: any; onTienda: (t: any) => void }) {
   const [ordenes, setOrdenes] = useState<any[] | null>(null);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [busy, setBusy] = useState('');
@@ -165,13 +168,16 @@ function Pedidos({ onToast }: { onToast: (s: string) => void }) {
   const cargar = useCallback(() => api('/ordenes').then((d) => setOrdenes(d.ordenes)).catch(() => setOrdenes([])), []);
   useEffect(() => { cargar(); }, [cargar]);
 
-  async function accion(id: string, a: string, confirmar?: string) {
+  async function accion(id: string, a: string, confirmar?: string, extra: any = {}) {
     if (confirmar && !(globalThis as any).confirm(confirmar)) return;
     setBusy(id + a);
     try {
-      const d = await api(`/ordenes/${id}`, 'PATCH', { accion: a });
+      const d = await api(`/ordenes/${id}`, 'PATCH', { accion: a, ...extra });
       setOrdenes((prev) => (prev || []).map((o) => (o.id === id ? d.orden : o)));
-      onToast(a === 'enviar_nadin' ? 'Enviado a Nadin. Lo vas a ver en Mis Pedidos para consolidar.' : 'Actualizado');
+      if (a === 'enviar_nadin' && extra.consolidar) {
+        onTienda({ nadinFormaPago: extra.formaPago, nadinTipoEnvio: extra.tipoEnvio, nadinTransporte: extra.transporteNombre || null });
+      }
+      onToast(a === 'enviar_nadin' ? (extra.consolidar ? '¡Listo! Nadin ya lo tiene para armar.' : 'Enviado. Consolidalo desde "Consolidar" cuando quieras.') : 'Actualizado');
     } catch (e: any) {
       onToast(e.message);
     }
@@ -194,7 +200,7 @@ function Pedidos({ onToast }: { onToast: (s: string) => void }) {
         const est = ESTADOS[o.estado] || { label: o.estado, color: 'bg-gray-100' };
         const ganancia = o.total - o.envioCosto - o.totalMayorista;
         return (
-          <li key={o.id} className="rounded-xl border bg-white p-4">
+          <li key={o.id} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
             <button className="flex w-full items-start justify-between gap-3 text-left" onClick={() => setAbierta(abierta === o.id ? null : o.id)}>
               <div>
                 <p className="font-semibold">#{o.numero} · {o.clienteNombre}</p>
@@ -209,10 +215,7 @@ function Pedidos({ onToast }: { onToast: (s: string) => void }) {
             </button>
 
             {o.estado === 'pagada' && (
-              <div className="mt-3 rounded-lg bg-green-50 p-3 text-sm">
-                <p className="mb-2 font-medium text-green-900">Este pedido ya está pago. ¿Lo enviamos a Nadin para asegurar el stock?</p>
-                <button className={btn} disabled={!!busy} onClick={() => accion(o.id, 'enviar_nadin')}>Sí, enviar a Nadin</button>
-              </div>
+              <EnviarNadin tienda={tienda} busy={!!busy} onEnviar={(extra: any) => accion(o.id, 'enviar_nadin', undefined, extra)} />
             )}
 
             {abierta === o.id && (
@@ -258,6 +261,228 @@ function Pedidos({ onToast }: { onToast: (s: string) => void }) {
 }
 
 // ---------------------------------------------------------------------
+// Enviar a Nadin = pedido + consolidación en un solo paso
+// ---------------------------------------------------------------------
+
+const PAGOS_NADIN: Record<string, string> = { transferencia: 'Transferencia', mercadopago: 'Mercado Pago', efectivo: 'Efectivo', tarjeta: 'Tarjeta' };
+const ENTREGAS_NADIN: Record<string, string> = { retiro: 'Retiro en el local', envio: 'Envío por transporte' };
+
+function EnviarNadin({ tienda, busy, onEnviar }: { tienda: any; busy: boolean; onEnviar: (x: any) => void }) {
+  const guardado = !!(tienda.nadinFormaPago && tienda.nadinTipoEnvio);
+  const [editar, setEditar] = useState(!guardado);
+  const [formaPago, setFormaPago] = useState(tienda.nadinFormaPago || '');
+  const [tipoEnvio, setTipoEnvio] = useState(tienda.nadinTipoEnvio || '');
+  const [transporte, setTransporte] = useState(tienda.nadinTransporte || '');
+  const [despues, setDespues] = useState(false);
+  const listo = despues || (formaPago && tipoEnvio && (tipoEnvio !== 'envio' || transporte.trim()));
+
+  return (
+    <div className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm ring-1 ring-emerald-100">
+      <p className="font-semibold text-emerald-900">Pedido pago 🎉 ¿Lo mandamos a Nadin para asegurar el stock?</p>
+      {!despues && (!editar ? (
+        <p className="mt-1 text-emerald-800">
+          Le pagás con <strong>{PAGOS_NADIN[formaPago] || formaPago}</strong> · {ENTREGAS_NADIN[tipoEnvio] || tipoEnvio}{tipoEnvio === 'envio' && transporte ? ` (${transporte})` : ''}.{' '}
+          <button type="button" className="underline" onClick={() => setEditar(true)}>Cambiar</button>
+        </p>
+      ) : (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <label className="text-xs text-emerald-900">¿Cómo le pagás a Nadin?
+            <select className={`${input} mt-1 bg-white`} value={formaPago} onChange={(e) => setFormaPago(val(e))}>
+              <option value="">Elegí…</option>
+              {Object.entries(PAGOS_NADIN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-emerald-900">¿Cómo lo recibís?
+            <select className={`${input} mt-1 bg-white`} value={tipoEnvio} onChange={(e) => setTipoEnvio(val(e))}>
+              <option value="">Elegí…</option>
+              {Object.entries(ENTREGAS_NADIN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          {tipoEnvio === 'envio' && (
+            <label className="text-xs text-emerald-900 sm:col-span-2">Transporte
+              <input className={`${input} mt-1 bg-white`} value={transporte} onChange={(e) => setTransporte(val(e))} placeholder="Ej: Vía Cargo, Andreani…" />
+            </label>
+          )}
+          <p className="text-xs text-emerald-700 sm:col-span-2">Lo recordamos para la próxima: vas a enviarlo con un solo toque.</p>
+        </div>
+      ))}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button className={btn} disabled={busy || !listo}
+          onClick={() => onEnviar(despues ? { consolidar: false } : { consolidar: true, formaPago, tipoEnvio, transporteNombre: tipoEnvio === 'envio' ? transporte : null })}>
+          {despues ? 'Enviar sin consolidar' : 'Enviar a Nadin'}
+        </button>
+        <label className="flex items-center gap-1.5 text-xs text-emerald-800">
+          <input type="checkbox" checked={despues} onChange={(e) => setDespues(chk(e))} /> Prefiero juntarlo con otros pedidos y consolidar después
+        </label>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Portada: estilo, barra de anuncio, carrusel y beneficios
+// ---------------------------------------------------------------------
+
+function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => void; onToast: (s: string) => void }) {
+  const [d, setD] = useState<any>(() => JSON.parse(JSON.stringify(info.tienda.diseno || DISENO_DEFAULT)));
+  const [saving, setSaving] = useState(false);
+  const [subiendo, setSubiendo] = useState<string>('');
+
+  const setSlide = (i: number, k: string, v: any) => setD((x: any) => ({ ...x, slides: x.slides.map((s: any, j: number) => (j === i ? { ...s, [k]: v } : s)) }));
+  const moverSlide = (i: number, dir: number) => setD((x: any) => {
+    const arr = [...x.slides]; const j = i + dir;
+    if (j < 0 || j >= arr.length) return x;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    return { ...x, slides: arr };
+  });
+  const setBen = (i: number, k: string, v: any) => setD((x: any) => ({ ...x, beneficios: { ...x.beneficios, items: x.beneficios.items.map((b: any, j: number) => (j === i ? { ...b, [k]: v } : b)) } }));
+
+  async function subir(file: any, onUrl: (u: string) => void, key: string) {
+    if (!file) return;
+    setSubiendo(key);
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', 'slide');
+    const r = await fetch('/api/mi-tienda/upload', { method: 'POST', body: fd, credentials: 'include' });
+    const res: any = await r.json().catch(() => ({}));
+    setSubiendo('');
+    if (!r.ok) return onToast(res.error || 'No se pudo subir la imagen');
+    onUrl(res.url);
+  }
+
+  async function guardar() {
+    setSaving(true);
+    try {
+      const r = await api('', 'PUT', { diseno: d });
+      setD(r.tienda.diseno);
+      onSaved({ tienda: r.tienda, url: r.url });
+    } catch (e: any) { onToast(e.message); }
+    setSaving(false);
+  }
+
+  const card = 'space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5';
+
+  return (
+    <div className="space-y-5">
+      <section className={card}>
+        <div>
+          <h2 className="font-semibold">Estilo de tu tienda</h2>
+          <p className="text-xs text-gray-500">Cambia tipografías de títulos, botones y bordes. Los colores los elegís en “Marca y datos”.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {ESTILOS.map((e) => (
+            <button key={e.id} type="button" onClick={() => setD({ ...d, estilo: e.id })}
+              className={`rounded-xl border p-4 text-left transition ${d.estilo === e.id ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-300'}`}>
+              <span className={`mb-3 block h-16 ${e.id === 'boutique' ? 'rounded-xl bg-pink-50' : e.id === 'audaz' ? 'bg-gray-900' : 'border border-gray-200 bg-white'}`}>
+                <span className={`flex h-full items-center justify-center text-xs ${e.id === 'audaz' ? 'font-black uppercase text-white' : e.id === 'boutique' ? 'font-serif text-pink-700' : 'uppercase tracking-[0.2em] text-gray-700'}`}>Nueva colección</span>
+              </span>
+              <span className="block text-sm font-semibold">{e.nombre}</span>
+              <span className="block text-xs text-gray-500">{e.detalle}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className={card}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Barra de anuncio</h2>
+            <p className="text-xs text-gray-500">Una línea arriba de todo. Ej: “Envío gratis desde $40.000”.</p>
+          </div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!d.anuncio.activo} onChange={(e) => setD({ ...d, anuncio: { ...d.anuncio, activo: chk(e) } })} /> Mostrar</label>
+        </div>
+        <input className={input} maxLength={120} placeholder="Texto del anuncio" value={d.anuncio.texto} onChange={(e) => setD({ ...d, anuncio: { ...d.anuncio, texto: val(e) } })} />
+        <input className={input} placeholder="Link opcional (ej: /categoria/corpinos)" value={d.anuncio.link} onChange={(e) => setD({ ...d, anuncio: { ...d.anuncio, link: val(e) } })} />
+      </section>
+
+      <section className={card}>
+        <div>
+          <h2 className="font-semibold">Carrusel de portada</h2>
+          <p className="text-xs text-gray-500">Hasta 5 imágenes. Ideal: 1920×730 px para compu y 1080×1350 px (vertical) para celular.</p>
+        </div>
+        {d.slides.length === 0 && <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-500">Todavía no cargaste imágenes. Si no cargás ninguna se muestra tu nombre con tu color.</p>}
+        <ul className="space-y-4">
+          {d.slides.map((s: any, i: number) => (
+            <li key={i} className="rounded-xl border border-gray-200 p-4">
+              <div className="flex gap-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {s.imagen ? <img src={s.imagen} alt="" className="h-20 w-36 shrink-0 rounded-lg object-cover" /> : <div className="h-20 w-36 shrink-0 rounded-lg bg-gray-100" />}
+                <div className="flex-1 space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="text-xs text-gray-600">Imagen (compu)
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="mt-1 block w-full text-xs" onChange={(e) => subir((e.target as any).files?.[0], (u) => setSlide(i, 'imagen', u), `s${i}`)} />
+                    </label>
+                    <label className="text-xs text-gray-600">Imagen celular (opcional)
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="mt-1 block w-full text-xs" onChange={(e) => subir((e.target as any).files?.[0], (u) => setSlide(i, 'imagenMobile', u), `m${i}`)} />
+                    </label>
+                  </div>
+                  {subiendo.endsWith(String(i)) && <p className="text-xs text-pink-600">Subiendo imagen…</p>}
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <input className={input} maxLength={80} placeholder="Título (opcional)" value={s.titulo || ''} onChange={(e) => setSlide(i, 'titulo', val(e))} />
+                <input className={input} maxLength={30} placeholder="Texto del botón (opcional)" value={s.boton || ''} onChange={(e) => setSlide(i, 'boton', val(e))} />
+                <input className={`${input} sm:col-span-2`} maxLength={160} placeholder="Bajada (opcional)" value={s.texto || ''} onChange={(e) => setSlide(i, 'texto', val(e))} />
+                <input className={`${input} sm:col-span-2`} placeholder="Al tocar, ir a… (ej: /categoria/lenceria o un link https://)" value={s.link || ''} onChange={(e) => setSlide(i, 'link', val(e))} />
+              </div>
+              <div className="mt-3 flex gap-3 text-xs">
+                <button type="button" className="text-gray-600 disabled:opacity-30" disabled={i === 0} onClick={() => moverSlide(i, -1)}>↑ Subir</button>
+                <button type="button" className="text-gray-600 disabled:opacity-30" disabled={i === d.slides.length - 1} onClick={() => moverSlide(i, 1)}>↓ Bajar</button>
+                <button type="button" className="ml-auto text-red-600" onClick={() => setD({ ...d, slides: d.slides.filter((_: any, j: number) => j !== i) })}>Quitar</button>
+              </div>
+            </li>
+          ))}
+        </ul>
+        {d.slides.length < 5 && (
+          <label className={`${btnSec} inline-flex cursor-pointer items-center gap-2`}>
+            + Agregar imagen
+            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+              onChange={(e) => subir((e.target as any).files?.[0], (u) => setD((x: any) => ({ ...x, slides: [...x.slides, { imagen: u }] })), 'nuevo')} />
+          </label>
+        )}
+        {subiendo === 'nuevo' && <p className="text-xs text-pink-600">Subiendo imagen…</p>}
+      </section>
+
+      <section className={card}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Beneficios</h2>
+            <p className="text-xs text-gray-500">La franja con íconos debajo del carrusel (hasta 4).</p>
+          </div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!d.beneficios.activo} onChange={(e) => setD({ ...d, beneficios: { ...d.beneficios, activo: chk(e) } })} /> Mostrar</label>
+        </div>
+        <ul className="space-y-2">
+          {d.beneficios.items.map((b: any, i: number) => (
+            <li key={i} className="grid gap-2 sm:grid-cols-[130px_1fr_1.4fr_auto]">
+              <select className={input} value={b.icono} onChange={(e) => setBen(i, 'icono', val(e))}>
+                {ICONOS.map((ic) => <option key={ic} value={ic}>{({ envio: '🚚 Envío', pago: '💳 Pago', cambio: '🔁 Cambios', whatsapp: '💬 WhatsApp', seguro: '🛡️ Seguro', regalo: '🎁 Regalo' } as any)[ic]}</option>)}
+              </select>
+              <input className={input} maxLength={40} placeholder="Título" value={b.titulo} onChange={(e) => setBen(i, 'titulo', val(e))} />
+              <input className={input} maxLength={80} placeholder="Detalle" value={b.texto} onChange={(e) => setBen(i, 'texto', val(e))} />
+              <button type="button" className="text-xs text-red-600" onClick={() => setD({ ...d, beneficios: { ...d.beneficios, items: d.beneficios.items.filter((_: any, j: number) => j !== i) } })}>Quitar</button>
+            </li>
+          ))}
+        </ul>
+        {d.beneficios.items.length < 4 && (
+          <button type="button" className={btnSec} onClick={() => setD({ ...d, beneficios: { ...d.beneficios, items: [...d.beneficios.items, { icono: 'regalo', titulo: '', texto: '' }] } })}>+ Agregar beneficio</button>
+        )}
+      </section>
+
+      <section className={card}>
+        <h2 className="font-semibold">Secciones de la portada</h2>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!d.categoriasDestacadas} onChange={(e) => setD({ ...d, categoriasDestacadas: chk(e) })} /> Categorías con foto</label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!d.masVendidos} onChange={(e) => setD({ ...d, masVendidos: chk(e) })} /> Los más elegidos</label>
+      </section>
+
+      <div className="sticky bottom-20 flex justify-end gap-2">
+        <a href={info.urlApp} target="_blank" className={`${btnSec} bg-white shadow`}>Ver cómo queda</a>
+        <button className={`${btn} shadow-lg`} disabled={saving || !!subiendo} onClick={guardar}>{saving ? 'Guardando…' : 'Guardar portada'}</button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
 // Diseño y datos
 // ---------------------------------------------------------------------
 
@@ -283,7 +508,7 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
     setErr('');
     try {
       const body = { ...f, ...extra, margen: f.margen === '' ? null : Number(f.margen) };
-      delete body.id; delete body.userId; delete body.dominioPropio; delete body.createdAt; delete body.updatedAt;
+      delete body.id; delete body.diseno; delete body.userId; delete body.dominioPropio; delete body.createdAt; delete body.updatedAt;
       const d = await api('', 'PUT', body);
       setF({ ...d.tienda, margen: d.tienda.margen ?? '' });
       onSaved({ tienda: d.tienda, url: d.url, urlApp: `/t/${d.tienda.slug}` });
@@ -303,7 +528,7 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border bg-white p-4">
+      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-semibold">{f.activa ? 'Tu tienda está publicada' : 'Tu tienda está en borrador'}</p>
@@ -315,7 +540,7 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
         </div>
       </section>
 
-      <section className="space-y-3 rounded-xl border bg-white p-4">
+      <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <h2 className="font-semibold">Marca</h2>
         {field({ label: "Nombre de tu tienda", k: "nombre", maxLength: 40 })}
         {field({ label: "Frase corta", k: "eslogan", hint: "Ej: Lencería linda para todos los días", maxLength: 120 })}
@@ -355,12 +580,12 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
           <textarea className={`${input} mt-1`} rows={4} value={f.descripcion ?? ''} onChange={set('descripcion')} maxLength={2000} /></label>
       </section>
 
-      <section className="space-y-3 rounded-xl border bg-white p-4">
+      <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <h2 className="font-semibold">Precios</h2>
         {field({ label: "Tu % de ganancia", k: "margen", type: "number", min: info.margenMinimo, max: 500, hint: `Si lo dejás vacío usa el de tu perfil (${info.margenUsuaria}%). Ej: 60% = vendés a 1,6 veces el costo.` })}
       </section>
 
-      <section className="space-y-3 rounded-xl border bg-white p-4">
+      <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <h2 className="font-semibold">Contacto y ubicación</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {field({ label: "WhatsApp", k: "whatsapp", hint: "Con código de área, ej: 5493415551234", inputMode: "tel" })}
@@ -373,14 +598,14 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
         </div>
       </section>
 
-      <details className="rounded-xl border bg-white p-4">
+      <details className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <summary className="cursor-pointer font-semibold">Avanzado: Google, Meta y Nadin</summary>
         <div className="mt-3 space-y-3">
           {field({ label: "Título para Google", k: "seoTitulo", maxLength: 70, hint: "Hasta 70 caracteres. Vacío = automático." })}
           {field({ label: "Descripción para Google", k: "seoDescripcion", maxLength: 160, hint: "Hasta 160 caracteres." })}
           {field({ label: "Pixel de Meta (ID)", k: "metaPixelId", inputMode: "numeric" })}
           {field({ label: "Google Analytics 4 (G-XXXX)", k: "ga4Id" })}
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!f.mostrarNadin} onChange={(e) => setF({ ...f, mostrarNadin: chk(e) })} /> Mostrar “Productos de Nadin Lencería” al pie</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!f.mostrarNadin} onChange={(e) => setF({ ...f, mostrarNadin: chk(e) })} /> Mostrar “Productos de Nadin Lencería” al pie de la tienda (opcional)</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!f.envioAutoNadin} onChange={(e) => setF({ ...f, envioAutoNadin: chk(e) })} /> Enviar a Nadin automáticamente cuando un pedido queda pago</label>
         </div>
       </details>
@@ -459,7 +684,7 @@ function PagoCard({ p, onSave, onDelete, children }: any) {
   const [f, setF] = useState<any>({ nombre: p.nombre, descuentoPct: p.descuentoPct, instrucciones: p.instrucciones || '', config: p.config || {} });
   const setCfg = (k: string) => (e: any) => setF({ ...f, config: { ...f.config, [k]: val(e) } });
   return (
-    <div className="space-y-3 rounded-xl border bg-white p-4">
+    <div className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
       <div className="flex items-center justify-between gap-3">
         <input className={`${input} font-semibold`} value={f.nombre} onChange={(e) => setF({ ...f, nombre: val(e) })} aria-label="Nombre que ve la clienta" />
         <label className="flex items-center gap-2 whitespace-nowrap text-sm">
@@ -514,7 +739,7 @@ function Envios({ onToast }: { onToast: (s: string) => void }) {
   return (
     <div className="space-y-4">
       {envios.map((e) => (
-        <div key={e.id} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-4 text-sm">
+        <div key={e.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-black/5">
           <div>
             <p className="font-semibold">{e.nombre}</p>
             <p className="text-gray-600">{e.precio ? fmt(e.precio) : 'Gratis'}{e.gratisDesde != null ? ` · gratis desde ${fmt(e.gratisDesde)}` : ''}{e.pideDireccion ? ' · pide dirección' : ''}</p>
@@ -526,7 +751,7 @@ function Envios({ onToast }: { onToast: (s: string) => void }) {
           </div>
         </div>
       ))}
-      <div className="space-y-2 rounded-xl border border-dashed bg-white p-4">
+      <div className="space-y-2 rounded-2xl border border-dashed border-gray-300 bg-white p-5">
         <p className="font-semibold">Agregar forma de entrega</p>
         <div className="grid gap-2 sm:grid-cols-2">
           <select className={input} value={nuevo.tipo} onChange={(e) => setNuevo({ ...nuevo, tipo: val(e) })}>
@@ -568,7 +793,7 @@ function Cupones({ onToast }: { onToast: (s: string) => void }) {
     <div className="space-y-4">
       <p className="text-sm text-gray-600">El descuento sale de tu ganancia: Nadin te cobra siempre el mismo costo.</p>
       {cupones.map((c) => (
-        <div key={c.id} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-4 text-sm">
+        <div key={c.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-black/5">
           <div>
             <p className="font-mono font-bold">{c.codigo}</p>
             <p className="text-gray-600">
@@ -583,7 +808,7 @@ function Cupones({ onToast }: { onToast: (s: string) => void }) {
           </div>
         </div>
       ))}
-      <div className="space-y-2 rounded-xl border border-dashed bg-white p-4">
+      <div className="space-y-2 rounded-2xl border border-dashed border-gray-300 bg-white p-5">
         <p className="font-semibold">Nuevo cupón</p>
         <div className="grid gap-2 sm:grid-cols-3">
           <input className={`${input} uppercase`} placeholder="CÓDIGO" value={n.codigo} onChange={(e) => setN({ ...n, codigo: String(val(e)).toUpperCase() })} />

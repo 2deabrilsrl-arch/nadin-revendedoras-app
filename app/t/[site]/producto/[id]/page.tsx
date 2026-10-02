@@ -3,10 +3,11 @@ import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import {
   getTiendaBySite, getProductoTienda, getLinkPrefix, getTiendaBaseUrl, parseProductParam,
-  productPath, stripHtml, formatPrecio, getCatalogoTienda,
+  productPath, stripHtml, formatPrecio, getCatalogoTienda, getPagosPublicos,
 } from '@/lib/tienda';
 import AddToCart from '@/components/tienda/AddToCart';
-import ProductGrid, { tnImg } from '@/components/tienda/ProductGrid';
+import Gallery from '@/components/tienda/Gallery';
+import ProductGrid, { TituloSeccion, precioTransferencia } from '@/components/tienda/ProductGrid';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,9 @@ export default async function ProductoPage({ params }: Props) {
   const base = getTiendaBaseUrl(tienda);
   const url = `${base}${productPath(producto)}`;
   const catNombres = producto.category.split('>').map((c) => c.trim()).filter(Boolean);
+  const tieneCat = catNombres[0] && catNombres[0] !== 'Sin categoría';
   const catHref = `/categoria/${producto.categorySlugs.join('/')}`;
+  const pagos = await getPagosPublicos(tienda.id);
 
   const relacionados = (await getCatalogoTienda(tienda))
     .filter((p) => p.id !== producto.id && p.disponible && p.category === producto.category)
@@ -81,51 +84,33 @@ export default async function ProductoPage({ params }: Props) {
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: tienda.nombre, item: base },
-        ...(catNombres[0] && catNombres[0] !== 'Sin categoría'
-          ? [{ '@type': 'ListItem', position: 2, name: catNombres[catNombres.length - 1], item: `${base}${catHref}` }]
-          : []),
-        { '@type': 'ListItem', position: catNombres[0] ? 3 : 2, name: producto.nombre, item: url },
+        ...(tieneCat ? [{ '@type': 'ListItem', position: 2, name: catNombres[catNombres.length - 1], item: `${base}${catHref}` }] : []),
+        { '@type': 'ListItem', position: tieneCat ? 3 : 2, name: producto.nombre, item: url },
       ],
     },
   ];
 
+  const nombresPago: Record<string, string> = { transferencia: 'Transferencia bancaria', mercadopago: 'Mercado Pago: tarjetas, débito y dinero en cuenta', link: 'Link de pago con tarjeta', efectivo: 'Efectivo' };
+
   return (
-    <>
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
-      <nav aria-label="Ruta" className="mb-4 text-sm text-gray-500">
-        <a href={prefix || '/'}>Inicio</a>
-        {catNombres[0] && catNombres[0] !== 'Sin categoría' && (
-          <> / <a href={`${prefix}${catHref}`}>{catNombres[catNombres.length - 1]}</a></>
-        )}
+      <nav aria-label="Ruta" className="mb-6 text-xs uppercase tracking-[0.12em] text-gray-400">
+        <a href={prefix || '/'} className="hover:text-gray-700">Inicio</a>
+        {tieneCat && <> <span className="mx-1">/</span> <a href={`${prefix}${catHref}`} className="hover:text-gray-700">{catNombres[catNombres.length - 1]}</a></>}
       </nav>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        <div className="space-y-3">
-          {producto.images.length > 0 ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={tnImg(producto.images[0], 1024)} alt={producto.nombre} className="aspect-[3/4] w-full rounded-2xl bg-gray-100 object-cover" />
-              {producto.images.length > 1 && (
-                <div className="grid grid-cols-4 gap-2">
-                  {producto.images.slice(1, 9).map((src, i) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={src} src={tnImg(src, 480)} alt={`${producto.nombre} - foto ${i + 2}`} loading="lazy" className="aspect-square w-full rounded-lg bg-gray-100 object-cover" />
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="aspect-[3/4] w-full rounded-2xl bg-gray-100" />
-          )}
-        </div>
+      <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
+        <Gallery images={producto.images} alt={producto.nombre} />
 
-        <div>
-          {producto.brand && <p className="text-sm uppercase tracking-wide text-gray-500">{producto.brand}</p>}
-          <h1 className="t-title mb-4 text-2xl font-bold sm:text-3xl">{producto.nombre}</h1>
+        <div className="lg:pt-2">
+          {producto.brand && <p className="mb-2 text-xs uppercase tracking-[0.16em] text-gray-400">{producto.brand}</p>}
+          <h1 className="t-title mb-5 text-2xl leading-snug text-gray-900 sm:text-3xl">{producto.nombre}</h1>
           <AddToCart
             productId={producto.id}
             nombre={producto.nombre}
             imagen={producto.image}
+            descTransfer={pagos.descTransfer}
             variantes={producto.variantes.map((v) => ({
               id: v.id,
               talle: v.talle,
@@ -134,21 +119,36 @@ export default async function ProductoPage({ params }: Props) {
               precio: v.precio,
             }))}
           />
-          {producto.descripcionHtml && (
-            <section className="prose prose-sm mt-8 max-w-none text-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900">Descripción</h2>
-              <div dangerouslySetInnerHTML={{ __html: producto.descripcionHtml }} />
-            </section>
-          )}
+
+          <div className="mt-8 divide-y divide-gray-100 border-y border-gray-100 text-sm">
+            {producto.descripcionHtml && (
+              <details className="group py-4" open>
+                <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-[0.14em]">Descripción<span className="transition group-open:rotate-45">+</span></summary>
+                <div className="mt-3 space-y-2 leading-relaxed text-gray-600 [&_li]:ml-4 [&_li]:list-disc" dangerouslySetInnerHTML={{ __html: producto.descripcionHtml }} />
+              </details>
+            )}
+            {pagos.tipos.length > 0 && (
+              <details className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-[0.14em]">Medios de pago<span className="transition group-open:rotate-45">+</span></summary>
+                <ul className="mt-3 space-y-1 text-gray-600">
+                  {pagos.tipos.map((t) => <li key={t}>{nombresPago[t] || t}{t === 'transferencia' && pagos.descTransfer > 0 ? ` (${pagos.descTransfer}% OFF: ${formatPrecio(precioTransferencia(producto.precioDesde, pagos.descTransfer))})` : ''}</li>)}
+                </ul>
+              </details>
+            )}
+            <details className="group py-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-[0.14em]">Cambios y devoluciones<span className="transition group-open:rotate-45">+</span></summary>
+              <p className="mt-3 text-gray-600">Por higiene, la ropa interior se cambia sin uso, con etiquetas y en su empaque. Tenés 10 días para arrepentirte de tu compra. <a href={`${prefix}/terminos`} className="underline">Ver más</a></p>
+            </details>
+          </div>
         </div>
       </div>
 
       {relacionados.length > 0 && (
-        <section className="mt-16">
-          <h2 className="t-title mb-4 text-xl font-bold">También te puede gustar</h2>
-          <ProductGrid productos={relacionados} prefix={prefix} />
+        <section className="pt-20">
+          <TituloSeccion>También te puede gustar</TituloSeccion>
+          <ProductGrid productos={relacionados} prefix={prefix} descTransfer={pagos.descTransfer} />
         </section>
       )}
-    </>
+    </div>
   );
 }

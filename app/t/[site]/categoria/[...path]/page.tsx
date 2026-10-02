@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import {
   getTiendaBySite, getCatalogoTienda, buildCategorias, findCategoria, filtrarPorCategoria,
-  getLinkPrefix, getTiendaBaseUrl, PAGE_SIZE,
+  getLinkPrefix, getTiendaBaseUrl, getPagosPublicos, PAGE_SIZE,
 } from '@/lib/tienda';
 import ProductGrid, { Paginacion } from '@/components/tienda/ProductGrid';
 
@@ -43,6 +43,7 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
   const { tienda, productos, cat } = data;
   const prefix = getLinkPrefix(tienda.slug);
   const base = getTiendaBaseUrl(tienda);
+  const pagos = await getPagosPublicos(tienda.id);
   const lista = filtrarPorCategoria(productos, cat.path).filter((p) => p.disponible);
   const page = Math.max(1, parseInt(searchParams.page || '1', 10) || 1);
   const pagina = lista.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -66,22 +67,22 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
   };
 
   return (
-    <>
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
-      <nav aria-label="Ruta" className="mb-4 text-sm text-gray-500">
+      <nav aria-label="Ruta" className="mb-6 text-center text-xs uppercase tracking-[0.12em] text-gray-400">
         <a href={prefix || '/'}>Inicio</a>
         {migas.map((m) => (
           <span key={m.href}> / <a href={`${prefix}${m.href}`}>{m.nombre}</a></span>
         ))}
       </nav>
-      <h1 className="t-title mb-2 text-3xl font-bold">{cat.nombre}</h1>
-      <p className="mb-6 text-gray-600">{lista.length} productos</p>
+      <h1 className="t-h mb-2 text-center !text-2xl">{cat.nombre}</h1>
+      <p className="mb-8 text-center text-sm text-gray-500">{lista.length} productos</p>
 
       {cat.hijos.length > 0 && (
-        <ul className="-mx-4 mb-8 flex gap-2 overflow-x-auto whitespace-nowrap px-4">
+        <ul className="-mx-4 mb-10 flex justify-start gap-2 overflow-x-auto whitespace-nowrap px-4 sm:justify-center">
           {cat.hijos.map((h) => (
             <li key={h.slug}>
-              <a href={`${prefix}/categoria/${h.path.join('/')}`} className="inline-block rounded-full border border-gray-200 px-4 py-2 text-sm hover:border-[var(--t-primary)]">
+              <a href={`${prefix}/categoria/${h.path.join('/')}`} className="inline-block rounded-[var(--t-btn-radius)] border border-gray-200 px-4 py-2 text-xs uppercase tracking-[0.1em] text-gray-600 hover:border-gray-900">
                 {h.nombre}
               </a>
             </li>
@@ -89,8 +90,8 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
         </ul>
       )}
 
-      <ProductGrid productos={pagina} prefix={prefix} />
+      <ProductGrid productos={pagina} prefix={prefix} descTransfer={pagos.descTransfer} />
       <Paginacion page={page} total={lista.length} pageSize={PAGE_SIZE} baseHref={`${prefix}/categoria/${cat.path.join('/')}`} />
-    </>
+    </div>
   );
 }

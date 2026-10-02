@@ -10,12 +10,12 @@ export default async function CarritoPage({ params }: { params: { site: string }
   if (!tienda) notFound();
   const prefix = getLinkPrefix(tienda.slug);
   return (
-    <>
-      <h1 className="t-title mb-6 text-3xl font-bold">Carrito</h1>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
+      <h1 className="t-h mb-8 text-center !text-2xl">Tu carrito</h1>
       {!tienda.activa && (
         <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">La tienda no está publicada: podés probar el carrito, pero no se pueden confirmar compras.</p>
       )}
       <CheckoutClient apiBase={`/api/tienda/${tienda.slug}`} terminosHref={`${prefix}/terminos`} />
-    </>
+    </div>
   );
 }

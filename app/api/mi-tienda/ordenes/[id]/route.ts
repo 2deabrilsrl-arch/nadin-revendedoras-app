@@ -11,7 +11,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!ctx) return noAuth();
   const orden = await prisma.ordenTienda.findFirst({ where: { id: params.id, tiendaId: ctx.tienda.id } });
   if (!orden) return bad('Pedido no encontrado.', 404);
-  const { accion }: any = await req.json().catch(() => ({}));
+  const body: any = await req.json().catch(() => ({}));
+  const { accion } = body;
 
   try {
     switch (accion) {
@@ -20,7 +21,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         await marcarPagada(orden.id);
         break;
       case 'enviar_nadin':
-        await enviarANadin(orden.id, ctx.user.id);
+        await enviarANadin(orden.id, ctx.user.id, {
+          consolidar: body.consolidar !== false,
+          formaPago: body.formaPago,
+          tipoEnvio: body.tipoEnvio,
+          transporteNombre: body.transporteNombre,
+        });
         break;
       case 'marcar_lista':
         if (!['pagada', 'enviada_nadin'].includes(orden.estado)) return bad('Primero tiene que estar pagado.');

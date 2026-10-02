@@ -2,15 +2,21 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Script from 'next/script';
-import { Playfair_Display, Lora } from 'next/font/google';
-import { getTiendaBySite, getLinkPrefix, getTiendaBaseUrl } from '@/lib/tienda';
+import { Playfair_Display, Lora, Montserrat } from 'next/font/google';
+import {
+  getTiendaBySite, getLinkPrefix, getTiendaBaseUrl, getCatalogoTienda, buildCategorias, getPagosPublicos,
+} from '@/lib/tienda';
+import { normalizarDiseno } from '@/lib/tienda-diseno';
 import { getSession } from '@/lib/session';
-import { TiendaCartProvider, CartBadgeLink } from '@/components/tienda/TiendaCart';
+import { TiendaCartProvider } from '@/components/tienda/TiendaCart';
+import HeaderTienda from '@/components/tienda/HeaderTienda';
+import Icon from '@/components/tienda/Icon';
 
 export const dynamic = 'force-dynamic';
 
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-elegante', display: 'swap' });
 const lora = Lora({ subsets: ['latin'], variable: '--font-clasica', display: 'swap' });
+const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-moderna', display: 'swap' });
 
 const safeColor = (c: string | null | undefined, fallback: string) => (c && /^#[0-9a-f]{3,8}$/i.test(c) ? c : fallback);
 
@@ -46,6 +52,23 @@ export async function generateMetadata({ params }: { params: { site: string } })
   };
 }
 
+const ESTILOS_CSS = `
+#nadin-app-chrome,#nadin-app-chrome-bottom{display:none!important}
+.tienda{--t-radius:2px;--t-bg:#fff;--t-btn-radius:2px;background:var(--t-bg);font-family:var(--font-moderna),system-ui,sans-serif;color:#1f2937}
+.tienda[data-estilo=boutique]{--t-radius:16px;--t-btn-radius:999px;--t-bg:color-mix(in srgb,var(--t-primary) 4%,#fff)}
+.tienda[data-estilo=audaz]{--t-radius:0px;--t-btn-radius:0px}
+.tienda .t-title{font-family:var(--t-font-title);letter-spacing:.02em}
+.tienda .t-h{font-family:var(--t-font-title);font-size:.95rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--t-secondary)}
+.tienda[data-estilo=boutique] .t-h{font-size:1.75rem;font-weight:500;letter-spacing:.01em;text-transform:none}
+.tienda[data-estilo=audaz] .t-h{font-size:1.9rem;font-weight:800;letter-spacing:-.01em}
+.tienda .t-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:var(--t-primary);color:#fff;border-radius:var(--t-btn-radius);padding:.85rem 1.75rem;font-size:.8rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;transition:opacity .2s}
+.tienda .t-btn:hover{opacity:.9}.tienda .t-btn:disabled{opacity:.45}
+.tienda .t-btn-outline{display:inline-flex;align-items:center;justify-content:center;border:1px solid #d1d5db;border-radius:var(--t-btn-radius);padding:.6rem 1.25rem;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase}
+.tienda .t-btn-light{background:#fff;color:#111;border-radius:var(--t-btn-radius);padding:.85rem 1.75rem;font-size:.75rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
+.tienda .t-badge{border-radius:var(--t-btn-radius);padding:.2rem .55rem;font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.tienda[data-estilo=audaz] .t-hero-band{background:var(--t-primary);color:#fff}
+`;
+
 export default async function TiendaLayout({ children, params }: { children: React.ReactNode; params: { site: string } }) {
   const tienda = await getTiendaBySite(params.site);
   if (!tienda) notFound();
@@ -58,101 +81,99 @@ export default async function TiendaLayout({ children, params }: { children: Rea
   }
 
   const prefix = getLinkPrefix(tienda.slug);
+  const home = prefix || '/';
+  const diseno = normalizarDiseno(tienda.diseno);
+  const [productos, pagos] = await Promise.all([getCatalogoTienda(tienda), getPagosPublicos(tienda.id)]);
+  const categorias = buildCategorias(productos).slice(0, 7).map((c) => ({
+    nombre: c.nombre,
+    href: `${prefix}/categoria/${c.path.join('/')}`,
+    hijos: c.hijos.slice(0, 10).map((h) => ({ nombre: h.nombre, href: `${prefix}/categoria/${h.path.join('/')}` })),
+  }));
+
   const primary = safeColor(tienda.colorPrimario, '#e11d74');
   const secondary = safeColor(tienda.colorSecundario, '#111827');
   const fontVar =
-    tienda.fuente === 'elegante' ? 'var(--font-elegante)' : tienda.fuente === 'clasica' ? 'var(--font-clasica)' : 'inherit';
+    tienda.fuente === 'elegante' ? 'var(--font-elegante)' : tienda.fuente === 'clasica' ? 'var(--font-clasica)' : 'var(--font-moderna)';
   const wa = (tienda.whatsapp || '').replace(/\D/g, '');
   const anio = new Date().getFullYear();
   const pixel = tienda.metaPixelId && /^\d{6,20}$/.test(tienda.metaPixelId) ? tienda.metaPixelId : null;
   const ga4 = tienda.ga4Id && /^G-[A-Z0-9]{4,15}$/i.test(tienda.ga4Id) ? tienda.ga4Id : null;
+  const anuncioHref = diseno.anuncio.link ? (diseno.anuncio.link.startsWith('/') ? `${prefix}${diseno.anuncio.link}` : diseno.anuncio.link) : null;
+  const nombresPago: Record<string, string> = { transferencia: 'Transferencia', mercadopago: 'Mercado Pago', link: 'Tarjetas', efectivo: 'Efectivo' };
 
   return (
     <div
-      className={`${playfair.variable} ${lora.variable} min-h-screen bg-white text-gray-900`}
+      className={`tienda ${playfair.variable} ${lora.variable} ${montserrat.variable} min-h-screen`}
+      data-estilo={diseno.estilo}
       style={{ ['--t-primary' as any]: primary, ['--t-secondary' as any]: secondary, ['--t-font-title' as any]: fontVar }}
     >
-      {/* Ocultamos los elementos propios de la app de revendedoras */}
-      <style>{`#nadin-app-chrome,#nadin-app-chrome-bottom{display:none!important} .t-title{font-family:var(--t-font-title)}`}</style>
+      <style>{ESTILOS_CSS}</style>
 
       <TiendaCartProvider tiendaId={tienda.id} tiendaSlug={tienda.slug} prefix={prefix}>
         {!tienda.activa && esDuena && (
-          <div className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-900">
-            Vista previa: tu tienda todavía no está publicada. Activala desde <strong>Mi Tienda</strong> en la app.
+          <div className="bg-amber-100 px-4 py-2 text-center text-xs text-amber-900">
+            Vista previa: tu tienda todavía no está publicada. Activala desde <strong>Mi Tienda Web</strong> en la app.
           </div>
         )}
 
-        <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-            <a href={prefix || '/'} className="flex min-w-0 items-center gap-2" aria-label={`${tienda.nombre} - inicio`}>
-              {tienda.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={tienda.logoUrl} alt={tienda.nombre} className="h-10 w-10 rounded-full object-cover" />
-              ) : (
-                <span className="flex h-10 w-10 items-center justify-center rounded-full font-bold text-white" style={{ background: primary }}>
-                  {tienda.nombre.charAt(0).toUpperCase()}
-                </span>
-              )}
-              <span className="t-title truncate text-lg font-bold">{tienda.nombre}</span>
-            </a>
-            <form action={`${prefix}/buscar`} className="ml-auto hidden flex-1 sm:block sm:max-w-sm" role="search">
-              <input
-                name="q"
-                type="search"
-                placeholder="Buscar productos"
-                aria-label="Buscar productos"
-                className="w-full rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm outline-none focus:border-[var(--t-primary)]"
-              />
-            </form>
-            <a href={`${prefix}/buscar`} className="ml-auto rounded-full p-2 sm:hidden" aria-label="Buscar">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-            </a>
-            <CartBadgeLink />
+        {diseno.anuncio.activo && (
+          <div className="px-4 py-2 text-center text-xs font-medium tracking-wide text-white" style={{ background: secondary }}>
+            {anuncioHref ? <a href={anuncioHref} className="hover:underline">{diseno.anuncio.texto}</a> : diseno.anuncio.texto}
           </div>
-        </header>
+        )}
 
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+        <HeaderTienda nombre={tienda.nombre} logoUrl={tienda.logoUrl} home={home} buscarHref={`${prefix}/buscar`} categorias={categorias} />
 
-        <footer className="mt-16 border-t border-gray-100 bg-gray-50">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 text-sm sm:grid-cols-3">
+        <main>{children}</main>
+
+        <footer className="mt-20 border-t border-black/5 bg-white">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <p className="t-title text-base font-bold">{tienda.nombre}</p>
-              {tienda.eslogan && <p className="mt-1 text-gray-600">{tienda.eslogan}</p>}
-              {tienda.ciudad && <p className="mt-1 text-gray-600">{tienda.ciudad}{tienda.provincia ? `, ${tienda.provincia}` : ''}</p>}
+              <p className="t-title text-lg">{tienda.nombre}</p>
+              {tienda.eslogan && <p className="mt-2 text-gray-500">{tienda.eslogan}</p>}
+              {tienda.ciudad && <p className="mt-2 text-gray-500">{tienda.ciudad}{tienda.provincia ? `, ${tienda.provincia}` : ''}</p>}
+              <div className="mt-4 flex gap-3 text-gray-700">
+                {tienda.instagram && <a href={`https://instagram.com/${tienda.instagram.replace('@', '')}`} target="_blank" rel="noopener" aria-label="Instagram"><Icon name="instagram" /></a>}
+                {tienda.facebook && <a href={`https://facebook.com/${tienda.facebook}`} target="_blank" rel="noopener" aria-label="Facebook"><Icon name="facebook" /></a>}
+                {tienda.tiktok && <a href={`https://tiktok.com/@${tienda.tiktok.replace('@', '')}`} target="_blank" rel="noopener" aria-label="TikTok"><Icon name="tiktok" /></a>}
+              </div>
             </div>
+            {categorias.length > 0 && (
+              <div>
+                <p className="t-h !text-xs">Categorías</p>
+                <ul className="mt-4 space-y-2 text-gray-600">
+                  {categorias.slice(0, 6).map((c) => <li key={c.href}><a href={c.href} className="hover:text-gray-900">{c.nombre}</a></li>)}
+                </ul>
+              </div>
+            )}
             <div>
-              <p className="font-semibold">Contacto</p>
-              <ul className="mt-2 space-y-1 text-gray-600">
-                {wa && <li><a href={`https://wa.me/${wa}`} target="_blank" rel="noopener">WhatsApp</a></li>}
-                {tienda.instagram && <li><a href={`https://instagram.com/${tienda.instagram.replace('@', '')}`} target="_blank" rel="noopener">Instagram</a></li>}
-                {tienda.facebook && <li><a href={`https://facebook.com/${tienda.facebook}`} target="_blank" rel="noopener">Facebook</a></li>}
-                {tienda.tiktok && <li><a href={`https://tiktok.com/@${tienda.tiktok.replace('@', '')}`} target="_blank" rel="noopener">TikTok</a></li>}
-                {tienda.email && <li><a href={`mailto:${tienda.email}`}>{tienda.email}</a></li>}
+              <p className="t-h !text-xs">Ayuda</p>
+              <ul className="mt-4 space-y-2 text-gray-600">
+                {wa && <li><a href={`https://wa.me/${wa}`} target="_blank" rel="noopener" className="hover:text-gray-900">Escribinos por WhatsApp</a></li>}
+                {tienda.email && <li><a href={`mailto:${tienda.email}`} className="hover:text-gray-900">{tienda.email}</a></li>}
+                <li><a href={`${prefix}/terminos`} className="hover:text-gray-900">Términos y condiciones</a></li>
+                <li><a href={`${prefix}/arrepentimiento`} className="hover:text-gray-900">Botón de arrepentimiento</a></li>
+                <li><a href="https://www.argentina.gob.ar/produccion/defensadelconsumidor/formulario" target="_blank" rel="noopener" className="hover:text-gray-900">Defensa del consumidor</a></li>
               </ul>
             </div>
-            <div>
-              <p className="font-semibold">Ayuda</p>
-              <ul className="mt-2 space-y-1 text-gray-600">
-                <li><a href={`${prefix}/terminos`}>Términos y condiciones</a></li>
-                <li><a href={`${prefix}/arrepentimiento`} className="font-semibold text-gray-900 underline">Botón de arrepentimiento</a></li>
-                <li><a href="https://www.argentina.gob.ar/produccion/defensadelconsumidor/formulario" target="_blank" rel="noopener">Defensa del consumidor</a></li>
-              </ul>
-            </div>
+            {pagos.tipos.length > 0 && (
+              <div>
+                <p className="t-h !text-xs">Medios de pago</p>
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {pagos.tipos.map((t) => <li key={t} className="rounded border border-gray-200 px-2.5 py-1 text-xs text-gray-600">{nombresPago[t] || t}</li>)}
+                </ul>
+              </div>
+            )}
           </div>
-          <div className="border-t border-gray-100 py-4 text-center text-xs text-gray-500">
+          <div className="border-t border-black/5 py-5 text-center text-xs text-gray-400">
             © {anio} {tienda.nombre}
             {tienda.mostrarNadin && <> · Productos de <a href="https://nadinlenceria.com" target="_blank" rel="noopener" className="underline">Nadin Lencería</a></>}
           </div>
         </footer>
 
         {wa && (
-          <a
-            href={`https://wa.me/${wa}`}
-            target="_blank"
-            rel="noopener"
-            className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-lg"
-            aria-label="Escribinos por WhatsApp"
-          >
+          <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener" aria-label="Escribinos por WhatsApp"
+            className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-lg">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.8-2.8-1.2-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.2 1.4Z" /></svg>
           </a>
         )}

@@ -36,15 +36,15 @@ export default async function PedidoPage({ params, searchParams }: { params: { s
   const msg = encodeURIComponent(`¡Hola! Hice el pedido #${orden.numero} en ${tienda.nombre} por ${formatPrecio(orden.total)}.`);
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-6 rounded-2xl border p-6 text-center">
+    <div className="mx-auto max-w-2xl px-4 py-10">
+      <div className="mb-6 rounded-[var(--t-radius)] border p-6 text-center">
         <p className="text-sm text-gray-500">Pedido #{orden.numero}</p>
         <h1 className="t-title mt-1 text-2xl font-bold">{orden.estado === 'pendiente_pago' ? '¡Recibimos tu pedido!' : '¡Gracias por tu compra!'}</h1>
         <p className="mt-2 inline-block rounded-full bg-gray-100 px-3 py-1 text-sm font-medium">{ESTADOS[orden.estado] || orden.estado}</p>
       </div>
 
       {orden.estado === 'pendiente_pago' && (
-        <section className="mb-6 rounded-2xl border p-6">
+        <section className="mb-6 rounded-[var(--t-radius)] border p-6">
           <h2 className="mb-2 text-lg font-semibold">Cómo pagar · {orden.metodoPagoNombre}</h2>
           <p className="mb-3 text-2xl font-bold">{formatPrecio(orden.total)}</p>
           {orden.metodoPagoTipo === 'transferencia' && (
@@ -56,7 +56,7 @@ export default async function PedidoPage({ params, searchParams }: { params: { s
             </dl>
           )}
           {orden.metodoPagoTipo === 'link' && cfg.url && /^https:\/\//.test(cfg.url) && (
-            <a href={cfg.url} target="_blank" rel="noopener" className="inline-block rounded-full px-6 py-3 font-semibold text-white" style={{ background: 'var(--t-primary)' }}>Ir a pagar</a>
+            <a href={cfg.url} target="_blank" rel="noopener" className="t-btn">Ir a pagar</a>
           )}
           {metodo?.instrucciones && <p className="mt-3 whitespace-pre-line text-sm text-gray-700">{metodo.instrucciones}</p>}
           {orden.metodoPagoTipo === 'mercadopago' && <p className="text-sm text-gray-600">Si ya pagaste, en unos minutos se actualiza el estado. Si no, escribinos.</p>}
@@ -68,7 +68,7 @@ export default async function PedidoPage({ params, searchParams }: { params: { s
         </section>
       )}
 
-      <section className="rounded-2xl border p-6">
+      <section className="rounded-[var(--t-radius)] border p-6">
         <h2 className="mb-3 text-lg font-semibold">Detalle</h2>
         <ul className="divide-y text-sm">
           {orden.items.map((i) => (

@@ -318,3 +318,21 @@ export function buscar(productos: ProductoTienda[], q: string) {
 }
 
 export const PAGE_SIZE = 24;
+
+// ---------------------------------------------------------------------
+// Medios de pago visibles (para mostrar "precio con transferencia" y el pie)
+// ---------------------------------------------------------------------
+
+export async function getPagosPublicos(tiendaId: string) {
+  const pagos = await prisma.tiendaMetodoPago.findMany({
+    where: { tiendaId, activo: true },
+    orderBy: { orden: 'asc' },
+    select: { tipo: true, nombre: true, descuentoPct: true, config: true },
+  });
+  const visibles = pagos.filter((p) => p.tipo !== 'mercadopago' || !!(p.config as any)?.accessToken);
+  const transfer = visibles.find((p) => p.tipo === 'transferencia');
+  return {
+    descTransfer: transfer ? Math.min(Math.max(transfer.descuentoPct, 0), 50) : 0,
+    tipos: Array.from(new Set(visibles.map((p) => p.tipo))),
+  };
+}

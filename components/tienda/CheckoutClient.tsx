@@ -76,20 +76,20 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
     return (
       <div className="py-20 text-center">
         <p className="mb-4 text-lg">Tu carrito está vacío.</p>
-        <a href={prefix || '/'} className="inline-block rounded-full px-6 py-3 font-semibold text-white" style={{ background: 'var(--t-primary)' }}>Ver productos</a>
+        <a href={prefix || '/'} className="t-btn">Ver productos</a>
       </div>
     );
   }
 
-  const input = 'w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-[var(--t-primary)]';
+  const input = 'w-full rounded-[var(--t-btn-radius)] border border-gray-300 px-3 py-2.5 outline-none focus:border-[var(--t-primary)]';
 
   return (
     <form onSubmit={confirmar} className="grid gap-8 lg:grid-cols-[1fr_380px]">
       <div className="space-y-8">
         {/* Productos */}
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Tu pedido</h2>
-          <ul className="divide-y rounded-xl border">
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Tu pedido</h2>
+          <ul className="divide-y rounded-[var(--t-radius)] border">
             {items.map((i) => (
               <li key={i.variantId} className="flex gap-3 p-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -117,7 +117,7 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
 
         {/* Datos */}
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Tus datos</h2>
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Tus datos</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm">Nombre y apellido *<input required className={input} value={cliente.nombre} onChange={(e) => setCliente({ ...cliente, nombre: (e.target as any).value })} autoComplete="name" /></label>
             <label className="text-sm">WhatsApp / teléfono *<input required type="tel" className={input} value={cliente.telefono} onChange={(e) => setCliente({ ...cliente, telefono: (e.target as any).value })} autoComplete="tel" /></label>
@@ -128,13 +128,13 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
 
         {/* Entrega */}
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Entrega</h2>
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Entrega</h2>
           {!config ? <p className="text-sm text-gray-500">Cargando…</p> : config.envios.length === 0 ? (
             <p className="text-sm text-gray-600">Coordinamos la entrega por WhatsApp.</p>
           ) : (
             <div className="space-y-2">
               {config.envios.map((e) => (
-                <label key={e.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${envioId === e.id ? 'border-[var(--t-primary)]' : ''}`}>
+                <label key={e.id} className={`flex cursor-pointer items-start gap-3 rounded-[var(--t-radius)] border p-3 ${envioId === e.id ? 'border-[var(--t-primary)]' : ''}`}>
                   <input type="radio" name="envio" className="mt-1" checked={envioId === e.id} onChange={() => setEnvioId(e.id)} />
                   <span className="flex-1">
                     <span className="font-medium">{e.nombre}</span>
@@ -160,13 +160,13 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
 
         {/* Pago */}
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Pago</h2>
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Pago</h2>
           {!config ? <p className="text-sm text-gray-500">Cargando…</p> : config.pagos.length === 0 ? (
             <p className="text-sm text-red-700">Esta tienda todavía no configuró medios de pago.</p>
           ) : (
             <div className="space-y-2">
               {config.pagos.map((p) => (
-                <label key={p.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${pagoId === p.id ? 'border-[var(--t-primary)]' : ''}`}>
+                <label key={p.id} className={`flex cursor-pointer items-center gap-3 rounded-[var(--t-radius)] border p-3 ${pagoId === p.id ? 'border-[var(--t-primary)]' : ''}`}>
                   <input type="radio" name="pago" checked={pagoId === p.id} onChange={() => setPagoId(p.id)} />
                   <span className="flex-1 font-medium">{p.nombre}</span>
                   {p.descuentoPct > 0 && <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">{p.descuentoPct}% OFF</span>}
@@ -182,7 +182,7 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
       </div>
 
       {/* Resumen */}
-      <aside className="h-fit space-y-4 rounded-2xl border p-5 lg:sticky lg:top-24">
+      <aside className="h-fit space-y-4 rounded-[var(--t-radius)] border p-5 lg:sticky lg:top-24">
         <h2 className="text-lg font-semibold">Resumen</h2>
         {config?.hayCupones && (
           <div>
@@ -209,8 +209,7 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
         <button
           type="submit"
           disabled={enviando || !pagoId || (!!config?.envios.length && !envioId) || !!cot?.errores?.length}
-          className="w-full rounded-full px-6 py-3.5 font-semibold text-white disabled:opacity-50"
-          style={{ background: 'var(--t-primary)' }}
+          className="t-btn w-full"
         >
           {enviando ? 'Procesando…' : pagoSel?.tipo === 'mercadopago' ? 'Pagar con Mercado Pago' : 'Confirmar pedido'}
         </button>

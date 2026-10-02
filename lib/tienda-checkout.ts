@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
 import { getCatalogoTienda, getTiendaBaseUrl, formatPrecio, type TiendaConUser } from '@/lib/tienda';
 import { enviarNotificacionGeneral } from '@/lib/notifications';
+import { crearConsolidacion, FORMAS_PAGO_NADIN, TIPOS_ENVIO_NADIN } from '@/lib/consolidacion';
 
 export interface ItemEntrada {
   productId: string;
@@ -235,7 +236,11 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
 
   if (orden.tienda.envioAutoNadin) {
     try {
-      await enviarANadin(orden.id, orden.tienda.userId);
+      const t = orden.tienda;
+      const conDatos = !!(t.nadinFormaPago && t.nadinTipoEnvio);
+      await enviarANadin(orden.id, t.userId, conDatos
+        ? { consolidar: true, formaPago: t.nadinFormaPago, tipoEnvio: t.nadinTipoEnvio, transporteNombre: t.nadinTransporte }
+        : { consolidar: false });
       return;
     } catch (e) {
       console.error('Envío automático a Nadin falló', e);
@@ -255,7 +260,43 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
  * Convierte una orden web pagada en un Pedido del flujo actual de Nadin
  * (el mismo que arma la revendedora a mano), para que se consolide y se arme.
  */
-export async function enviarANadin(ordenId: string, userId: string) {
+export interface OpcionesEnvioNadin {
+  consolidar: boolean;
+  formaPago?: string | null;
+  tipoEnvio?: string | null;
+  transporteNombre?: string | null;
+}
+
+/**
+ * Pasa la orden web a Nadin. Con `consolidar: true` (lo normal) también crea la
+ * consolidación en el mismo paso, así la revendedora no tiene que ir a "Consolidar".
+ */
+export async function enviarANadin(ordenId: string, userId: string, opciones: OpcionesEnvioNadin = { consolidar: false }) {
+  let formaPago: string | null = null;
+  let tipoEnvio: string | null = null;
+  let transporteNombre: string | null = null;
+  if (opciones.consolidar) {
+    formaPago = String(opciones.formaPago || '').toLowerCase();
+    tipoEnvio = String(opciones.tipoEnvio || '').toLowerCase();
+    transporteNombre = (opciones.transporteNombre || '').trim().slice(0, 80) || null;
+    if (!(FORMAS_PAGO_NADIN as readonly string[]).includes(formaPago)) throw new Error('Elegí cómo le pagás a Nadin.');
+    if (!(TIPOS_ENVIO_NADIN as readonly string[]).includes(tipoEnvio)) throw new Error('Elegí cómo recibís el pedido.');
+    if (tipoEnvio === 'envio' && !transporteNombre) throw new Error('Indicá el transporte.');
+  }
+
+  const res = await enviarANadinPedido(ordenId, userId);
+  if (!opciones.consolidar || res.yaEnviada) return { ...res, consolidado: false };
+
+  await crearConsolidacion({ userId, pedidoIds: [res.pedidoId], formaPago, tipoEnvio, transporteNombre });
+  // Recordamos la elección para la próxima (un toque)
+  await prisma.tienda.updateMany({
+    where: { userId },
+    data: { nadinFormaPago: formaPago, nadinTipoEnvio: tipoEnvio, nadinTransporte: transporteNombre },
+  });
+  return { ...res, consolidado: true };
+}
+
+async function enviarANadinPedido(ordenId: string, userId: string) {
   return prisma.$transaction(async (tx) => {
     const orden = await tx.ordenTienda.findUnique({ where: { id: ordenId }, include: { items: true, tienda: true } });
     if (!orden || orden.tienda.userId !== userId) throw new Error('Orden no encontrada');

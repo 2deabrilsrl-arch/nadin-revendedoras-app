@@ -3,8 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendConsolidacionEmail } from '@/lib/email';
-import crypto from 'crypto';
+import { crearConsolidacion } from '@/lib/consolidacion';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,120 +19,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No hay pedidos seleccionados' }, { status: 400 });
     }
 
-    // Obtener pedidos con sus lineas
-    const pedidos = await prisma.pedido.findMany({
-      where: {
-        id: { in: pedidoIds },
-        userId: userId
-      },
-      include: { lineas: true }
-    });
-
-    if (pedidos.length !== pedidoIds.length) {
-      return NextResponse.json({ error: 'Algunos pedidos no existen' }, { status: 404 });
+    // Lógica compartida con Tiendas Nadin (lib/consolidacion.ts)
+    try {
+      const { consolidacion, linkMagico } = await crearConsolidacion({ userId, pedidoIds, formaPago, tipoEnvio, transporteNombre });
+      return NextResponse.json({ success: true, consolidacion, linkMagico });
+    } catch (e: any) {
+      const msg = e?.message || '';
+      if (msg === 'Algunos pedidos no existen' || msg === 'Usuario no encontrado') {
+        return NextResponse.json({ error: msg }, { status: 404 });
+      }
+      throw e;
     }
-
-    // Calcular totales
-    let totalMayorista = 0;
-    let totalVenta = 0;
-
-    pedidos.forEach(pedido => {
-      pedido.lineas.forEach(linea => {
-        totalMayorista += linea.mayorista * linea.qty;
-        totalVenta += linea.venta * linea.qty;
-      });
-    });
-
-    const ganancia = totalVenta - totalMayorista;
-
-    // Crear consolidación
-    const consolidacion = await prisma.consolidacion.create({
-      data: {
-        userId: userId,
-        pedidoIds: JSON.stringify(pedidoIds),
-        formaPago: formaPago || 'Efectivo',
-        tipoEnvio: tipoEnvio || 'Retiro',
-        transporteNombre: transporteNombre || null,
-        totalMayorista,
-        totalVenta,
-        ganancia,
-        estado: 'enviado'
-      }
-    });
-
-    // ✅ ACTUALIZAR ESTADOS AUTOMÁTICAMENTE
-    const ahora = new Date();
-    await prisma.pedido.updateMany({
-      where: { id: { in: pedidoIds } },
-      data: {
-        estado: 'enviado',
-        orderStatus: 'sent_to_nadin',
-        sentToNadinAt: ahora
-      }
-    });
-
-    console.log(`✅ ${pedidoIds.length} pedidos actualizados a estado: sent_to_nadin`);
-
-    // Obtener usuario con todos los datos
-    const usuario = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!usuario) {
-      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 });
-    }
-
-    // Generar token de acceso para armar consolidación
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 días de validez
-
-    await prisma.consolidacionAccessToken.create({
-      data: {
-        consolidacionId: consolidacion.id,
-        token,
-        expiresAt
-      }
-    });
-
-    // Link mágico
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const linkMagico = `${baseUrl}/armar-consolidacion/${token}`;
-
-    console.log('🔗 Link mágico generado:', linkMagico);
-    console.log('📧 Enviando email a nadinlenceria@gmail.com...');
-
-    // Enviar email a Nadin
-    await sendConsolidacionEmail({
-      revendedora: {
-        name: usuario.name,
-        handle: usuario.handle,
-        email: usuario.email,
-        dni: usuario.dni,
-        telefono: usuario.telefono
-      },
-      pedidos: pedidos.map(p => ({
-        id: p.id,
-        cliente: p.cliente,
-        telefono: p.telefono || '',
-        lineas: p.lineas
-      })),
-      totales: {
-        mayorista: totalMayorista,
-        venta: totalVenta,
-        ganancia
-      },
-      formaPago: formaPago || 'Efectivo',
-      tipoEnvio: tipoEnvio || 'Retiro',
-      transporteNombre: transporteNombre || null,
-      linkMagico
-    });
-
-    return NextResponse.json({
-      success: true,
-      consolidacion,
-      linkMagico
-    });
 
   } catch (error) {
     console.error('Error en consolidación:', error);

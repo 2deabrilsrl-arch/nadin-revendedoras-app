@@ -16,7 +16,7 @@ export default async function BuscarPage({ params, searchParams }: { params: { s
   const page = Math.max(1, parseInt(searchParams.page || '1', 10) || 1);
 
   return (
-    <>
+    <div className="mx-auto max-w-7xl px-4 py-8">
       <form action={`${prefix}/buscar`} className="mb-6" role="search">
         <label htmlFor="q" className="sr-only">Buscar</label>
         <input
@@ -26,12 +26,12 @@ export default async function BuscarPage({ params, searchParams }: { params: { s
           defaultValue={q}
           autoFocus
           placeholder="¿Qué estás buscando?"
-          className="w-full rounded-full border border-gray-300 px-5 py-3 outline-none focus:border-[var(--t-primary)]"
+          className="w-full rounded-[var(--t-btn-radius)] border border-gray-300 px-5 py-3 outline-none focus:border-gray-900"
         />
       </form>
-      {q && <h1 className="mb-4 text-xl font-semibold">{lista.length} resultados para “{q}”</h1>}
+      {q && <h1 className="t-h mb-8">{lista.length} resultados para “{q}”</h1>}
       {q && <ProductGrid productos={lista.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)} prefix={prefix} />}
       {q && <Paginacion page={page} total={lista.length} pageSize={PAGE_SIZE} baseHref={`${prefix}/buscar?q=${encodeURIComponent(q)}`} />}
-    </>
+    </div>
   );
 }

@@ -406,8 +406,12 @@ model Tienda {
   margen            Float?   // si es null usa User.margen
   seoTitulo         String?
   seoDescripcion    String?
-  mostrarNadin      Boolean  @default(true) // pie "Productos de Nadin Lencería"
+  mostrarNadin      Boolean  @default(false) // pie "Productos de Nadin Lencería" (opcional)
   envioAutoNadin    Boolean  @default(false) // al quedar paga, enviar a Nadin sin preguntar
+  nadinFormaPago    String?  // última forma de pago a Nadin usada (efectivo, transferencia, mercadopago, tarjeta)
+  nadinTipoEnvio    String?  // retiro | envio
+  nadinTransporte   String?  // nombre del transporte si es envío
+  diseno            Json?    // portada: anuncio, slides, beneficios, estilo
   metaPixelId       String?
   ga4Id             String?
   createdAt         DateTime @default(now())
