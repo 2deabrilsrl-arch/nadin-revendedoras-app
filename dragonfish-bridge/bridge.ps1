@@ -115,8 +115,11 @@ try {
       }
       $obs = "App Revendedoras $($c.referencia) | Pago: $($c.formaPago) | Entrega: $($c.tipoEnvio)"
       if ($c.transporte) { $obs += " ($($c.transporte))" }
+      # Todo comprobante necesita un motivo cargado en Dragonfish (si no, no se graba)
+      $motivo = if ($Cfg.Motivo) { "" + $Cfg.Motivo } else { 'APP' }
       $comp = @{
         Cliente = $codCliente
+        Motivo = $motivo
         ListaDePrecios = $Cfg.ListaDePrecios
         NroOPEcommerce = $c.referencia
         Obs = $obs.Substring(0, [Math]::Min(250, $obs.Length))
