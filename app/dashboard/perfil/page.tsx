@@ -200,6 +200,7 @@ export default function PerfilPage() {
   const handleLogout = () => {
     if ((globalThis as any).window?.confirm('¿Estás segura que querés cerrar sesión?')) {
       (globalThis as any).localStorage?.removeItem('user');
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
       router.push('/login');
     }
   };

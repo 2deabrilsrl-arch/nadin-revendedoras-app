@@ -22,8 +22,7 @@ import {
   Menu,
   X,
   Bell,
-  MessageCircle
-} from 'lucide-react';
+  MessageCircle, Store } from 'lucide-react';
 import NotificacionesRevendedora from '@/components/NotificacionesRevendedora';
 import FloatingCart from '@/components/FloatingCart';
 
@@ -56,6 +55,7 @@ export default function DashboardLayout({
   const handleLogout = () => {
     if (typeof (globalThis as any).window !== 'undefined') {
       (globalThis as any).localStorage?.removeItem('user');
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     }
     router.push('/login');
   };
@@ -73,6 +73,7 @@ export default function DashboardLayout({
     { href: '/dashboard/catalogo', icon: ShoppingCart, label: 'Productos', emoji: '🛍️' },
     { href: '/dashboard/best-sellers', icon: TrendingUp, label: 'Mas Vendidos', emoji: '⭐' },
     { href: '/dashboard/pedidos', icon: Package, label: 'Mis Pedidos', emoji: '📦' },
+    { href: '/dashboard/mi-tienda', icon: Store, label: 'Mi Tienda Web', emoji: '🏪' },
     { href: '/dashboard/consolidar', icon: PackageCheck, label: 'Consolidar', emoji: '📮' },
     { href: '/dashboard/chat', icon: MessageCircle, label: 'Chat con Nadin', emoji: '💬' }, // 🆕 NUEVO
     { href: '/dashboard/notificaciones', icon: Bell, label: 'Notificaciones', emoji: '🔔' },

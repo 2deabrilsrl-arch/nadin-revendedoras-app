@@ -82,6 +82,7 @@ export default function AdminLayout({
 
   const handleLogout = () => {
     (globalThis as any).localStorage?.removeItem('user');
+      fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     router.push('/login');
   };
 

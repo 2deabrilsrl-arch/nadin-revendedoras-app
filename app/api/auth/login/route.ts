@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { attachSessionCookie } from '@/lib/session';
 
 interface LoginBody {
   email: string;
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     }
     
     // 🔥 IMPORTANTE: Devolver objeto "user" completo CON ROL
-    return NextResponse.json({
+    const res = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
@@ -38,6 +39,15 @@ export async function POST(req: NextRequest) {
         rol: user.rol || 'revendedora' // ← AGREGADO: Campo rol
       }
     });
+
+    // 🔒 Sesión segura (cookie httpOnly). Usada por Tiendas Nadin y, a futuro, por toda la app.
+    try {
+      await attachSessionCookie(res, { uid: user.id, rol: user.rol || 'revendedora' });
+    } catch (e) {
+      console.error('No se pudo crear la cookie de sesión:', e);
+    }
+
+    return res;
   } catch (error: any) {
     console.error('Error en login:', error);
     return NextResponse.json(

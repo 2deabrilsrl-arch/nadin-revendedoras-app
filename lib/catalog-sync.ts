@@ -222,7 +222,10 @@ export async function formatProductsWithFullCategories(products: any[]) {
           talle: variant.values?.[1]?.es || '',
           color: variant.values?.[0]?.es || ''
         })),
-        published: product.published
+        published: product.published,
+        // Tiendas Nadin: se guardan en columnas propias (no dentro de "data")
+        _slug: product.handle?.es || null,
+        _descripcion: product.description?.es || null
       };
     } catch (error) {
       console.error('❌ Error formateando producto:', product.id, error);
@@ -363,9 +366,11 @@ export async function syncCatalogWithFullCategories() {
     console.log('✅ Cache limpio');
 
     // 4. Preparar datos
-    const dataToInsert = formatted.map(product => ({
+    const dataToInsert = formatted.map(({ _slug, _descripcion, ...product }: any) => ({
       productId: product.id.toString(),
       data: JSON.stringify(product),
+      slug: _slug,
+      descripcion: _descripcion,
       brand: product.brand,
       category: product.category,
       sex: inferSex(product.category),

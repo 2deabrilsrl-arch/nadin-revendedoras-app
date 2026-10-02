@@ -170,10 +170,13 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <CartProvider>
-          <OfflineBanner />
+          {/* #nadin-app-chrome: elementos de la app que las Tiendas Nadin ocultan */}
+          <div id="nadin-app-chrome"><OfflineBanner /></div>
           {children}
-          <InstallPWA />
-          <WhatsAppButton />
+          <div id="nadin-app-chrome-bottom">
+            <InstallPWA />
+            <WhatsAppButton />
+          </div>
         </CartProvider>
       </body>
     </html>

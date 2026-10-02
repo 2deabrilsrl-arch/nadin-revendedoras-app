@@ -44,6 +44,7 @@ model User {
   badges           UserBadge[]
   brandSales       UserBrandSales[]
   level            UserLevel?
+  tienda           Tienda?
 }
 
 model Pedido {
@@ -171,6 +172,8 @@ model CatalogoCache {
   sex             String?
   salesCount      Int      @default(0)
   bestSellerRank  Int?                    // 🆕 NUEVO: Posición en ranking de TN (1 = más vendido)
+  slug            String?                 // Tiendas: handle del producto en TN (URL amigable)
+  descripcion     String?                 // Tiendas: descripción HTML de TN (SEO)
   updatedAt       DateTime @default(now())
 
   @@index([brand])
@@ -371,4 +374,179 @@ model ConsolidacionDocumento {
   
   @@index([consolidacionId])
   @@map("ConsolidacionDocumento")
+}
+
+// =====================================================================
+// TIENDAS NADIN — tienda web propia de cada revendedora
+// Todo aditivo: no modifica tablas existentes salvo 2 columnas opcionales
+// en CatalogoCache (slug, descripcion).
+// =====================================================================
+
+model Tienda {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  slug              String   @unique // subdominio: {slug}.<TIENDAS_ROOT_DOMAIN>
+  dominioPropio     String?  @unique // ej: www.lenceriamaria.com.ar
+  activa            Boolean  @default(false)
+  nombre            String
+  eslogan           String?
+  descripcion       String?  // texto "Sobre nosotros" (SEO)
+  logoUrl           String?
+  bannerUrl         String?
+  colorPrimario     String   @default("#e11d74")
+  colorSecundario   String   @default("#111827")
+  fuente            String   @default("moderna") // moderna | elegante | clasica
+  ciudad            String?  // SEO local
+  provincia         String?
+  whatsapp          String?
+  instagram         String?
+  facebook          String?
+  tiktok            String?
+  email             String?
+  margen            Float?   // si es null usa User.margen
+  seoTitulo         String?
+  seoDescripcion    String?
+  mostrarNadin      Boolean  @default(true) // pie "Productos de Nadin Lencería"
+  envioAutoNadin    Boolean  @default(false) // al quedar paga, enviar a Nadin sin preguntar
+  metaPixelId       String?
+  ga4Id             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metodosPago       TiendaMetodoPago[]
+  envios            TiendaEnvio[]
+  cupones           TiendaCupon[]
+  productos         TiendaProducto[]
+  ordenes           OrdenTienda[]
+}
+
+model TiendaMetodoPago {
+  id            String   @id @default(cuid())
+  tiendaId      String
+  tipo          String   // transferencia | mercadopago | link | efectivo
+  nombre        String   // texto que ve la clienta
+  activo        Boolean  @default(true)
+  descuentoPct  Float    @default(0) // ej. 10% off pagando por transferencia
+  instrucciones String?
+  config        Json?    // transferencia: {alias,cbu,titular,banco} | link: {url} | mercadopago: {accessToken,publicKey,userId,refreshToken,expiresAt}
+  orden         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tienda        Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@index([tiendaId])
+}
+
+model TiendaEnvio {
+  id           String   @id @default(cuid())
+  tiendaId     String
+  tipo         String   // retiro | domicilio | correo
+  nombre       String
+  descripcion  String?
+  precio       Float    @default(0)
+  gratisDesde  Float?   // envío gratis desde este subtotal
+  pideDireccion Boolean @default(true)
+  activo       Boolean  @default(true)
+  orden        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tienda       Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@index([tiendaId])
+}
+
+model TiendaCupon {
+  id         String    @id @default(cuid())
+  tiendaId   String
+  codigo     String    // guardado en MAYÚSCULAS
+  tipo       String    // porcentaje | monto | envio_gratis
+  valor      Float     @default(0)
+  minimo     Float?    // compra mínima
+  usosMax    Int?
+  usos       Int       @default(0)
+  venceAt    DateTime?
+  activo     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  tienda     Tienda    @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@unique([tiendaId, codigo])
+}
+
+model TiendaProducto {
+  id            String   @id @default(cuid())
+  tiendaId      String
+  productId     String
+  oculto        Boolean  @default(false)
+  destacado     Boolean  @default(false)
+  precioPropio  Float?
+  titulo        String?
+  descripcion   String?
+  updatedAt     DateTime @updatedAt
+
+  tienda        Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@unique([tiendaId, productId])
+}
+
+model OrdenTienda {
+  id              String    @id @default(cuid())
+  numero          Int       @default(autoincrement())
+  token           String    @unique @default(cuid()) // link público de seguimiento
+  tiendaId        String
+  estado          String    @default("pendiente_pago") // pendiente_pago | pagada | enviada_nadin | lista | entregada | cancelada
+  metodoPagoTipo  String
+  metodoPagoNombre String
+  envioTipo       String
+  envioNombre     String
+  envioCosto      Float     @default(0)
+  subtotal        Float
+  descuento       Float     @default(0)
+  cuponCodigo     String?
+  total           Float
+  totalMayorista  Float
+  clienteNombre   String
+  clienteEmail    String?
+  clienteTelefono String
+  clienteDni      String?
+  direccion       Json?
+  nota            String?
+  mpPreferenceId  String?
+  mpPaymentId     String?
+  pedidoId        String?   @unique // Pedido creado en el flujo de Nadin
+  pagadaAt        DateTime?
+  enviadaNadinAt  DateTime?
+  canceladaAt     DateTime?
+  arrepentimiento Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tienda          Tienda    @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  items           OrdenTiendaItem[]
+
+  @@index([tiendaId, createdAt])
+  @@index([estado])
+}
+
+model OrdenTiendaItem {
+  id         String  @id @default(cuid())
+  ordenId    String
+  productId  String
+  variantId  String
+  sku        String?
+  brand      String?
+  nombre     String
+  talle      String?
+  color      String?
+  imagen     String?
+  qty        Int
+  precio     Float   // precio unitario cobrado a la clienta
+  mayorista  Float   // costo unitario Nadin
+
+  orden      OrdenTienda @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+
+  @@index([ordenId])
 }
