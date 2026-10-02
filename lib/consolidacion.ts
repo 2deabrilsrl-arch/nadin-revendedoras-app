@@ -50,6 +50,8 @@ export async function crearConsolidacion(params: {
       totalVenta,
       ganancia,
       estado: 'enviado',
+      // Si está activo el puente con Dragonfish, queda en cola para generar el remito
+      ...(process.env.DRAGONFISH_ENABLED === '1' ? { dfEstado: 'pendiente' } : {}),
     },
   });
 

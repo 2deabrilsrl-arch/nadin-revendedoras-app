@@ -249,6 +249,16 @@ export default function PendientesArmadoPage() {
                         <p>
                           <strong>Contacto:</strong> {consolidacion.user?.telefono} | {consolidacion.user?.email}
                         </p>
+                        {(consolidacion as any).dfEstado && (
+                          <p>
+                            <strong>Dragonfish:</strong>{' '}
+                            {(consolidacion as any).dfEstado === 'generado'
+                              ? <span className="font-semibold text-green-700">Remito {(consolidacion as any).dfComprobante || 'generado'}</span>
+                              : (consolidacion as any).dfEstado === 'error'
+                                ? <span className="font-semibold text-red-700" title={(consolidacion as any).dfError || ''}>Error al generar remito (revisar)</span>
+                                : <span className="text-amber-700">Remito en cola…</span>}
+                          </p>
+                        )}
                       </div>
                     </div>
 

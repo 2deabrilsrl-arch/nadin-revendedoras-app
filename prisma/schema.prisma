@@ -146,6 +146,12 @@ model Consolidacion {
   estado               String                       @default("enviado")
   pagadoEn             DateTime?
   cerrado              Boolean                      @default(false)
+  // Dragonfish: remito generado por el puente de la Servidora
+  dfEstado             String?                      // null (no aplica) | pendiente | procesando | generado | error
+  dfComprobante        String?                      // ej: "R 0001-00012345"
+  dfError              String?
+  dfIntentos           Int                          @default(0)
+  dfActualizadoAt      DateTime?
   
   // 🔥 NUEVO: Relación inversa con pedidos
   pedidos              Pedido[]
@@ -161,6 +167,7 @@ model Consolidacion {
   @@index([enviadoAt])
   @@index([estado])
   @@index([cerrado])
+  @@index([dfEstado])
 }
 
 model CatalogoCache {

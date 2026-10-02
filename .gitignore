@@ -8,3 +8,10 @@ build/
 *.pem
 .vercel
 .next 
+
+# Puente Dragonfish: claves y logs locales
+dragonfish-bridge/config.json
+dragonfish-bridge/enviados.json
+dragonfish-bridge/logs/
+dragonfish-bridge/bridge.lock
+tsconfig.tsbuildinfo
