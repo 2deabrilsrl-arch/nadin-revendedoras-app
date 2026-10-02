@@ -6,7 +6,7 @@ import { Playfair_Display, Lora, Montserrat } from 'next/font/google';
 import {
   getTiendaBySite, getLinkPrefix, getTiendaBaseUrl, getCatalogoTienda, buildCategorias, getPagosPublicos,
 } from '@/lib/tienda';
-import { normalizarDiseno } from '@/lib/tienda-diseno';
+import { normalizarDiseno, getPlantilla } from '@/lib/tienda-diseno';
 import { getSession } from '@/lib/session';
 import { TiendaCartProvider } from '@/components/tienda/TiendaCart';
 import HeaderTienda from '@/components/tienda/HeaderTienda';
@@ -54,19 +54,39 @@ export async function generateMetadata({ params }: { params: { site: string } })
 
 const ESTILOS_CSS = `
 #nadin-app-chrome,#nadin-app-chrome-bottom{display:none!important}
-.tienda{--t-radius:2px;--t-bg:#fff;--t-btn-radius:2px;background:var(--t-bg);font-family:var(--font-moderna),system-ui,sans-serif;color:#1f2937}
-.tienda[data-estilo=boutique]{--t-radius:16px;--t-btn-radius:999px;--t-bg:color-mix(in srgb,var(--t-primary) 4%,#fff)}
-.tienda[data-estilo=audaz]{--t-radius:0px;--t-btn-radius:0px}
-.tienda .t-title{font-family:var(--t-font-title);letter-spacing:.02em}
+.tienda{--t-radius:2px;--t-btn-radius:2px;--t-bg:#fff;--t-tint:color-mix(in srgb,var(--t-primary) 8%,#fff);background:var(--t-bg);font-family:var(--font-moderna),system-ui,sans-serif;color:#1f2937}
+.tienda .t-title{font-family:var(--t-font-title);letter-spacing:.01em;color:var(--t-secondary)}
 .tienda .t-h{font-family:var(--t-font-title);font-size:.95rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--t-secondary)}
-.tienda[data-estilo=boutique] .t-h{font-size:1.75rem;font-weight:500;letter-spacing:.01em;text-transform:none}
-.tienda[data-estilo=audaz] .t-h{font-size:1.9rem;font-weight:800;letter-spacing:-.01em}
-.tienda .t-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:var(--t-primary);color:#fff;border-radius:var(--t-btn-radius);padding:.85rem 1.75rem;font-size:.8rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;transition:opacity .2s}
+.tienda .t-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;background:var(--t-primary);color:#fff;border-radius:var(--t-btn-radius);padding:.85rem 1.75rem;font-size:.78rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;transition:opacity .2s}
 .tienda .t-btn:hover{opacity:.9}.tienda .t-btn:disabled{opacity:.45}
-.tienda .t-btn-outline{display:inline-flex;align-items:center;justify-content:center;border:1px solid #d1d5db;border-radius:var(--t-btn-radius);padding:.6rem 1.25rem;font-size:.8rem;letter-spacing:.1em;text-transform:uppercase}
+.tienda .t-btn-outline{display:inline-flex;align-items:center;justify-content:center;border:1px solid currentColor;border-radius:var(--t-btn-radius);padding:.8rem 1.5rem;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase}
 .tienda .t-btn-light{background:#fff;color:#111;border-radius:var(--t-btn-radius);padding:.85rem 1.75rem;font-size:.75rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
 .tienda .t-badge{border-radius:var(--t-btn-radius);padding:.2rem .55rem;font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
-.tienda[data-estilo=audaz] .t-hero-band{background:var(--t-primary);color:#fff}
+.tienda .t-hero-band{background:var(--t-tint)}
+.tienda .t-benefits{background:#fff}
+.tienda .t-cta-band{background:var(--t-tint)}
+/* Tarjetas */
+.tienda[data-tarjeta=enmarcada] .t-card{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:calc(var(--t-radius) + 4px);padding:.5rem;transition:box-shadow .3s}
+.tienda[data-tarjeta=enmarcada] .t-card:hover{box-shadow:0 10px 30px -12px rgba(0,0,0,.18)}
+.tienda[data-tarjeta=enmarcada] .t-card-body{padding:0 .35rem .35rem}
+.tienda[data-tarjeta=fondo] .t-card-media{background:var(--t-tint)}
+.tienda[data-tarjeta=fondo] .t-card-body{padding:.25rem .25rem 0}
+/* Plantilla Atelier */
+.tienda[data-plantilla=atelier]{--t-radius:16px;--t-btn-radius:999px;--t-bg:color-mix(in srgb,var(--t-primary) 4%,#fff)}
+.tienda[data-plantilla=atelier] .t-h{font-size:1.75rem;font-weight:500;letter-spacing:.01em;text-transform:none}
+.tienda[data-plantilla=atelier] .t-benefits{background:transparent}
+/* Plantilla Urbana */
+.tienda[data-plantilla=urbana]{--t-radius:0px;--t-btn-radius:0px}
+.tienda[data-plantilla=urbana] .t-h{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;letter-spacing:-.01em}
+.tienda[data-plantilla=urbana] .t-title{font-weight:800;text-transform:uppercase;letter-spacing:-.01em}
+.tienda[data-plantilla=urbana] .t-hero-band,.tienda[data-plantilla=urbana] .t-cta-band{background:var(--t-primary);color:#fff}
+.tienda[data-plantilla=urbana] .t-hero-band .t-title,.tienda[data-plantilla=urbana] .t-cta-band .t-title{color:#fff}
+.tienda[data-plantilla=urbana] .t-hero-band .t-btn,.tienda[data-plantilla=urbana] .t-cta-band .t-btn{background:#fff;color:#111}
+.tienda[data-plantilla=urbana] .t-benefits{background:var(--t-secondary);color:#fff}
+/* Plantilla Aurora */
+.tienda[data-plantilla=aurora]{--t-radius:8px;--t-btn-radius:6px;--t-bg:#fffaf7}
+.tienda[data-plantilla=aurora] .t-h{font-size:1.6rem;font-weight:500;font-style:italic;letter-spacing:0;text-transform:none}
+.tienda[data-plantilla=aurora] .t-benefits{background:transparent;border-top:1px solid rgba(0,0,0,.05)}
 `;
 
 export default async function TiendaLayout({ children, params }: { children: React.ReactNode; params: { site: string } }) {
@@ -83,6 +103,7 @@ export default async function TiendaLayout({ children, params }: { children: Rea
   const prefix = getLinkPrefix(tienda.slug);
   const home = prefix || '/';
   const diseno = normalizarDiseno(tienda.diseno);
+  const plantilla = getPlantilla(diseno.plantilla);
   const [productos, pagos] = await Promise.all([getCatalogoTienda(tienda), getPagosPublicos(tienda.id)]);
   const categorias = buildCategorias(productos).slice(0, 7).map((c) => ({
     nombre: c.nombre,
@@ -92,8 +113,9 @@ export default async function TiendaLayout({ children, params }: { children: Rea
 
   const primary = safeColor(tienda.colorPrimario, '#e11d74');
   const secondary = safeColor(tienda.colorSecundario, '#111827');
-  const fontVar =
-    tienda.fuente === 'elegante' ? 'var(--font-elegante)' : tienda.fuente === 'clasica' ? 'var(--font-clasica)' : 'var(--font-moderna)';
+  // "moderna" (valor por defecto) = usar la tipografía de la plantilla
+  const fuente = tienda.fuente && tienda.fuente !== 'moderna' ? tienda.fuente : plantilla.fuenteTitulos;
+  const fontVar = fuente === 'elegante' ? 'var(--font-elegante)' : fuente === 'clasica' ? 'var(--font-clasica)' : 'var(--font-moderna)';
   const wa = (tienda.whatsapp || '').replace(/\D/g, '');
   const anio = new Date().getFullYear();
   const pixel = tienda.metaPixelId && /^\d{6,20}$/.test(tienda.metaPixelId) ? tienda.metaPixelId : null;
@@ -104,7 +126,8 @@ export default async function TiendaLayout({ children, params }: { children: Rea
   return (
     <div
       className={`tienda ${playfair.variable} ${lora.variable} ${montserrat.variable} min-h-screen`}
-      data-estilo={diseno.estilo}
+      data-plantilla={plantilla.id}
+      data-tarjeta={plantilla.tarjeta}
       style={{ ['--t-primary' as any]: primary, ['--t-secondary' as any]: secondary, ['--t-font-title' as any]: fontVar }}
     >
       <style>{ESTILOS_CSS}</style>
@@ -122,7 +145,7 @@ export default async function TiendaLayout({ children, params }: { children: Rea
           </div>
         )}
 
-        <HeaderTienda nombre={tienda.nombre} logoUrl={tienda.logoUrl} home={home} buscarHref={`${prefix}/buscar`} categorias={categorias} />
+        <HeaderTienda variante={plantilla.header} nombre={tienda.nombre} logoUrl={tienda.logoUrl} home={home} buscarHref={`${prefix}/buscar`} categorias={categorias} />
 
         <main>{children}</main>
 

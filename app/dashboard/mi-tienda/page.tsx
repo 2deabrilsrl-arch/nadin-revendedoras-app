@@ -2,9 +2,9 @@
 
 // Panel "Mi Tienda Web" de la revendedora
 import { useCallback, useEffect, useState } from 'react';
-import { ESTILOS, ICONOS, DISENO_DEFAULT } from '@/lib/tienda-diseno';
+import { PLANTILLAS, ICONOS, DISENO_DEFAULT, SECCIONES_INFO, seccionNueva } from '@/lib/tienda-diseno';
 
-type Tab = 'pedidos' | 'portada' | 'diseno' | 'pagos' | 'envios' | 'cupones';
+type Tab = 'pedidos' | 'portada' | 'productos' | 'diseno' | 'pagos' | 'envios' | 'cupones';
 
 const fmt = (n: number) => `$${Math.round(n || 0).toLocaleString('es-AR')}`;
 const val = (e: any) => (e.target as any).value;
@@ -80,7 +80,8 @@ export default function MiTiendaPage() {
   const t = info.tienda;
   const tabs: { id: Tab; label: string }[] = [
     { id: 'pedidos', label: 'Pedidos web' },
-    { id: 'portada', label: 'Portada' },
+    { id: 'portada', label: 'Diseño' },
+    { id: 'productos', label: 'Productos' },
     { id: 'diseno', label: 'Marca y datos' },
     { id: 'pagos', label: 'Cobros' },
     { id: 'envios', label: 'Entregas' },
@@ -132,7 +133,8 @@ export default function MiTiendaPage() {
       </nav>
 
       {tab === 'pedidos' && <Pedidos onToast={setToast} tienda={t} onTienda={(nt: any) => setInfo({ ...info, tienda: { ...t, ...nt } })} />}
-      {tab === 'portada' && <Portada info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Portada guardada'); }} onToast={setToast} />}
+      {tab === 'productos' && <ProductosTienda onToast={setToast} />}
+      {tab === 'portada' && <Portada info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Diseño guardado'); }} onToast={setToast} />}
       {tab === 'diseno' && <Diseno info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Guardado'); }} />}
       {tab === 'pagos' && <Pagos onToast={setToast} />}
       {tab === 'envios' && <Envios onToast={setToast} />}
@@ -320,22 +322,57 @@ function EnviarNadin({ tienda, busy, onEnviar }: { tienda: any; busy: boolean; o
 }
 
 // ---------------------------------------------------------------------
-// Portada: estilo, barra de anuncio, carrusel y beneficios
+// Diseño modular: plantilla + barra de anuncio + secciones (tipo Tiendanube)
 // ---------------------------------------------------------------------
+
+function MiniPlantilla({ id }: { id: string }) {
+  // Vista en miniatura de cada plantilla
+  const header = id === 'urbana' || id === 'aurora' ? 'justify-start' : 'justify-center';
+  const bg = id === 'atelier' ? 'bg-pink-50' : id === 'aurora' ? 'bg-orange-50/60' : 'bg-white';
+  const hero = id === 'urbana' ? 'bg-gray-900' : 'bg-gray-200';
+  const r = id === 'atelier' ? 'rounded-lg' : id === 'aurora' ? 'rounded' : 'rounded-none';
+  const titulo = id === 'urbana' ? 'font-black uppercase' : id === 'atelier' || id === 'aurora' ? 'font-serif italic' : 'uppercase tracking-[0.2em]';
+  return (
+    <span className={`block overflow-hidden rounded-lg ring-1 ring-black/5 ${bg}`} aria-hidden="true">
+      <span className={`flex ${header} border-b border-black/5 px-2 py-1.5`}><span className="h-1.5 w-10 rounded bg-gray-700" /></span>
+      <span className={`m-1.5 flex h-10 items-center justify-center ${r} ${hero}`}><span className={`text-[7px] ${titulo} ${id === 'urbana' ? 'text-white' : 'text-gray-600'}`}>Colección</span></span>
+      <span className="grid grid-cols-4 gap-1 px-1.5 pb-2">
+        {[0, 1, 2, 3].map((k) => (
+          <span key={k} className={`${id === 'atelier' || id === 'aurora' ? 'bg-white p-0.5 ring-1 ring-black/5' : ''} ${r}`}>
+            <span className={`block h-6 ${r} ${id === 'urbana' ? 'bg-pink-100' : 'bg-gray-200'}`} />
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
 
 function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => void; onToast: (s: string) => void }) {
   const [d, setD] = useState<any>(() => JSON.parse(JSON.stringify(info.tienda.diseno || DISENO_DEFAULT)));
+  const [abierta, setAbierta] = useState<string | null>(null);
+  const [agregando, setAgregando] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [subiendo, setSubiendo] = useState<string>('');
+  const [subiendo, setSubiendo] = useState('');
+  const [cats, setCats] = useState<{ nombre: string; path: string }[]>([]);
 
-  const setSlide = (i: number, k: string, v: any) => setD((x: any) => ({ ...x, slides: x.slides.map((s: any, j: number) => (j === i ? { ...s, [k]: v } : s)) }));
-  const moverSlide = (i: number, dir: number) => setD((x: any) => {
-    const arr = [...x.slides]; const j = i + dir;
+  useEffect(() => {
+    fetch(`/api/tienda/${info.tienda.slug}/categorias`).then((r) => r.json()).then((x: any) => setCats(x.categorias || [])).catch(() => {});
+  }, [info.tienda.slug]);
+
+  const upd = (id: string, cambios: any) => setD((x: any) => ({ ...x, secciones: x.secciones.map((s: any) => (s.id === id ? { ...s, ...cambios } : s)) }));
+  const mover = (i: number, dir: number) => setD((x: any) => {
+    const arr = [...x.secciones]; const j = i + dir;
     if (j < 0 || j >= arr.length) return x;
     [arr[i], arr[j]] = [arr[j], arr[i]];
-    return { ...x, slides: arr };
+    return { ...x, secciones: arr };
   });
-  const setBen = (i: number, k: string, v: any) => setD((x: any) => ({ ...x, beneficios: { ...x.beneficios, items: x.beneficios.items.map((b: any, j: number) => (j === i ? { ...b, [k]: v } : b)) } }));
+  const quitar = (id: string) => { if ((globalThis as any).confirm('¿Quitar esta sección?')) setD((x: any) => ({ ...x, secciones: x.secciones.filter((s: any) => s.id !== id) })); };
+  const agregar = (tipo: any) => {
+    const s = seccionNueva(tipo);
+    setD((x: any) => ({ ...x, secciones: [...x.secciones, s] }));
+    setAbierta(s.id);
+    setAgregando(false);
+  };
 
   async function subir(file: any, onUrl: (u: string) => void, key: string) {
     if (!file) return;
@@ -361,23 +398,185 @@ function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => v
   }
 
   const card = 'space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5';
+  const info2 = (tipo: string) => SECCIONES_INFO.find((x) => x.tipo === tipo);
+  const ImgInput = ({ label, onUrl, k }: { label: string; onUrl: (u: string) => void; k: string }) => (
+    <label className={`${btnSec} inline-flex cursor-pointer items-center gap-2 bg-white`}>
+      {subiendo === k ? 'Subiendo…' : label}
+      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => subir((e.target as any).files?.[0], onUrl, k)} />
+    </label>
+  );
+
+  function resumen(s: any): string {
+    switch (s.tipo) {
+      case 'carrusel': return `${s.slides.length} imagen${s.slides.length === 1 ? '' : 'es'}`;
+      case 'beneficios': return s.items.map((b: any) => b.titulo).join(' · ');
+      case 'productos': return `${s.titulo || 'Sin título'} · ${({ destacados: 'destacados', mas_vendidos: 'más vendidos', categoria: 'de una categoría', todos: 'todos' } as any)[s.fuente]} · ${s.formato}`;
+      case 'banners': return `${s.items.length} banner${s.items.length === 1 ? '' : 's'}`;
+      default: return s.titulo || '';
+    }
+  }
+
+  function editor(s: any) {
+    switch (s.tipo) {
+      case 'carrusel':
+        return (
+          <div className="space-y-3">
+            <p className="text-xs text-gray-500">Ideal: 1920×730 px (compu) y 1080×1350 px (celular). Hasta 6 imágenes.</p>
+            {s.slides.map((sl: any, k: number) => (
+              <div key={k} className="space-y-2 rounded-xl bg-gray-50 p-3">
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={sl.imagen} alt="" className="h-14 w-28 rounded object-cover" />
+                  <ImgInput label="Cambiar" k={`${s.id}-${k}`} onUrl={(u) => upd(s.id, { slides: s.slides.map((x: any, j: number) => (j === k ? { ...x, imagen: u } : x)) })} />
+                  <ImgInput label={sl.imagenMobile ? 'Cambiar versión celular' : '+ Versión celular'} k={`${s.id}-m${k}`} onUrl={(u) => upd(s.id, { slides: s.slides.map((x: any, j: number) => (j === k ? { ...x, imagenMobile: u } : x)) })} />
+                  <button type="button" className="ml-auto text-xs text-red-600" onClick={() => upd(s.id, { slides: s.slides.filter((_: any, j: number) => j !== k) })}>Quitar</button>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(['titulo', 'boton', 'texto', 'link'] as const).map((f) => (
+                    <input key={f} className={input} placeholder={({ titulo: 'Título (opcional)', boton: 'Texto del botón', texto: 'Bajada', link: 'Link: /categoria/... o https://' } as any)[f]}
+                      value={sl[f] || ''} onChange={(e) => upd(s.id, { slides: s.slides.map((x: any, j: number) => (j === k ? { ...x, [f]: val(e) } : x)) })} />
+                  ))}
+                </div>
+              </div>
+            ))}
+            {s.slides.length < 6 && <ImgInput label="+ Agregar imagen" k={`${s.id}-new`} onUrl={(u) => upd(s.id, { slides: [...s.slides, { imagen: u }] })} />}
+          </div>
+        );
+      case 'beneficios':
+        return (
+          <div className="space-y-2">
+            {s.items.map((b: any, k: number) => (
+              <div key={k} className="grid gap-2 sm:grid-cols-[130px_1fr_1.4fr_auto]">
+                <select className={input} value={b.icono} onChange={(e) => upd(s.id, { items: s.items.map((x: any, j: number) => (j === k ? { ...x, icono: val(e) } : x)) })}>
+                  {ICONOS.map((ic) => <option key={ic} value={ic}>{({ envio: '🚚 Envío', pago: '💳 Pago', cambio: '🔁 Cambios', whatsapp: '💬 WhatsApp', seguro: '🛡️ Seguro', regalo: '🎁 Regalo' } as any)[ic]}</option>)}
+                </select>
+                <input className={input} placeholder="Título" value={b.titulo} onChange={(e) => upd(s.id, { items: s.items.map((x: any, j: number) => (j === k ? { ...x, titulo: val(e) } : x)) })} />
+                <input className={input} placeholder="Detalle" value={b.texto} onChange={(e) => upd(s.id, { items: s.items.map((x: any, j: number) => (j === k ? { ...x, texto: val(e) } : x)) })} />
+                <button type="button" className="text-xs text-red-600" onClick={() => upd(s.id, { items: s.items.filter((_: any, j: number) => j !== k) })}>Quitar</button>
+              </div>
+            ))}
+            {s.items.length < 4 && <button type="button" className={btnSec} onClick={() => upd(s.id, { items: [...s.items, { icono: 'regalo', titulo: '', texto: '' }] })}>+ Beneficio</button>}
+          </div>
+        );
+      case 'categorias':
+        return (
+          <div className="grid gap-2 sm:grid-cols-3">
+            <input className={input} placeholder="Título" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
+            <select className={input} value={s.formato} onChange={(e) => upd(s.id, { formato: val(e) })}>
+              <option value="tarjetas">Tarjetas con foto</option>
+              <option value="circulos">Círculos</option>
+            </select>
+            <select className={input} value={s.cantidad} onChange={(e) => upd(s.id, { cantidad: Number(val(e)) })}>
+              {[3, 4, 6, 8].map((n) => <option key={n} value={n}>Mostrar {n}</option>)}
+            </select>
+          </div>
+        );
+      case 'productos':
+        return (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input className={input} placeholder="Título" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
+            <select className={input} value={s.fuente} onChange={(e) => upd(s.id, { fuente: val(e) })}>
+              <option value="destacados">Mis destacados</option>
+              <option value="mas_vendidos">Más vendidos</option>
+              <option value="categoria">De una categoría</option>
+              <option value="todos">Todos (con páginas)</option>
+            </select>
+            {s.fuente === 'categoria' && (
+              <select className={`${input} sm:col-span-2`} value={s.categoria} onChange={(e) => upd(s.id, { categoria: val(e) })}>
+                <option value="">Elegí la categoría…</option>
+                {cats.map((c) => <option key={c.path} value={c.path}>{c.nombre}</option>)}
+              </select>
+            )}
+            {s.fuente !== 'todos' && (
+              <>
+                <select className={input} value={s.formato} onChange={(e) => upd(s.id, { formato: val(e) })}>
+                  <option value="grilla">Grilla</option>
+                  <option value="slider">Carrusel deslizable</option>
+                </select>
+                <select className={input} value={s.cantidad} onChange={(e) => upd(s.id, { cantidad: Number(val(e)) })}>
+                  {[4, 8, 12, 16].map((n) => <option key={n} value={n}>{n} productos</option>)}
+                </select>
+              </>
+            )}
+            {s.fuente === 'destacados' && <p className="text-xs text-gray-500 sm:col-span-2">Los destacados se eligen en la pestaña “Productos”. Si no marcaste ninguno, esta sección no se muestra.</p>}
+          </div>
+        );
+      case 'banners':
+        return (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500">1 banner = ancho completo · 2 o 3 = lado a lado.</p>
+            {s.items.map((b: any, k: number) => (
+              <div key={k} className="flex flex-wrap items-center gap-2 rounded-xl bg-gray-50 p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={b.imagen} alt="" className="h-12 w-16 rounded object-cover" />
+                <input className={`${input} w-40 flex-1`} placeholder="Título" value={b.titulo || ''} onChange={(e) => upd(s.id, { items: s.items.map((x: any, j: number) => (j === k ? { ...x, titulo: val(e) } : x)) })} />
+                <input className={`${input} w-40 flex-1`} placeholder="Link" value={b.link || ''} onChange={(e) => upd(s.id, { items: s.items.map((x: any, j: number) => (j === k ? { ...x, link: val(e) } : x)) })} />
+                <button type="button" className="text-xs text-red-600" onClick={() => upd(s.id, { items: s.items.filter((_: any, j: number) => j !== k) })}>Quitar</button>
+              </div>
+            ))}
+            {s.items.length < 3 && <ImgInput label="+ Agregar banner" k={`${s.id}-new`} onUrl={(u) => upd(s.id, { items: [...s.items, { imagen: u }] })} />}
+          </div>
+        );
+      case 'imagen_texto':
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {s.imagen && <img src={s.imagen} alt="" className="h-14 w-14 rounded object-cover" />}
+              <ImgInput label={s.imagen ? 'Cambiar imagen' : '+ Imagen'} k={`${s.id}-img`} onUrl={(u) => upd(s.id, { imagen: u })} />
+              <select className={`${input} w-auto`} value={s.lado} onChange={(e) => upd(s.id, { lado: val(e) })}>
+                <option value="izq">Imagen a la izquierda</option>
+                <option value="der">Imagen a la derecha</option>
+              </select>
+            </div>
+            <input className={input} placeholder="Título" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
+            <textarea className={input} rows={3} placeholder="Texto" value={s.texto} onChange={(e) => upd(s.id, { texto: val(e) })} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input className={input} placeholder="Botón" value={s.boton} onChange={(e) => upd(s.id, { boton: val(e) })} />
+              <input className={input} placeholder="Link del botón" value={s.link} onChange={(e) => upd(s.id, { link: val(e) })} />
+            </div>
+          </div>
+        );
+      case 'texto':
+        return (
+          <div className="space-y-2">
+            <input className={input} placeholder="Título (vacío = “Sobre tu tienda”)" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
+            <textarea className={input} rows={4} placeholder="Texto (vacío = usa “Sobre tu tienda” de Marca y datos)" value={s.texto} onChange={(e) => upd(s.id, { texto: val(e) })} />
+          </div>
+        );
+      case 'video':
+        return (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <input className={input} placeholder="Título" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
+            <input className={input} placeholder="Link de YouTube" value={s.url} onChange={(e) => upd(s.id, { url: val(e) })} />
+          </div>
+        );
+      case 'redes':
+        return (
+          <div className="space-y-2">
+            <input className={input} placeholder="Título" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
+            <input className={input} placeholder="Texto" value={s.texto} onChange={(e) => upd(s.id, { texto: val(e) })} />
+            <p className="text-xs text-gray-500">Usa tu Instagram y WhatsApp de “Marca y datos”.</p>
+          </div>
+        );
+    }
+    return null;
+  }
 
   return (
     <div className="space-y-5">
       <section className={card}>
         <div>
-          <h2 className="font-semibold">Estilo de tu tienda</h2>
-          <p className="text-xs text-gray-500">Cambia tipografías de títulos, botones y bordes. Los colores los elegís en “Marca y datos”.</p>
+          <h2 className="font-semibold">Plantilla</h2>
+          <p className="text-xs text-gray-500">Define tipografías, menú, tarjetas y botones. Tus colores, logo y secciones se mantienen.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {ESTILOS.map((e) => (
-            <button key={e.id} type="button" onClick={() => setD({ ...d, estilo: e.id })}
-              className={`rounded-xl border p-4 text-left transition ${d.estilo === e.id ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-300'}`}>
-              <span className={`mb-3 block h-16 ${e.id === 'boutique' ? 'rounded-xl bg-pink-50' : e.id === 'audaz' ? 'bg-gray-900' : 'border border-gray-200 bg-white'}`}>
-                <span className={`flex h-full items-center justify-center text-xs ${e.id === 'audaz' ? 'font-black uppercase text-white' : e.id === 'boutique' ? 'font-serif text-pink-700' : 'uppercase tracking-[0.2em] text-gray-700'}`}>Nueva colección</span>
-              </span>
-              <span className="block text-sm font-semibold">{e.nombre}</span>
-              <span className="block text-xs text-gray-500">{e.detalle}</span>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {PLANTILLAS.map((p) => (
+            <button key={p.id} type="button" onClick={() => setD({ ...d, plantilla: p.id })}
+              className={`rounded-xl border p-2.5 text-left transition ${d.plantilla === p.id ? 'border-pink-500 ring-2 ring-pink-200' : 'border-gray-200 hover:border-gray-300'}`}>
+              <MiniPlantilla id={p.id} />
+              <span className="mt-2 block text-sm font-semibold">{p.nombre}</span>
+              <span className="block text-[11px] leading-snug text-gray-500">{p.detalle}</span>
             </button>
           ))}
         </div>
@@ -391,93 +590,119 @@ function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => v
           </div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!d.anuncio.activo} onChange={(e) => setD({ ...d, anuncio: { ...d.anuncio, activo: chk(e) } })} /> Mostrar</label>
         </div>
-        <input className={input} maxLength={120} placeholder="Texto del anuncio" value={d.anuncio.texto} onChange={(e) => setD({ ...d, anuncio: { ...d.anuncio, texto: val(e) } })} />
-        <input className={input} placeholder="Link opcional (ej: /categoria/corpinos)" value={d.anuncio.link} onChange={(e) => setD({ ...d, anuncio: { ...d.anuncio, link: val(e) } })} />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input className={input} maxLength={120} placeholder="Texto del anuncio" value={d.anuncio.texto} onChange={(e) => setD({ ...d, anuncio: { ...d.anuncio, texto: val(e) } })} />
+          <input className={input} placeholder="Link opcional" value={d.anuncio.link} onChange={(e) => setD({ ...d, anuncio: { ...d.anuncio, link: val(e) } })} />
+        </div>
       </section>
 
       <section className={card}>
         <div>
-          <h2 className="font-semibold">Carrusel de portada</h2>
-          <p className="text-xs text-gray-500">Hasta 5 imágenes. Ideal: 1920×730 px para compu y 1080×1350 px (vertical) para celular.</p>
-        </div>
-        {d.slides.length === 0 && <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-500">Todavía no cargaste imágenes. Si no cargás ninguna se muestra tu nombre con tu color.</p>}
-        <ul className="space-y-4">
-          {d.slides.map((s: any, i: number) => (
-            <li key={i} className="rounded-xl border border-gray-200 p-4">
-              <div className="flex gap-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {s.imagen ? <img src={s.imagen} alt="" className="h-20 w-36 shrink-0 rounded-lg object-cover" /> : <div className="h-20 w-36 shrink-0 rounded-lg bg-gray-100" />}
-                <div className="flex-1 space-y-2">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <label className="text-xs text-gray-600">Imagen (compu)
-                      <input type="file" accept="image/png,image/jpeg,image/webp" className="mt-1 block w-full text-xs" onChange={(e) => subir((e.target as any).files?.[0], (u) => setSlide(i, 'imagen', u), `s${i}`)} />
-                    </label>
-                    <label className="text-xs text-gray-600">Imagen celular (opcional)
-                      <input type="file" accept="image/png,image/jpeg,image/webp" className="mt-1 block w-full text-xs" onChange={(e) => subir((e.target as any).files?.[0], (u) => setSlide(i, 'imagenMobile', u), `m${i}`)} />
-                    </label>
-                  </div>
-                  {subiendo.endsWith(String(i)) && <p className="text-xs text-pink-600">Subiendo imagen…</p>}
-                </div>
-              </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <input className={input} maxLength={80} placeholder="Título (opcional)" value={s.titulo || ''} onChange={(e) => setSlide(i, 'titulo', val(e))} />
-                <input className={input} maxLength={30} placeholder="Texto del botón (opcional)" value={s.boton || ''} onChange={(e) => setSlide(i, 'boton', val(e))} />
-                <input className={`${input} sm:col-span-2`} maxLength={160} placeholder="Bajada (opcional)" value={s.texto || ''} onChange={(e) => setSlide(i, 'texto', val(e))} />
-                <input className={`${input} sm:col-span-2`} placeholder="Al tocar, ir a… (ej: /categoria/lenceria o un link https://)" value={s.link || ''} onChange={(e) => setSlide(i, 'link', val(e))} />
-              </div>
-              <div className="mt-3 flex gap-3 text-xs">
-                <button type="button" className="text-gray-600 disabled:opacity-30" disabled={i === 0} onClick={() => moverSlide(i, -1)}>↑ Subir</button>
-                <button type="button" className="text-gray-600 disabled:opacity-30" disabled={i === d.slides.length - 1} onClick={() => moverSlide(i, 1)}>↓ Bajar</button>
-                <button type="button" className="ml-auto text-red-600" onClick={() => setD({ ...d, slides: d.slides.filter((_: any, j: number) => j !== i) })}>Quitar</button>
-              </div>
-            </li>
-          ))}
-        </ul>
-        {d.slides.length < 5 && (
-          <label className={`${btnSec} inline-flex cursor-pointer items-center gap-2`}>
-            + Agregar imagen
-            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
-              onChange={(e) => subir((e.target as any).files?.[0], (u) => setD((x: any) => ({ ...x, slides: [...x.slides, { imagen: u }] })), 'nuevo')} />
-          </label>
-        )}
-        {subiendo === 'nuevo' && <p className="text-xs text-pink-600">Subiendo imagen…</p>}
-      </section>
-
-      <section className={card}>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">Beneficios</h2>
-            <p className="text-xs text-gray-500">La franja con íconos debajo del carrusel (hasta 4).</p>
-          </div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!d.beneficios.activo} onChange={(e) => setD({ ...d, beneficios: { ...d.beneficios, activo: chk(e) } })} /> Mostrar</label>
+          <h2 className="font-semibold">Secciones de la página de inicio</h2>
+          <p className="text-xs text-gray-500">Ordenalas como quieras, ocultalas o sumá nuevas. Tocá una para editarla.</p>
         </div>
         <ul className="space-y-2">
-          {d.beneficios.items.map((b: any, i: number) => (
-            <li key={i} className="grid gap-2 sm:grid-cols-[130px_1fr_1.4fr_auto]">
-              <select className={input} value={b.icono} onChange={(e) => setBen(i, 'icono', val(e))}>
-                {ICONOS.map((ic) => <option key={ic} value={ic}>{({ envio: '🚚 Envío', pago: '💳 Pago', cambio: '🔁 Cambios', whatsapp: '💬 WhatsApp', seguro: '🛡️ Seguro', regalo: '🎁 Regalo' } as any)[ic]}</option>)}
-              </select>
-              <input className={input} maxLength={40} placeholder="Título" value={b.titulo} onChange={(e) => setBen(i, 'titulo', val(e))} />
-              <input className={input} maxLength={80} placeholder="Detalle" value={b.texto} onChange={(e) => setBen(i, 'texto', val(e))} />
-              <button type="button" className="text-xs text-red-600" onClick={() => setD({ ...d, beneficios: { ...d.beneficios, items: d.beneficios.items.filter((_: any, j: number) => j !== i) } })}>Quitar</button>
-            </li>
-          ))}
+          {d.secciones.map((s: any, i: number) => {
+            const meta = info2(s.tipo);
+            return (
+              <li key={s.id} className={`rounded-xl border ${abierta === s.id ? 'border-pink-300' : 'border-gray-200'} ${s.visible ? '' : 'opacity-60'}`}>
+                <div className="flex items-center gap-2 p-3">
+                  <span className="text-lg" aria-hidden="true">{meta?.emoji}</span>
+                  <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setAbierta(abierta === s.id ? null : s.id)}>
+                    <span className="block text-sm font-medium">{meta?.nombre}</span>
+                    <span className="block truncate text-xs text-gray-500">{resumen(s) || meta?.detalle}</span>
+                  </button>
+                  <button type="button" className="rounded p-1.5 text-gray-500 disabled:opacity-25" disabled={i === 0} onClick={() => mover(i, -1)} aria-label="Subir">↑</button>
+                  <button type="button" className="rounded p-1.5 text-gray-500 disabled:opacity-25" disabled={i === d.secciones.length - 1} onClick={() => mover(i, 1)} aria-label="Bajar">↓</button>
+                  <button type="button" className="rounded px-2 py-1 text-xs text-gray-600 ring-1 ring-gray-200" onClick={() => upd(s.id, { visible: !s.visible })}>{s.visible ? 'Ocultar' : 'Mostrar'}</button>
+                </div>
+                {abierta === s.id && (
+                  <div className="space-y-3 border-t border-gray-100 p-3">
+                    {editor(s)}
+                    <button type="button" className="text-xs text-red-600" onClick={() => quitar(s.id)}>Quitar sección</button>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
-        {d.beneficios.items.length < 4 && (
-          <button type="button" className={btnSec} onClick={() => setD({ ...d, beneficios: { ...d.beneficios, items: [...d.beneficios.items, { icono: 'regalo', titulo: '', texto: '' }] } })}>+ Agregar beneficio</button>
+        {agregando ? (
+          <div className="grid gap-2 sm:grid-cols-3">
+            {SECCIONES_INFO.map((x) => (
+              <button key={x.tipo} type="button" onClick={() => agregar(x.tipo)} className="rounded-xl border border-gray-200 p-3 text-left hover:border-pink-300">
+                <span className="text-lg">{x.emoji}</span>
+                <span className="block text-sm font-medium">{x.nombre}</span>
+                <span className="block text-xs text-gray-500">{x.detalle}</span>
+              </button>
+            ))}
+            <button type="button" className="text-sm text-gray-500" onClick={() => setAgregando(false)}>Cancelar</button>
+          </div>
+        ) : (
+          <button type="button" className={btnSec} onClick={() => setAgregando(true)}>+ Agregar sección</button>
         )}
-      </section>
-
-      <section className={card}>
-        <h2 className="font-semibold">Secciones de la portada</h2>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!d.categoriasDestacadas} onChange={(e) => setD({ ...d, categoriasDestacadas: chk(e) })} /> Categorías con foto</label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!d.masVendidos} onChange={(e) => setD({ ...d, masVendidos: chk(e) })} /> Los más elegidos</label>
       </section>
 
       <div className="sticky bottom-20 flex justify-end gap-2">
         <a href={info.urlApp} target="_blank" className={`${btnSec} bg-white shadow`}>Ver cómo queda</a>
-        <button className={`${btn} shadow-lg`} disabled={saving || !!subiendo} onClick={guardar}>{saving ? 'Guardando…' : 'Guardar portada'}</button>
+        <button className={`${btn} shadow-lg`} disabled={saving || !!subiendo} onClick={guardar}>{saving ? 'Guardando…' : 'Guardar diseño'}</button>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Productos: destacar y ocultar
+// ---------------------------------------------------------------------
+
+function ProductosTienda({ onToast }: { onToast: (s: string) => void }) {
+  const [q, setQ] = useState('');
+  const [lista, setLista] = useState<any[] | null>(null);
+  const [ocultos, setOcultos] = useState(0);
+
+  const cargar = useCallback((query: string) => {
+    api(`/productos${query ? `?q=${encodeURIComponent(query)}` : ''}`).then((d) => { setLista(d.productos); setOcultos(d.ocultos); }).catch((e) => onToast(e.message));
+  }, [onToast]);
+  useEffect(() => { cargar(''); }, [cargar]);
+
+  async function marcar(p: any, cambios: any) {
+    try {
+      await api('/productos', 'PUT', { productId: p.id, ...cambios });
+      if (cambios.oculto) { setLista((l) => (l || []).filter((x) => x.id !== p.id)); setOcultos((n) => n + 1); onToast('Producto oculto en tu tienda'); }
+      else setLista((l) => (l || []).map((x) => (x.id === p.id ? { ...x, ...cambios } : x)));
+    } catch (e: any) { onToast(e.message); }
+  }
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); cargar(q); }} className="flex gap-2">
+        <input className={input} placeholder="Buscá por nombre, marca o código" value={q} onChange={(e) => setQ(val(e))} />
+        <button className={btn}>Buscar</button>
+      </form>
+      <p className="text-xs text-gray-500">
+        {q ? 'Resultados de la búsqueda.' : 'Tus destacados (aparecen en la sección “Destacados”). Buscá productos para destacar u ocultar.'}
+        {ocultos > 0 && ` Tenés ${ocultos} producto${ocultos === 1 ? '' : 's'} oculto${ocultos === 1 ? '' : 's'}.`}
+      </p>
+      {!lista ? <p className="text-gray-500">Cargando…</p> : lista.length === 0 ? (
+        <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 ring-1 ring-black/5">{q ? 'No encontramos productos.' : 'Todavía no destacaste productos.'}</p>
+      ) : (
+        <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          {lista.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {p.image ? <img src={p.image} alt="" className="h-14 w-11 rounded object-cover" /> : <div className="h-14 w-11 rounded bg-gray-100" />}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{p.nombre}</p>
+                <p className="text-xs text-gray-500">{fmt(p.precio)}{!p.disponible && ' · sin stock'}</p>
+              </div>
+              <button type="button" onClick={() => marcar(p, { destacado: !p.destacado })}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${p.destacado ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
+                {p.destacado ? '★ Destacado' : '☆ Destacar'}
+              </button>
+              <button type="button" onClick={() => marcar(p, { oculto: true })} className="text-xs text-gray-500 underline">Ocultar</button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

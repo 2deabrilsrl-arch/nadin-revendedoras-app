@@ -17,23 +17,28 @@ export default function ProductGrid({
   prefix,
   descTransfer = 0,
   columnas = 4,
+  formato = 'grilla',
 }: {
   productos: ProductoTienda[];
   prefix: string;
   descTransfer?: number;
   columnas?: 3 | 4;
+  formato?: 'grilla' | 'slider';
 }) {
   if (!productos.length) {
     return <p className="py-16 text-center text-gray-500">No encontramos productos acá. Probá con otra categoría o búsqueda.</p>;
   }
+  const ulClass = formato === 'slider'
+    ? '-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:gap-5 [scrollbar-width:thin] [&>li]:w-[46%] [&>li]:shrink-0 [&>li]:snap-start sm:[&>li]:w-[31%] lg:[&>li]:w-[23%]'
+    : `grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 ${columnas === 4 ? 'md:grid-cols-3 lg:grid-cols-4' : 'md:grid-cols-3'}`;
   return (
-    <ul className={`grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 ${columnas === 4 ? 'md:grid-cols-3 lg:grid-cols-4' : 'md:grid-cols-3'}`}>
+    <ul className={ulClass}>
       {productos.map((p, i) => {
         const varios = p.variantes.length > 1 && new Set(p.variantes.map((v) => v.precio)).size > 1;
         return (
           <li key={p.id}>
-            <a href={`${prefix}${productPath(p)}`} className="group block">
-              <div className="relative aspect-[3/4] overflow-hidden rounded-[var(--t-radius)] bg-gray-50">
+            <a href={`${prefix}${productPath(p)}`} className="t-card group block">
+              <div className="t-card-media relative aspect-[3/4] overflow-hidden rounded-[var(--t-radius)] bg-gray-50">
                 {p.image && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -50,7 +55,7 @@ export default function ProductGrid({
                 {!p.disponible && <span className="t-badge absolute left-2 top-2 bg-gray-900/85 text-white">Sin stock</span>}
                 {p.disponible && p.ultimasUnidades && <span className="t-badge absolute left-2 top-2 bg-white text-gray-900">Últimas unidades</span>}
               </div>
-              <div className="mt-3 space-y-1 px-0.5">
+              <div className="t-card-body mt-3 space-y-1 px-0.5">
                 <h3 className="line-clamp-2 text-[13px] leading-snug text-gray-700 sm:text-sm">{p.nombre}</h3>
                 <p className="text-[15px] font-semibold text-gray-900">
                   {varios ? <span className="font-normal text-gray-500">Desde </span> : null}
