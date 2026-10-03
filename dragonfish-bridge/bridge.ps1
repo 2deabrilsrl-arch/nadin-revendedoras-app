@@ -1,4 +1,4 @@
-<#
+﻿<#
   Puente App Revendedoras -> Dragonfish (corre en la Servidora)
   ------------------------------------------------------------
   1. Pide a la app las consolidaciones que esperan remito.
@@ -89,13 +89,25 @@ try {
       }
 
       $dni = ("" + $c.revendedora.dni) -replace '\D', ''
-      if (-not $dni) { throw "La revendedora no tiene DNI cargado" }
+      # DNI vacío o de relleno (00000002, 12345...) = no se puede usar como cliente
+      if (-not $dni -or [int64]$dni -lt 1000000) {
+        $msg = "La revendedora $($c.revendedora.name) tiene un DNI inválido ('$($c.revendedora.dni)'). Corregilo en la app y reintentá."
+        Log "[$($c.referencia)] ERROR $msg"
+        if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
+        continue
+      }
       $codCliente = $dni.Substring(0, [Math]::Min(10, $dni.Length))
 
-      # Cliente
-      $existe = $true
-      try { Invoke-Json 'GET' "$Df/Cliente/$codCliente/" $DfHeaders $null | Out-Null }
-      catch { if ((Get-ErrorBody $_) -match 'HTTP 404') { $existe = $false } else { throw } }
+      # Cliente: existe solo si Dragonfish devuelve ESE código (algunas versiones responden 200 vacío)
+      $existe = $false
+      try {
+        $cliDf = Invoke-Json 'GET' "$Df/Cliente/$codCliente/" $DfHeaders $null
+        if ($cliDf -and $cliDf.Codigo -and (("" + $cliDf.Codigo).Trim() -eq $codCliente)) {
+          $existe = $true
+          Log "[$($c.referencia)] cliente $codCliente encontrado: $($cliDf.Nombre)"
+        }
+      }
+      catch { if (-not ((Get-ErrorBody $_) -match 'HTTP 40[04]')) { throw } }
       if (-not $existe) {
         if (-not $Cfg.CrearClientes) { throw "El cliente $codCliente no existe en Dragonfish" }
         $cli = @{

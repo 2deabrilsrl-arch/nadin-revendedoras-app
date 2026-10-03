@@ -1,4 +1,4 @@
-# Crea una tarea programada que ejecuta el puente cada 2 minutos (correr como Administrador)
+﻿# Crea una tarea programada que ejecuta el puente cada 2 minutos (correr como Administrador)
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Script = Join-Path $Here 'bridge.ps1'
 $Accion = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Script`"" -WorkingDirectory $Here
