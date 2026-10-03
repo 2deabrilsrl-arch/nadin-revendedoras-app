@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     where: { dfEstado: 'pendiente', dfIntentos: { lt: MAX_INTENTOS } },
     orderBy: { enviadoAt: 'asc' },
     take: 10,
-    include: { user: { select: { dni: true, name: true, email: true, telefono: true } } },
+    include: { user: { select: { dni: true, name: true, email: true, telefono: true, situacionFiscal: true, cuit: true, razonSocial: true, codigoDragonfish: true } } },
   });
 
   const out = [];

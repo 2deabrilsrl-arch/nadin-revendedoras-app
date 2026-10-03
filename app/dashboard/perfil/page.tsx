@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import BackToHomeButton from '@/components/BackToHomeButton';
 import QRCode from 'qrcode';
+import { SITUACIONES_FISCALES } from '@/lib/fiscal';
 
 interface ProfileData {
   name: string;
@@ -30,6 +31,9 @@ interface ProfileData {
   twitter: string;
   youtube: string;
   website: string;
+  situacionFiscal: string;
+  cuit: string;
+  razonSocial: string;
 }
 
 export default function PerfilPage() {
@@ -147,7 +151,8 @@ export default function PerfilPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Error al guardar');
+        const err = await response.json().catch(() => ({})) as any;
+        throw new Error(err.error || 'Error al guardar');
       }
 
       (globalThis as any).alert?.('✅ Perfil actualizado correctamente');
@@ -350,6 +355,53 @@ export default function PerfilPage() {
               max="200"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Datos fiscales */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 className="text-lg font-bold mb-1">🧾 Datos fiscales</h3>
+        <p className="text-sm text-gray-500 mb-4">Con estos datos Nadin te carga como cliente para tus remitos y facturas.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Situación fiscal</label>
+            <select
+              value={profile.situacionFiscal || 'CF'}
+              onChange={(e) => handleChange('situacionFiscal', (e.target as any).value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+            >
+              {SITUACIONES_FISCALES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">DNI</label>
+            <input type="text" value={profile.dni} disabled className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed" />
+          </div>
+          {(profile.situacionFiscal || 'CF') !== 'CF' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">CUIT *</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={profile.cuit || ''}
+                  onChange={(e) => handleChange('cuit', (e.target as any).value.replace(/[^0-9-]/g, ''))}
+                  placeholder="27-12345678-9"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Razón social *</label>
+                <input
+                  type="text"
+                  value={profile.razonSocial || ''}
+                  onChange={(e) => handleChange('razonSocial', (e.target as any).value)}
+                  placeholder="Como figura en AFIP/ARCA"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nadin-pink focus:border-transparent"
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/session';
+import { esSituacionValida, normalizarCuit } from '@/lib/fiscal';
 
 interface UpdateProfileBody {
   userId: string;
@@ -20,6 +22,9 @@ interface UpdateProfileBody {
   twitter?: string;
   youtube?: string;
   website?: string;
+  situacionFiscal?: string;
+  cuit?: string;
+  razonSocial?: string;
 }
 
 // GET - Obtener perfil del usuario
@@ -58,6 +63,9 @@ export async function GET(req: NextRequest) {
         twitter: true,
         youtube: true,
         website: true,
+        situacionFiscal: true,
+        cuit: true,
+        razonSocial: true,
         createdAt: true
       }
     });
@@ -110,6 +118,38 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // Datos fiscales: solo la propia usuaria logueada y con CUIT válido si no es Consumidor Final
+    let fiscal: { situacionFiscal?: string; cuit?: string | null; razonSocial?: string | null } = {};
+    const actual = updateData.situacionFiscal !== undefined
+      ? await prisma.user.findUnique({ where: { id: userId }, select: { situacionFiscal: true, cuit: true, razonSocial: true } })
+      : null;
+    const cambioFiscal = !!actual && (
+      String(updateData.situacionFiscal || 'CF') !== actual.situacionFiscal ||
+      (updateData.situacionFiscal !== 'CF' && (
+        String(updateData.cuit || '').replace(/\D/g, '') !== (actual.cuit || '') ||
+        String(updateData.razonSocial || '').trim() !== (actual.razonSocial || '')
+      ))
+    );
+    if (cambioFiscal) {
+      const session = await getSession();
+      if (!session || session.uid !== userId) {
+        return NextResponse.json({ error: 'Volvé a iniciar sesión para cambiar tus datos fiscales' }, { status: 401 });
+      }
+      const sf = String(updateData.situacionFiscal || 'CF');
+      if (!esSituacionValida(sf)) {
+        return NextResponse.json({ error: 'Situación fiscal inválida' }, { status: 400 });
+      }
+      if (sf === 'CF') {
+        fiscal = { situacionFiscal: 'CF', cuit: null, razonSocial: null };
+      } else {
+        const cuit = normalizarCuit(updateData.cuit);
+        if (!cuit) return NextResponse.json({ error: 'El CUIT no es válido (son 11 números)' }, { status: 400 });
+        const razon = String(updateData.razonSocial || '').trim();
+        if (!razon) return NextResponse.json({ error: 'Completá la razón social' }, { status: 400 });
+        fiscal = { situacionFiscal: sf, cuit, razonSocial: razon.slice(0, 120) };
+      }
+    }
+
     // Actualizar usuario
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -131,6 +171,7 @@ export async function PATCH(req: NextRequest) {
         twitter: updateData.twitter || null,
         youtube: updateData.youtube || null,
         website: updateData.website || null,
+        ...fiscal,
         updatedAt: new Date()
       },
       select: {
@@ -153,7 +194,10 @@ export async function PATCH(req: NextRequest) {
         linkedin: true,
         twitter: true,
         youtube: true,
-        website: true
+        website: true,
+        situacionFiscal: true,
+        cuit: true,
+        razonSocial: true
       }
     });
 

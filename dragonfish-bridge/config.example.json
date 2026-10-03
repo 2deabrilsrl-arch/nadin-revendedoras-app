@@ -16,6 +16,9 @@
   "ClientePlantilla": "",
   "SituacionFiscalCF": 3,
   "TipoDocumentoDNI": "05",
+  "SituacionFiscalRI": "",
+  "SituacionFiscalMONO": "",
+  "SituacionFiscalEXENTO": "",
 
   "DryRun": true
 }

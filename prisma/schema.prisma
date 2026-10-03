@@ -33,6 +33,12 @@ model User {
   youtube          String?
   website          String?
   rol              String           @default("revendedora")
+  // Datos fiscales para el cliente en Dragonfish (CF = Consumidor Final con DNI)
+  situacionFiscal  String           @default("CF")
+  cuit             String?
+  razonSocial      String?
+  // Código de cliente en Dragonfish si ya existe con un código viejo (lo carga Nadin)
+  codigoDragonfish String?
   // 🔑 NUEVO: Campos para recuperación de contraseña
   resetToken       String?
   resetTokenExpiry DateTime?

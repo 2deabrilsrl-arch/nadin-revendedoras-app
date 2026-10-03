@@ -2,7 +2,7 @@
   Puente App Revendedoras -> Dragonfish (corre en la Servidora)
   ------------------------------------------------------------
   1. Pide a la app las consolidaciones que esperan remito.
-  2. Se asegura de que la revendedora exista como cliente (código = DNI).
+  2. Se asegura de que la revendedora exista como cliente (código = DNI, o CUIT sin el verificador).
   3. Genera el Remito (o Pedido) en la REST API local de Dragonfish.
   4. Le informa a la app el número de comprobante (o el error).
 
@@ -80,6 +80,16 @@ function Get-FiscalCF($dfs) {
   return $script:FiscalCF
 }
 
+# Situación fiscal para clientas con CUIT. Los números salen de Dragonfish (ver un cliente con -VerCliente)
+# y se cargan en config.json: "SituacionFiscalRI", "SituacionFiscalMONO", "SituacionFiscalEXENTO"
+function Get-SituacionCuit($sit) {
+  $v = $Cfg."SituacionFiscal$sit"
+  if ($null -eq $v -or "$v" -eq '') {
+    throw "Falta en config.json 'SituacionFiscal$sit' (el número de esa situación fiscal en Dragonfish)"
+  }
+  return [int]$v
+}
+
 if ($VerCliente) {
   $dfs = Get-DfSession
   Invoke-Json 'GET' "$($dfs.Url)/Cliente/$VerCliente/" $dfs.Headers $null | ConvertTo-Json -Depth 6
@@ -132,15 +142,39 @@ try {
         continue
       }
 
-      $dni = ("" + $c.revendedora.dni) -replace '\D', ''
-      # DNI vacío o de relleno (00000002, 12345...) = no se puede usar como cliente
-      if (-not $dni -or [int64]$dni -lt 100000) {
-        $msg = "La revendedora $($c.revendedora.name) tiene un DNI inválido ('$($c.revendedora.dni)'). Corregilo en la app y reintentá."
-        Log "[$($c.referencia)] ERROR $msg"
-        if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
-        continue
+      $rev = $c.revendedora
+      $sit = if ($rev.situacionFiscal) { ("" + $rev.situacionFiscal).ToUpper() } else { 'CF' }
+      $cuit = ("" + $rev.cuit) -replace '\D', ''
+      $dni = ("" + $rev.dni) -replace '\D', ''
+
+      # Qué código de cliente usar (regla Nadin: código = DNI o CUIT)
+      #  1) Si Nadin le cargó un código de Dragonfish (clientes viejos), se usa ese y no se crea nada.
+      #  2) Monotributo / Resp. Inscripto / Exento: los primeros 10 números del CUIT (sin el verificador).
+      #  3) Consumidor Final: el DNI.
+      $codFijo = ("" + $rev.codigoDragonfish).Trim()
+      $usaCuit = ($sit -ne 'CF')
+      if ($codFijo) {
+        $codCliente = $codFijo
       }
-      $codCliente = $dni.Substring(0, [Math]::Min(10, $dni.Length))
+      elseif ($usaCuit) {
+        if ($cuit.Length -ne 11) {
+          $msg = "La revendedora $($rev.name) es $sit pero no tiene un CUIT válido cargado. Que lo complete en su perfil y reintentá."
+          Log "[$($c.referencia)] ERROR $msg"
+          if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
+          continue
+        }
+        $codCliente = $cuit.Substring(0, 10)
+      }
+      else {
+        # DNI vacío o de relleno (00000002, 12345...) = no se puede usar como cliente
+        if (-not $dni -or [int64]$dni -lt 100000) {
+          $msg = "La revendedora $($rev.name) tiene un DNI inválido ('$($rev.dni)'). Corregilo en la app y reintentá."
+          Log "[$($c.referencia)] ERROR $msg"
+          if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
+          continue
+        }
+        $codCliente = $dni.Substring(0, [Math]::Min(10, $dni.Length))
+      }
 
       # Cliente: existe solo si Dragonfish devuelve ESE código (algunas versiones responden 200 vacío)
       $existe = $false
@@ -153,32 +187,43 @@ try {
       }
       catch { if (-not ((Get-ErrorBody $_) -match 'HTTP 40[04]')) { throw } }
       if (-not $existe) {
+        if ($codFijo) { throw "El código de Dragonfish $codFijo cargado para $($rev.name) no existe" }
         if (-not $Cfg.CrearClientes) { throw "El cliente $codCliente no existe en Dragonfish" }
-        # Regla Nadin: Consumidor Final con DNI -> el DNI va en Código y en Nro. de documento
-        $fis = Get-FiscalCF $dfs
-        $n = Split-Nombre $c.revendedora.name
-        $cli = @{
+        $base = @{
           Codigo = $codCliente
-          SituacionFiscal = $fis.SituacionFiscal
-          TipoDocumento = $fis.TipoDocumento
-          NroDocumento = $codCliente
-          PrimerNombre = $n.Primer.ToUpper()
-          SegundoNombre = $n.Segundo.ToUpper()
-          Apellido = $n.Apellido.ToUpper()
-          # Mismo formato que Dragonfish: "APELLIDO, NOMBRES"
-          Nombre = ($(if ($n.Apellido) { "$($n.Apellido), " } else { '' }) + ("$($n.Primer) $($n.Segundo)").Trim()).ToUpper()
           Pais = 'AR'
-          EMail = $c.revendedora.email
-          Movil = $c.revendedora.telefono
+          EMail = $rev.email
+          Movil = $rev.telefono
           ListaDePrecio = $Cfg.ListaDePrecios
         }
-        if ($Cfg.Vendedor) { $cli.Vendedor = $Cfg.Vendedor }
-        if ($Cfg.DryRun) { Log "[$($c.referencia)] (prueba) crearía cliente: $($cli | ConvertTo-Json -Compress)" }
+        if ($Cfg.Vendedor) { $base.Vendedor = $Cfg.Vendedor }
+        if ($usaCuit) {
+          # Monotributo / RI / Exento: CUIT con guiones (30-71825417-1) y razón social como nombre
+          $sfCodigo = Get-SituacionCuit $sit
+          $base.SituacionFiscal = $sfCodigo
+          $base.CUIT = "{0}-{1}-{2}" -f $cuit.Substring(0, 2), $cuit.Substring(2, 8), $cuit.Substring(10, 1)
+          $razon = if ($rev.razonSocial) { "" + $rev.razonSocial } else { "" + $rev.name }
+          $base.Nombre = $razon.Trim()
+        }
         else {
-          Invoke-Json 'POST' "$Df/Cliente/" $DfHeaders $cli | Out-Null
+          # Consumidor Final con DNI -> el DNI va en Código y en Nro. de documento
+          $fis = Get-FiscalCF $dfs
+          $n = Split-Nombre $rev.name
+          $base.SituacionFiscal = $fis.SituacionFiscal
+          $base.TipoDocumento = $fis.TipoDocumento
+          $base.NroDocumento = $codCliente
+          $base.PrimerNombre = $n.Primer.ToUpper()
+          $base.SegundoNombre = $n.Segundo.ToUpper()
+          $base.Apellido = $n.Apellido.ToUpper()
+          # Mismo formato que Dragonfish: "APELLIDO, NOMBRES"
+          $base.Nombre = ($(if ($n.Apellido) { "$($n.Apellido), " } else { '' }) + ("$($n.Primer) $($n.Segundo)").Trim()).ToUpper()
+        }
+        if ($Cfg.DryRun) { Log "[$($c.referencia)] (prueba) crearía cliente: $($base | ConvertTo-Json -Compress)" }
+        else {
+          Invoke-Json 'POST' "$Df/Cliente/" $DfHeaders $base | Out-Null
           $chk = Invoke-Json 'GET' "$Df/Cliente/$codCliente/" $DfHeaders $null
           if (-not $chk -or (("" + $chk.Codigo).Trim() -ne $codCliente)) { throw "Dragonfish no devolvió el cliente $codCliente después de crearlo" }
-          Log "[$($c.referencia)] cliente $codCliente creado: $($chk.Nombre) (SF=$($chk.SituacionFiscal) Doc=$($chk.TipoDocumento) $($chk.NroDocumento))"
+          Log "[$($c.referencia)] cliente $codCliente creado: $($chk.Nombre) (SF=$($chk.SituacionFiscal) Doc=$($chk.TipoDocumento) $($chk.NroDocumento) CUIT=$($chk.CUIT))"
         }
       }
 
@@ -208,7 +253,10 @@ try {
       }
 
       $r = Invoke-Json 'POST' "$Df/$endpoint/" $DfHeaders $comp
-      $numero = "{0} {1}{2:0000}-{3:00000000}" -f ($endpoint.Substring(0,1)), ($(if ($r.Letra) { "$($r.Letra) " } else { '' })), [int]$r.PuntoDeVenta, [int]$r.Numero
+      # "R 0001-00030704" (la letra solo si es distinta de la inicial del comprobante)
+      $ini = $endpoint.Substring(0,1)
+      $letra = if ($r.Letra -and ("" + $r.Letra).Trim() -ne $ini) { "$($r.Letra) " } else { '' }
+      $numero = "{0} {1}{2:0000}-{3:00000000}" -f $ini, $letra, [int]$r.PuntoDeVenta, [int]$r.Numero
       $Enviados[$c.id] = $numero
       Guardar-Enviados
       Informar $c.id $true $numero $null $false
