@@ -8,7 +8,10 @@
 
   No abre puertos: solo hace pedidos salientes a la app (https) y a localhost:8008.
   Configuración en config.json (ver config.example.json). Log en logs\bridge-AAAAMMDD.log
+
+  Para ver cómo está cargado un cliente en Dragonfish:  .\bridge.ps1 -VerCliente 0000000357
 #>
+param([string]$VerCliente)
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -24,11 +27,6 @@ function Log($msg) {
   Add-Content -Path $LogFile -Value $line -Encoding UTF8
   Write-Host $line
 }
-
-# Evita dos ejecuciones al mismo tiempo
-$Lock = Join-Path $Here 'bridge.lock'
-if ((Test-Path $Lock) -and ((Get-Date) - (Get-Item $Lock).LastWriteTime).TotalMinutes -lt 10) { exit 0 }
-Set-Content -Path $Lock -Value $PID
 
 function Get-ErrorBody($err) {
   try {
@@ -46,6 +44,52 @@ function Invoke-Json($method, $url, $headers, $body) {
   if ($null -ne $body) { $params.Body = [System.Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 10)) }
   return Invoke-RestMethod @params
 }
+
+function Get-DfSession {
+  $df = "$($Cfg.DfUrl.TrimEnd('/'))/api.Dragonfish"
+  Invoke-Json 'POST' "$df/Autenticar" @{} @{ IdCliente = $Cfg.DfIdCliente; JWToken = $Cfg.DfToken } | Out-Null
+  return @{ Url = $df; Headers = @{ IdCliente = $Cfg.DfIdCliente; Authorization = $Cfg.DfToken; BaseDeDatos = $Cfg.DfBaseDeDatos } }
+}
+
+# Separa "Maria Laura Gomez" en nombres y apellido (la última palabra es el apellido)
+function Split-Nombre($full) {
+  $partes = @((("" + $full).Trim() -split '\s+') | Where-Object { $_ })
+  if ($partes.Count -le 1) { return @{ Primer = ("" + $full).Trim(); Segundo = ''; Apellido = '' } }
+  $ape = $partes[-1]
+  $noms = $partes[0..($partes.Count - 2)]
+  return @{ Primer = $noms[0]; Segundo = (($noms | Select-Object -Skip 1) -join ' '); Apellido = $ape }
+}
+
+# Situación fiscal y tipo de documento para Consumidor Final con DNI:
+# se toman del config o se copian de un cliente "plantilla" ya cargado así en Dragonfish
+$script:FiscalCF = $null
+function Get-FiscalCF($dfs) {
+  if ($script:FiscalCF) { return $script:FiscalCF }
+  $sf = $Cfg.SituacionFiscalCF; $td = $Cfg.TipoDocumentoDNI
+  if ((-not $sf -or -not $td) -and $Cfg.ClientePlantilla) {
+    $p = Invoke-Json 'GET' "$($dfs.Url)/Cliente/$($Cfg.ClientePlantilla)/" $dfs.Headers $null
+    if (-not $p -or -not $p.Codigo) { throw "No encontré el cliente plantilla $($Cfg.ClientePlantilla) en Dragonfish" }
+    if (-not $sf) { $sf = $p.SituacionFiscal }
+    if (-not $td) { $td = $p.TipoDocumento }
+    Log "Plantilla $($Cfg.ClientePlantilla) ($($p.Nombre)): SituacionFiscal=$sf TipoDocumento=$td"
+  }
+  if (-not $sf -or -not $td) {
+    throw "Falta configurar la situación fiscal: poné en config.json 'ClientePlantilla' (código de un cliente Consumidor Final con DNI) o 'SituacionFiscalCF' y 'TipoDocumentoDNI'"
+  }
+  $script:FiscalCF = @{ SituacionFiscal = $sf; TipoDocumento = $td }
+  return $script:FiscalCF
+}
+
+if ($VerCliente) {
+  $dfs = Get-DfSession
+  Invoke-Json 'GET' "$($dfs.Url)/Cliente/$VerCliente/" $dfs.Headers $null | ConvertTo-Json -Depth 6
+  exit 0
+}
+
+# Evita dos ejecuciones al mismo tiempo
+$Lock = Join-Path $Here 'bridge.lock'
+if ((Test-Path $Lock) -and ((Get-Date) - (Get-Item $Lock).LastWriteTime).TotalMinutes -lt 10) { exit 0 }
+Set-Content -Path $Lock -Value $PID
 
 # Registro local de lo ya generado (si la app no recibió el aviso, no se duplica el remito)
 $Enviados = @{}
@@ -68,9 +112,9 @@ try {
   if ($lista.Count -eq 0) { Remove-Item $Lock -ErrorAction SilentlyContinue; exit 0 }
   Log "Pendientes: $($lista.Count)"
 
-  $Df = "$($Cfg.DfUrl.TrimEnd('/'))/api.Dragonfish"
-  Invoke-Json 'POST' "$Df/Autenticar" @{} @{ IdCliente = $Cfg.DfIdCliente; JWToken = $Cfg.DfToken } | Out-Null
-  $DfHeaders = @{ IdCliente = $Cfg.DfIdCliente; Authorization = $Cfg.DfToken; BaseDeDatos = $Cfg.DfBaseDeDatos }
+  $dfs = Get-DfSession
+  $Df = $dfs.Url
+  $DfHeaders = $dfs.Headers
 
   foreach ($c in $lista) {
     try {
@@ -90,7 +134,7 @@ try {
 
       $dni = ("" + $c.revendedora.dni) -replace '\D', ''
       # DNI vacío o de relleno (00000002, 12345...) = no se puede usar como cliente
-      if (-not $dni -or [int64]$dni -lt 1000000) {
+      if (-not $dni -or [int64]$dni -lt 100000) {
         $msg = "La revendedora $($c.revendedora.name) tiene un DNI inválido ('$($c.revendedora.dni)'). Corregilo en la app y reintentá."
         Log "[$($c.referencia)] ERROR $msg"
         if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
@@ -110,16 +154,30 @@ try {
       catch { if (-not ((Get-ErrorBody $_) -match 'HTTP 40[04]')) { throw } }
       if (-not $existe) {
         if (-not $Cfg.CrearClientes) { throw "El cliente $codCliente no existe en Dragonfish" }
+        # Regla Nadin: Consumidor Final con DNI -> el DNI va en Código y en Nro. de documento
+        $fis = Get-FiscalCF $dfs
+        $n = Split-Nombre $c.revendedora.name
         $cli = @{
           Codigo = $codCliente
-          Nombre = ("" + $c.revendedora.name).ToUpper()
+          SituacionFiscal = $fis.SituacionFiscal
+          TipoDocumento = $fis.TipoDocumento
           NroDocumento = $codCliente
+          PrimerNombre = $n.Primer.ToUpper()
+          SegundoNombre = $n.Segundo.ToUpper()
+          Apellido = $n.Apellido.ToUpper()
+          Nombre = (("$($n.Apellido) $($n.Primer) $($n.Segundo)").Trim() -replace '\s+', ' ').ToUpper()
           EMail = $c.revendedora.email
           Movil = $c.revendedora.telefono
           ListaDePrecio = $Cfg.ListaDePrecios
         }
+        if ($Cfg.Vendedor) { $cli.Vendedor = $Cfg.Vendedor }
         if ($Cfg.DryRun) { Log "[$($c.referencia)] (prueba) crearía cliente: $($cli | ConvertTo-Json -Compress)" }
-        else { Invoke-Json 'POST' "$Df/Cliente/" $DfHeaders $cli | Out-Null; Log "[$($c.referencia)] cliente $codCliente creado" }
+        else {
+          Invoke-Json 'POST' "$Df/Cliente/" $DfHeaders $cli | Out-Null
+          $chk = Invoke-Json 'GET' "$Df/Cliente/$codCliente/" $DfHeaders $null
+          if (-not $chk -or (("" + $chk.Codigo).Trim() -ne $codCliente)) { throw "Dragonfish no devolvió el cliente $codCliente después de crearlo" }
+          Log "[$($c.referencia)] cliente $codCliente creado: $($chk.Nombre) (SF=$($chk.SituacionFiscal) Doc=$($chk.TipoDocumento) $($chk.NroDocumento))"
+        }
       }
 
       # Comprobante

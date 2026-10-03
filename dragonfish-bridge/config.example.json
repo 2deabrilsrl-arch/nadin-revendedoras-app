@@ -13,6 +13,9 @@
   "Motivo": "APP",
   "Vendedor": "",
   "CrearClientes": true,
+  "ClientePlantilla": "",
+  "SituacionFiscalCF": "",
+  "TipoDocumentoDNI": "",
 
   "DryRun": true
 }
