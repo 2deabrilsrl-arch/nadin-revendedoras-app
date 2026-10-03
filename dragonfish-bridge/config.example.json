@@ -14,8 +14,8 @@
   "Vendedor": "",
   "CrearClientes": true,
   "ClientePlantilla": "",
-  "SituacionFiscalCF": "",
-  "TipoDocumentoDNI": "",
+  "SituacionFiscalCF": 3,
+  "TipoDocumentoDNI": "05",
 
   "DryRun": true
 }

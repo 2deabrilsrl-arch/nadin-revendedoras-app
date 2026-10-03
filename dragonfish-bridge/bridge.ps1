@@ -73,10 +73,10 @@ function Get-FiscalCF($dfs) {
     if (-not $td) { $td = $p.TipoDocumento }
     Log "Plantilla $($Cfg.ClientePlantilla) ($($p.Nombre)): SituacionFiscal=$sf TipoDocumento=$td"
   }
-  if (-not $sf -or -not $td) {
-    throw "Falta configurar la situación fiscal: poné en config.json 'ClientePlantilla' (código de un cliente Consumidor Final con DNI) o 'SituacionFiscalCF' y 'TipoDocumentoDNI'"
-  }
-  $script:FiscalCF = @{ SituacionFiscal = $sf; TipoDocumento = $td }
+  # Valores de Dragonfish (verificados con un cliente real): 3 = Consumidor Final, "05" = D.N.I.
+  if (-not $sf) { $sf = 3 }
+  if (-not $td) { $td = '05' }
+  $script:FiscalCF = @{ SituacionFiscal = [int]$sf; TipoDocumento = ("" + $td) }
   return $script:FiscalCF
 }
 
@@ -165,7 +165,9 @@ try {
           PrimerNombre = $n.Primer.ToUpper()
           SegundoNombre = $n.Segundo.ToUpper()
           Apellido = $n.Apellido.ToUpper()
-          Nombre = (("$($n.Apellido) $($n.Primer) $($n.Segundo)").Trim() -replace '\s+', ' ').ToUpper()
+          # Mismo formato que Dragonfish: "APELLIDO, NOMBRES"
+          Nombre = ($(if ($n.Apellido) { "$($n.Apellido), " } else { '' }) + ("$($n.Primer) $($n.Segundo)").Trim()).ToUpper()
+          Pais = 'AR'
           EMail = $c.revendedora.email
           Movil = $c.revendedora.telefono
           ListaDePrecio = $Cfg.ListaDePrecios
