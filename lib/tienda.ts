@@ -149,11 +149,11 @@ export function getTiendaBaseUrl(tienda: { slug: string; dominioPropio: string |
 }
 
 // ---------------------------------------------------------------------
-// Catálogo global (cache en memoria por instancia, 10 min)
+// Catálogo global (cache en memoria por instancia, 2 min: el stock cambia seguido)
 // ---------------------------------------------------------------------
 
 let catalogCache: { at: number; items: ProductoBase[] } | null = null;
-const CATALOG_TTL_MS = 10 * 60 * 1000;
+const CATALOG_TTL_MS = 2 * 60 * 1000;
 
 async function getCatalogoBase(): Promise<ProductoBase[]> {
   if (catalogCache && Date.now() - catalogCache.at < CATALOG_TTL_MS && catalogCache.items.length > 0) {

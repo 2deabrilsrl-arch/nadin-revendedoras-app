@@ -9,9 +9,10 @@
   No abre puertos: solo hace pedidos salientes a la app (https) y a localhost:8008.
   Configuración en config.json (ver config.example.json). Log en logs\bridge-AAAAMMDD.log
 
-  Para ver cómo está cargado un cliente en Dragonfish:  .\bridge.ps1 -VerCliente 0000000357
+  Para ver cómo está cargado un cliente en Dragonfish:  .\bridge.ps1 -VerCliente 30401574
+  Para ver el stock de un artículo:                     .\bridge.ps1 -VerStock AC-5051
 #>
-param([string]$VerCliente)
+param([string]$VerCliente, [string]$VerStock)
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -84,10 +85,68 @@ function Get-FiscalCF($dfs) {
 # y se cargan en config.json: "SituacionFiscalRI", "SituacionFiscalMONO", "SituacionFiscalEXENTO"
 function Get-SituacionCuit($sit) {
   $v = $Cfg."SituacionFiscal$sit"
+  # Verificado en Dragonfish: 1 = Responsable Inscripto
+  if (($null -eq $v -or "$v" -eq '') -and $sit -eq 'RI') { $v = 1 }
   if ($null -eq $v -or "$v" -eq '') {
     throw "Falta en config.json 'SituacionFiscal$sit' (el número de esa situación fiscal en Dragonfish)"
   }
   return [int]$v
+}
+
+# Stock actual en Dragonfish de un artículo: devuelve @{ "COLOR|TALLE" = stock }
+function Get-StockArticulo($dfs, $articulo) {
+  $q = [uri]::EscapeDataString($articulo)
+  $url = "$($dfs.Url)/ConsultaStockYPrecios/?query=$q&exacto=true&stockcero=true&limit=500"
+  $res = Invoke-Json 'GET' $url $dfs.Headers $null
+  $mapa = @{}
+  foreach ($r in @($res.Resultados)) {
+    if ((("" + $r.Articulo).Trim()).ToUpper() -ne $articulo.Trim().ToUpper()) { continue }
+    $k = (("" + $r.Color).Trim() + '|' + ("" + $r.Talle).Trim()).ToUpper()
+    $mapa[$k] = [double]$r.Stock
+  }
+  return $mapa
+}
+
+# Saca del remito lo que no tiene stock (Dragonfish no deja vender en negativo).
+# Devuelve @{ Lineas = <las que van>; Faltantes = <lo que no hay> }
+function Ajustar-PorStock($dfs, $lineas, $ref) {
+  $stockPorArt = @{}
+  $van = @(); $faltan = @()
+  foreach ($l in $lineas) {
+    $art = "" + $l.articulo
+    if (-not $stockPorArt.ContainsKey($art)) {
+      try { $stockPorArt[$art] = Get-StockArticulo $dfs $art }
+      catch { Log "[$ref] no pude consultar stock de $($art): $(Get-ErrorBody $_)"; $stockPorArt[$art] = $null }
+    }
+    $mapa = $stockPorArt[$art]
+    $k = (("" + $l.color).Trim() + '|' + ("" + $l.talle).Trim()).ToUpper()
+    $pedida = [double]$l.cantidad
+    if ($null -eq $mapa -or -not $mapa.ContainsKey($k)) {
+      # Sin dato de stock: se manda igual y decide Dragonfish
+      $van += $l; continue
+    }
+    $hay = [Math]::Floor([Math]::Max(0, $mapa[$k]))
+    $enviar = [Math]::Min($pedida, $hay)
+    $mapa[$k] = $mapa[$k] - $enviar   # por si el mismo artículo aparece dos veces
+    if ($enviar -lt $pedida) {
+      $faltan += @{ sku = $l.sku; nombre = "$($l.nombre) $($l.color) $($l.talle)".Trim(); pedida = $pedida; enviada = $enviar }
+      Log "[$ref] sin stock suficiente: $($l.sku) pedida $pedida, hay $hay"
+    }
+    if ($enviar -gt 0) {
+      $copia = @{}; foreach ($p in $l.PSObject.Properties) { $copia[$p.Name] = $p.Value }
+      $copia.cantidad = $enviar
+      $van += [pscustomobject]$copia
+    }
+  }
+  return @{ Lineas = $van; Faltantes = $faltan }
+}
+
+if ($VerStock) {
+  $dfs = Get-DfSession
+  $m = Get-StockArticulo $dfs $VerStock
+  if ($m.Count -eq 0) { Write-Host "Dragonfish no devolvió stock para $VerStock" }
+  $m.GetEnumerator() | Sort-Object Name | ForEach-Object { "{0,-20} {1}" -f $_.Name, $_.Value }
+  exit 0
 }
 
 if ($VerCliente) {
@@ -111,8 +170,9 @@ function Guardar-Enviados { $Enviados | ConvertTo-Json | Set-Content -Path $Sent
 $AppHeaders = @{ Authorization = "Bearer $($Cfg.BridgeSecret)" }
 # Las URLs de prueba de Vercel están protegidas: este header deja pasar al puente
 if ($Cfg.VercelBypass) { $AppHeaders['x-vercel-protection-bypass'] = "" + $Cfg.VercelBypass }
-function Informar($id, $ok, $comprobante, $errorMsg, $definitivo) {
+function Informar($id, $ok, $comprobante, $errorMsg, $definitivo, $extra) {
   $body = @{ id = $id; ok = $ok; comprobante = $comprobante; error = $errorMsg; definitivo = [bool]$definitivo }
+  if ($extra) { foreach ($k in $extra.Keys) { $body[$k] = $extra[$k] } }
   Invoke-Json 'POST' "$($Cfg.AppUrl)/api/dragonfish/resultado" $AppHeaders $body | Out-Null
 }
 
@@ -130,7 +190,9 @@ try {
     try {
       # Ya generado en una corrida anterior: solo re-informamos
       if ($Enviados.ContainsKey($c.id)) {
-        Informar $c.id $true $Enviados[$c.id] $null $false
+        $fGuardados = $null
+        if ($Enviados.ContainsKey("$($c.id):faltantes")) { $fGuardados = @{ faltantes = @(("" + $Enviados["$($c.id):faltantes"]) | ConvertFrom-Json) } }
+        Informar $c.id $true $Enviados[$c.id] $null $false $fGuardados
         Log "[$($c.referencia)] ya estaba generado ($($Enviados[$c.id])), re-informado"
         continue
       }
@@ -185,7 +247,7 @@ try {
           Log "[$($c.referencia)] cliente $codCliente encontrado: $($cliDf.Nombre)"
         }
       }
-      catch { if (-not ((Get-ErrorBody $_) -match 'HTTP 40[04]')) { throw } }
+      catch { if (-not ((Get-ErrorBody $_) -match '(HTTP 40[04]|\b40[04]\b)')) { throw } }
       if (-not $existe) {
         if ($codFijo) { throw "El código de Dragonfish $codFijo cargado para $($rev.name) no existe" }
         if (-not $Cfg.CrearClientes) { throw "El cliente $codCliente no existe en Dragonfish" }
@@ -201,9 +263,12 @@ try {
           # Monotributo / RI / Exento: CUIT con guiones (30-71825417-1) y razón social como nombre
           $sfCodigo = Get-SituacionCuit $sit
           $base.SituacionFiscal = $sfCodigo
-          $base.CUIT = "{0}-{1}-{2}" -f $cuit.Substring(0, 2), $cuit.Substring(2, 8), $cuit.Substring(10, 1)
-          $razon = if ($rev.razonSocial) { "" + $rev.razonSocial } else { "" + $rev.name }
-          $base.Nombre = $razon.Trim()
+          # Así lo guarda Dragonfish (verificado con un cliente RI): CUIT sin guiones y razón social en Nombre y PrimerNombre
+          $base.CUIT = $cuit
+          $base.CUITDocumento = $cuit
+          $razon = (("" + $(if ($rev.razonSocial) { $rev.razonSocial } else { $rev.name })).Trim())
+          $base.Nombre = $razon
+          $base.PrimerNombre = $razon
         }
         else {
           # Consumidor Final con DNI -> el DNI va en Código y en Nro. de documento
@@ -227,40 +292,76 @@ try {
         }
       }
 
-      # Comprobante
-      $detalle = @()
-      foreach ($l in @($c.lineas)) {
-        $detalle += @{ Articulo = $l.articulo; Color = $l.color; Talle = $l.talle; Cantidad = [double]$l.cantidad; Precio = [double]$l.precio }
+      # Stock: lo que no hay se saca del remito y se le avisa a la revendedora (no se frena todo el envío)
+      $lineasEnviar = @($c.lineas)
+      $faltantes = @()
+      if ($Cfg.ValidarStock -ne $false) {
+        $aj = Ajustar-PorStock $dfs $lineasEnviar $c.referencia
+        $lineasEnviar = @($aj.Lineas); $faltantes = @($aj.Faltantes)
       }
-      $obs = "App Revendedoras $($c.referencia) | Pago: $($c.formaPago) | Entrega: $($c.tipoEnvio)"
-      if ($c.transporte) { $obs += " ($($c.transporte))" }
-      # Todo comprobante necesita un motivo cargado en Dragonfish (si no, no se graba)
-      $motivo = if ($Cfg.Motivo) { "" + $Cfg.Motivo } else { 'APP' }
-      $comp = @{
-        Cliente = $codCliente
-        Motivo = $motivo
-        ListaDePrecios = $Cfg.ListaDePrecios
-        NroOPEcommerce = $c.referencia
-        Obs = $obs.Substring(0, [Math]::Min(250, $obs.Length))
-        FacturaDetalle = $detalle
-      }
-      if ($Cfg.Vendedor) { $comp.Vendedor = $Cfg.Vendedor }
-
-      $endpoint = if ($Cfg.Comprobante -eq 'Pedido') { 'Pedido' } else { 'Remito' }
-      if ($Cfg.DryRun) {
-        Log "[$($c.referencia)] (prueba) generaría $endpoint con $($detalle.Count) líneas: $($comp | ConvertTo-Json -Depth 6 -Compress)"
+      if ($lineasEnviar.Count -eq 0) {
+        $msg = "Sin stock de ningún producto del envío"
+        Log "[$($c.referencia)] $msg"
+        if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true @{ sinStock = $true; faltantes = $faltantes } }
         continue
       }
 
-      $r = Invoke-Json 'POST' "$Df/$endpoint/" $DfHeaders $comp
+      $endpoint = if ($Cfg.Comprobante -eq 'Pedido') { 'Pedido' } else { 'Remito' }
+      $motivo = if ($Cfg.Motivo) { "" + $Cfg.Motivo } else { 'APP' }   # sin motivo Dragonfish no graba
+      $r = $null
+      for ($intento = 1; $intento -le 2 -and -not $r; $intento++) {
+        $detalle = @()
+        foreach ($l in $lineasEnviar) {
+          $detalle += @{ Articulo = $l.articulo; Color = $l.color; Talle = $l.talle; Cantidad = [double]$l.cantidad; Precio = [double]$l.precio }
+        }
+        $obs = "App Revendedoras $($c.referencia) | Pago: $($c.formaPago) | Entrega: $($c.tipoEnvio)"
+        if ($c.transporte) { $obs += " ($($c.transporte))" }
+        if ($faltantes.Count) { $obs += " | Sin stock: $($faltantes.Count)" }
+        $comp = @{
+          Cliente = $codCliente
+          Motivo = $motivo
+          ListaDePrecios = $Cfg.ListaDePrecios
+          NroOPEcommerce = $c.referencia
+          Obs = $obs.Substring(0, [Math]::Min(250, $obs.Length))
+          FacturaDetalle = $detalle
+        }
+        if ($Cfg.Vendedor) { $comp.Vendedor = $Cfg.Vendedor }
+
+        if ($Cfg.DryRun) {
+          Log "[$($c.referencia)] (prueba) generaría $endpoint con $($detalle.Count) líneas, $($faltantes.Count) sin stock: $($comp | ConvertTo-Json -Depth 6 -Compress)"
+          break
+        }
+        try { $r = Invoke-Json 'POST' "$Df/$endpoint/" $DfHeaders $comp }
+        catch {
+          $err = Get-ErrorBody $_
+          # Se vendió en el salón justo en el medio: se vuelve a mirar el stock y se reintenta una vez
+          if ($intento -eq 1 -and $err -match '(?i)stock') {
+            Log "[$($c.referencia)] Dragonfish rechazó por stock, reviso de nuevo: $err"
+            $aj = Ajustar-PorStock $dfs @($c.lineas) $c.referencia
+            $lineasEnviar = @($aj.Lineas); $faltantes = @($aj.Faltantes)
+            if ($lineasEnviar.Count -eq 0) { break }
+            continue
+          }
+          throw
+        }
+      }
+      if ($Cfg.DryRun) { continue }
+      if (-not $r) {
+        $msg = "Sin stock de ningún producto del envío"
+        Log "[$($c.referencia)] $msg"
+        Informar $c.id $false $null $msg $true @{ sinStock = $true; faltantes = $faltantes }
+        continue
+      }
+
       # "R 0001-00030704" (la letra solo si es distinta de la inicial del comprobante)
       $ini = $endpoint.Substring(0,1)
       $letra = if ($r.Letra -and ("" + $r.Letra).Trim() -ne $ini) { "$($r.Letra) " } else { '' }
       $numero = "{0} {1}{2:0000}-{3:00000000}" -f $ini, $letra, [int]$r.PuntoDeVenta, [int]$r.Numero
       $Enviados[$c.id] = $numero
+      if ($faltantes.Count) { $Enviados["$($c.id):faltantes"] = ($faltantes | ConvertTo-Json -Compress -Depth 4) }
       Guardar-Enviados
-      Informar $c.id $true $numero $null $false
-      Log "[$($c.referencia)] OK $endpoint $numero ($($detalle.Count) líneas)"
+      Informar $c.id $true $numero $null $false @{ faltantes = $faltantes }
+      Log "[$($c.referencia)] OK $endpoint $numero ($($detalle.Count) líneas, $($faltantes.Count) sin stock)"
     }
     catch {
       $msg = Get-ErrorBody $_

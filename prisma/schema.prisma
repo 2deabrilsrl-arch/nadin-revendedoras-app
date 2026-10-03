@@ -158,6 +158,7 @@ model Consolidacion {
   dfError              String?
   dfIntentos           Int                          @default(0)
   dfActualizadoAt      DateTime?
+  dfFaltantes          Json?                        // lo que no había en stock al generar el remito
   
   // 🔥 NUEVO: Relación inversa con pedidos
   pedidos              Pedido[]

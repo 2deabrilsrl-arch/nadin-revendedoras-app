@@ -13,10 +13,11 @@
   "Motivo": "APP",
   "Vendedor": "",
   "CrearClientes": true,
+  "ValidarStock": true,
   "ClientePlantilla": "",
   "SituacionFiscalCF": 3,
   "TipoDocumentoDNI": "05",
-  "SituacionFiscalRI": "",
+  "SituacionFiscalRI": 1,
   "SituacionFiscalMONO": "",
   "SituacionFiscalEXENTO": "",
 

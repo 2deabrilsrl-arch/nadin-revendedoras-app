@@ -98,9 +98,10 @@ export async function getAllProducts(
     sortBy?: string;
     onlyPublished?: boolean;
     maxPages?: number;
+    updatedSince?: string; // ISO: solo productos modificados desde esa fecha
   } = {}
 ): Promise<Product[]> {
-  const { sortBy, onlyPublished = true, maxPages = 100 } = options;
+  const { sortBy, onlyPublished = true, maxPages = 100, updatedSince } = options;
   
   let allProducts: Product[] = [];
   let page = 1;
@@ -132,6 +133,10 @@ export async function getAllProducts(
 
     if (sortBy) {
       params.sort_by = sortBy;
+    }
+
+    if (updatedSince) {
+      params.updated_at_min = updatedSince;
     }
 
     // Intentar obtener productos de esta página con retry

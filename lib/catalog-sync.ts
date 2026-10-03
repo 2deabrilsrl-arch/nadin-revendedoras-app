@@ -340,6 +340,42 @@ async function syncBestSellers() {
 }
 
 /**
+ * Sync rápido: solo los productos que cambiaron en Tiendanube en los últimos minutos
+ * (stock, precio, fotos, publicado/oculto). Corre cada 2 minutos; el sync completo sigue cada 15.
+ */
+export async function syncCatalogIncremental(minutos = 10) {
+  const desde = new Date(Date.now() - minutos * 60 * 1000).toISOString();
+  const products = await getAllProducts({ onlyPublished: false, maxPages: 10, updatedSince: desde });
+  if (!products.length) return { success: true, actualizados: 0, borrados: 0 };
+
+  const publicados = products.filter((p: any) => p.published);
+  const ocultos = products.filter((p: any) => !p.published).map((p: any) => String(p.id));
+
+  const formatted = publicados.length ? await formatProductsWithFullCategories(publicados) : [];
+  for (const { _slug, _descripcion, ...product } of formatted as any[]) {
+    const datos = {
+      data: JSON.stringify(product),
+      slug: _slug,
+      descripcion: _descripcion,
+      brand: product.brand,
+      category: product.category,
+      sex: inferSex(product.category),
+      updatedAt: new Date(),
+    };
+    // No se tocan salesCount ni bestSellerRank (los recalcula el sync completo)
+    await prisma.catalogoCache.upsert({
+      where: { productId: String(product.id) },
+      update: datos,
+      create: { productId: String(product.id), salesCount: 0, ...datos },
+    });
+  }
+  const borrados = ocultos.length
+    ? (await prisma.catalogoCache.deleteMany({ where: { productId: { in: ocultos } } })).count
+    : 0;
+  return { success: true, actualizados: formatted.length, borrados };
+}
+
+/**
  * Sincroniza el catálogo completo + best sellers
  */
 export async function syncCatalogWithFullCategories() {
@@ -360,10 +396,7 @@ export async function syncCatalogWithFullCategories() {
     const formatted = await formatProductsWithFullCategories(products);
     console.log(`✅ ${formatted.length} productos formateados`);
 
-    // 3. Limpiar cache
-    console.log('\n🗑️ Limpiando cache...');
-    await prisma.catalogoCache.deleteMany({});
-    console.log('✅ Cache limpio');
+    // 3. El borrado va en la misma transacción que la carga (paso 5): el catálogo nunca queda vacío
 
     // 4. Preparar datos
     const dataToInsert = formatted.map(({ _slug, _descripcion, ...product }: any) => ({
@@ -379,24 +412,15 @@ export async function syncCatalogWithFullCategories() {
       updatedAt: new Date()
     }));
 
-    // 5. Guardar en lotes
+    // 5. Borrar y cargar en una sola transacción
     console.log(`\n💾 Guardando ${dataToInsert.length} productos...`);
     const batchSize = 100;
-    let insertedCount = 0;
-
+    const ops: any[] = [prisma.catalogoCache.deleteMany({})];
     for (let i = 0; i < dataToInsert.length; i += batchSize) {
-      const batch = dataToInsert.slice(i, i + batchSize);
-      
-      await prisma.catalogoCache.createMany({
-        data: batch,
-        skipDuplicates: true
-      });
-      
-      insertedCount += batch.length;
-      const batchNum = Math.floor(i / batchSize) + 1;
-      const totalBatches = Math.ceil(dataToInsert.length / batchSize);
-      console.log(`  ✅ Lote ${batchNum}/${totalBatches}: ${insertedCount}/${dataToInsert.length}`);
+      ops.push(prisma.catalogoCache.createMany({ data: dataToInsert.slice(i, i + batchSize), skipDuplicates: true }));
     }
+    await prisma.$transaction(ops);
+    const insertedCount = dataToInsert.length;
 
     // 6. 🆕 Sincronizar best sellers
     console.log('\n🔥 Sincronizando rankings de best sellers...');

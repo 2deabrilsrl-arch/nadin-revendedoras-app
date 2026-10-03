@@ -256,7 +256,15 @@ export default function PendientesArmadoPage() {
                               ? <span className="font-semibold text-green-700">Remito {(consolidacion as any).dfComprobante || 'generado'}</span>
                               : (consolidacion as any).dfEstado === 'error'
                                 ? <span className="font-semibold text-red-700" title={(consolidacion as any).dfError || ''}>Error al generar remito (revisar)</span>
-                                : <span className="text-amber-700">Remito en cola…</span>}
+                                : (consolidacion as any).dfEstado === 'sin_stock'
+                                  ? <span className="font-semibold text-red-700">Sin stock: no se generó remito (revendedora avisada)</span>
+                                  : <span className="text-amber-700">Remito en cola…</span>}
+                          </p>
+                        )}
+                        {Array.isArray((consolidacion as any).dfFaltantes) && (consolidacion as any).dfFaltantes.length > 0 && (
+                          <p className="text-red-700">
+                            <strong>Sin stock (sacado del remito):</strong>{' '}
+                            {(consolidacion as any).dfFaltantes.map((f: any) => `${f.pedida - f.enviada} × ${f.nombre || f.sku}`).join(', ')}
                           </p>
                         )}
                       </div>
