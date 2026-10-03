@@ -69,7 +69,7 @@ try {
   Log "Pendientes: $($lista.Count)"
 
   $Df = "$($Cfg.DfUrl.TrimEnd('/'))/api.Dragonfish"
-  Invoke-Json 'POST' "$Df/Autenticar/" @{} @{ IdCliente = $Cfg.DfIdCliente; JWToken = $Cfg.DfToken } | Out-Null
+  Invoke-Json 'POST' "$Df/Autenticar" @{} @{ IdCliente = $Cfg.DfIdCliente; JWToken = $Cfg.DfToken } | Out-Null
   $DfHeaders = @{ IdCliente = $Cfg.DfIdCliente; Authorization = $Cfg.DfToken; BaseDeDatos = $Cfg.DfBaseDeDatos }
 
   foreach ($c in $lista) {
