@@ -4,7 +4,7 @@
 
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
-import { getCatalogoTienda, getTiendaBaseUrl, formatPrecio, type TiendaConUser } from '@/lib/tienda';
+import { getCatalogoTienda, getTiendaBaseUrl, formatPrecio, PREFIJO_VARIANTE_PROPIA, type TiendaConUser } from '@/lib/tienda';
 import { enviarNotificacionGeneral } from '@/lib/notifications';
 import { crearConsolidacion, FORMAS_PAGO_NADIN, TIPOS_ENVIO_NADIN } from '@/lib/consolidacion';
 
@@ -26,6 +26,7 @@ export interface LineaCalculada {
   qty: number;
   precio: number;
   mayorista: number;
+  propio: boolean;
 }
 
 export interface Cotizacion {
@@ -84,6 +85,7 @@ export async function cotizar(
       qty,
       precio: v.precio,
       mayorista: v.mayorista,
+      propio: !!p.propio,
     });
   }
 
@@ -231,10 +233,18 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
   });
   if (upd.count === 0) return; // ya estaba pagada (webhook repetido)
 
+  // Productos propios: se descuenta el stock que maneja la revendedora
+  const propios = await prisma.ordenTiendaItem.findMany({ where: { ordenId, propio: true } });
+  for (const it of propios) {
+    const id = it.variantId.startsWith(PREFIJO_VARIANTE_PROPIA) ? it.variantId.slice(PREFIJO_VARIANTE_PROPIA.length) : it.variantId;
+    await prisma.tiendaVariantePropia.updateMany({ where: { id }, data: { stock: { decrement: it.qty } } }).catch(() => {});
+  }
+
   const orden = await prisma.ordenTienda.findUnique({ where: { id: ordenId }, include: { tienda: true } });
   if (!orden) return;
+  const hayNadin = await prisma.ordenTiendaItem.count({ where: { ordenId, propio: false } });
 
-  if (orden.tienda.envioAutoNadin) {
+  if (orden.tienda.envioAutoNadin && hayNadin > 0) {
     try {
       const t = orden.tienda;
       const conDatos = !!(t.nadinFormaPago && t.nadinTipoEnvio);
@@ -251,7 +261,9 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
     userId: orden.tienda.userId,
     tipo: 'tienda_orden_pagada',
     titulo: `💰 Pedido web #${orden.numero} pagado`,
-    mensaje: `${orden.clienteNombre} pagó ${formatPrecio(orden.total)}. ¿Lo enviamos a Nadin para asegurar el stock?`,
+    mensaje: hayNadin > 0
+      ? `${orden.clienteNombre} pagó ${formatPrecio(orden.total)}. ¿Lo enviamos a Nadin para asegurar el stock?`
+      : `${orden.clienteNombre} pagó ${formatPrecio(orden.total)}. Son productos tuyos: preparalos y coordiná la entrega.`,
     metadata: JSON.stringify({ ordenId: orden.id }),
   }).catch(() => {});
 }
@@ -302,6 +314,9 @@ async function enviarANadinPedido(ordenId: string, userId: string) {
     if (!orden || orden.tienda.userId !== userId) throw new Error('Orden no encontrada');
     if (orden.pedidoId) return { pedidoId: orden.pedidoId, yaEnviada: true };
     if (orden.estado !== 'pagada') throw new Error('Solo se pueden enviar a Nadin pedidos pagados');
+    // Solo viajan a Nadin sus productos; los propios los entrega la revendedora
+    const itemsNadin = orden.items.filter((i) => !i.propio);
+    if (!itemsNadin.length) throw new Error('Este pedido tiene solo productos tuyos: no hay nada para enviar a Nadin.');
 
     const dir = (orden.direccion || {}) as Record<string, string>;
     const nota = [
@@ -321,7 +336,7 @@ async function enviarANadinPedido(ordenId: string, userId: string) {
         paidByClient: true,
         paidByClientAt: orden.pagadaAt || new Date(),
         lineas: {
-          create: orden.items.map((i) => ({
+          create: itemsNadin.map((i) => ({
             productId: i.productId,
             variantId: i.variantId,
             sku: i.sku || '',

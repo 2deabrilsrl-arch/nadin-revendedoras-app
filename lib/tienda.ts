@@ -35,7 +35,13 @@ export interface ProductoTienda {
   destacado: boolean;
   rank: number;
   variantes: VarianteTienda[];
+  propio?: boolean; // cargado por la revendedora (no es de Nadin)
 }
+
+/** Los productos propios usan ids con prefijo para no chocar con los de Tiendanube */
+export const PREFIJO_PROPIO = 'pp';
+export const PREFIJO_VARIANTE_PROPIA = 'pv';
+export const esIdPropio = (id: string) => String(id || '').startsWith(PREFIJO_PROPIO);
 
 interface ProductoBase {
   id: string;
@@ -196,9 +202,10 @@ async function getCatalogoBase(): Promise<ProductoBase[]> {
 
 /** Catálogo con precios, ocultos y destacados de esta tienda. */
 export async function getCatalogoTienda(tienda: TiendaConUser): Promise<ProductoTienda[]> {
-  const [base, overrides] = await Promise.all([
+  const [base, overrides, propios] = await Promise.all([
     getCatalogoBase(),
     prisma.tiendaProducto.findMany({ where: { tiendaId: tienda.id } }),
+    prisma.tiendaProductoPropio.findMany({ where: { tiendaId: tienda.id, activo: true }, include: { variantes: true } }),
   ]);
   const ov = new Map(overrides.map((o) => [o.productId, o]));
   const margen = margenEfectivo(tienda, tienda.user.margen);
@@ -233,6 +240,43 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
       variantes,
     });
   }
+  // Productos propios de la revendedora (mochilas, accesorios, lo que sea)
+  for (const pp of propios) {
+    const variantes: VarianteTienda[] = pp.variantes
+      .filter((v) => v.precio > 0)
+      .map((v) => ({
+        id: `${PREFIJO_VARIANTE_PROPIA}${v.id}`,
+        sku: v.sku || '',
+        talle: v.talle || '',
+        color: v.color || '',
+        stock: Math.max(0, v.stock),
+        mayorista: 0,
+        precio: v.precio,
+      }));
+    if (!variantes.length) continue;
+    const imgs = (Array.isArray(pp.imagenes) ? (pp.imagenes as any[]) : []).map(String).filter(Boolean);
+    const conStock = variantes.filter((v) => v.stock > 0);
+    const totalStock = conStock.reduce((a, v) => a + v.stock, 0);
+    const categoria = (pp.categoria || 'Otros').trim() || 'Otros';
+    out.push({
+      id: `${PREFIJO_PROPIO}${pp.id}`,
+      slug: slugify(pp.nombre),
+      nombre: pp.nombre,
+      brand: tienda.nombre,
+      category: categoria,
+      categorySlugs: categoria.split('>').map((c) => slugify(c.trim())),
+      image: imgs[0] || '',
+      images: imgs,
+      precioDesde: Math.min(...(conStock.length ? conStock : variantes).map((v) => v.precio)),
+      disponible: conStock.length > 0,
+      ultimasUnidades: conStock.length > 0 && totalStock <= 3,
+      destacado: pp.destacado,
+      rank: 99999,
+      variantes,
+      propio: true,
+    });
+  }
+
   // Destacados primero, después más vendidos, sin stock al final
   out.sort((a, b) => {
     if (a.disponible !== b.disponible) return a.disponible ? -1 : 1;
@@ -246,6 +290,11 @@ export async function getProductoTienda(tienda: TiendaConUser, productId: string
   const catalogo = await getCatalogoTienda(tienda);
   const p = catalogo.find((x) => x.id === productId);
   if (!p) return null;
+  if (p.propio) {
+    const pp = await prisma.tiendaProductoPropio.findUnique({ where: { id: productId.slice(PREFIJO_PROPIO.length) }, select: { descripcion: true } });
+    const texto = (pp?.descripcion || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } as any)[c]);
+    return { ...p, descripcionHtml: texto ? `<p>${texto.replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>')}</p>` : '' };
+  }
   const [row, ov] = await Promise.all([
     prisma.catalogoCache.findUnique({ where: { productId }, select: { descripcion: true } }),
     prisma.tiendaProducto.findUnique({ where: { tiendaId_productId: { tiendaId: tienda.id, productId } } }),

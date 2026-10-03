@@ -218,8 +218,15 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
               </div>
             </button>
 
-            {o.estado === 'pagada' && (
+            {o.estado === 'pagada' && o.items.some((i: any) => !i.propio) && (
               <EnviarNadin tienda={tienda} busy={!!busy} onEnviar={(extra: any) => accion(o.id, 'enviar_nadin', undefined, extra)} />
+            )}
+            {o.estado === 'pagada' && o.items.some((i: any) => i.propio) && (
+              <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
+                {o.items.every((i: any) => i.propio)
+                  ? 'Este pedido tiene solo productos tuyos: lo preparás y entregás vos.'
+                  : 'Los productos tuyos (marcados “Tuyo”) no van a Nadin: los preparás vos.'}
+              </p>
             )}
 
             {abierta === o.id && (
@@ -227,7 +234,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                 <ul className="space-y-1">
                   {o.items.map((i: any) => (
                     <li key={i.id} className="flex justify-between gap-2">
-                      <span>{i.qty} × {i.nombre} {i.talle && `· ${i.talle}`} {i.color && `· ${i.color}`}</span>
+                      <span>{i.qty} × {i.nombre} {i.talle && `· ${i.talle}`} {i.color && `· ${i.color}`}{i.propio && <span className="ml-1 rounded bg-blue-100 px-1.5 text-[10px] font-semibold text-blue-800">Tuyo</span>}</span>
                       <span>{fmt(i.precio * i.qty)}</span>
                     </li>
                   ))}
@@ -665,6 +672,21 @@ function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => v
 // ---------------------------------------------------------------------
 
 function ProductosTienda({ onToast }: { onToast: (s: string) => void }) {
+  const [vista, setVista] = useState<'nadin' | 'propios'>('nadin');
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex rounded-full bg-white p-1 ring-1 ring-black/5">
+        {([['nadin', 'Productos de Nadin'], ['propios', 'Mis productos']] as const).map(([id, label]) => (
+          <button key={id} type="button" onClick={() => setVista(id)}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium ${vista === id ? 'bg-gray-900 text-white' : 'text-gray-600'}`}>{label}</button>
+        ))}
+      </div>
+      {vista === 'nadin' ? <ProductosNadin onToast={onToast} /> : <MisProductos onToast={onToast} />}
+    </div>
+  );
+}
+
+function ProductosNadin({ onToast }: { onToast: (s: string) => void }) {
   const [q, setQ] = useState('');
   const [lista, setLista] = useState<any[] | null>(null);
   const [ocultos, setOcultos] = useState(0);
@@ -1149,6 +1171,163 @@ function SelectorProductos({ ids, onChange }: { ids: string[]; onChange: (ids: s
           })}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Mis productos: lo que la revendedora vende por su cuenta (no es de Nadin)
+// ---------------------------------------------------------------------
+
+const PRODUCTO_VACIO = { nombre: '', categoria: '', descripcion: '', imagenes: [] as string[], activo: true, destacado: false, variantes: [{ talle: '', color: '', precio: '', stock: '', sku: '' }] as any[] };
+
+function MisProductos({ onToast }: { onToast: (s: string) => void }) {
+  const [lista, setLista] = useState<any[] | null>(null);
+  const [editando, setEditando] = useState<any | null>(null);
+
+  const cargar = useCallback(() => {
+    api('/propios').then((d) => setLista(d.productos)).catch((e) => onToast(e.message));
+  }, [onToast]);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  if (editando) {
+    return <EditorProductoPropio inicial={editando} onToast={onToast} onCerrar={(cambio) => { setEditando(null); if (cambio) cargar(); }} />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl bg-blue-50 p-4 text-sm text-blue-900">
+        <p className="font-semibold">Vendé también tus propios productos</p>
+        <p className="mt-1">Cargá lo que vendés por tu cuenta (accesorios, carteras, lo que quieras). Aparecen en tu tienda junto a los de Nadin y se cobran igual. Esos pedidos los preparás y entregás vos: no se mandan a Nadin.</p>
+        <p className="mt-2 text-xs text-blue-800">Gratis por tiempo limitado. Más adelante podría aplicarse una comisión chica (alrededor del 0,5%) sobre las ventas de productos propios; te avisaríamos antes. No se permiten productos ilegales, falsificados, medicamentos, armas ni contenido para adultos.</p>
+      </div>
+      <button type="button" className={btn} onClick={() => setEditando({ ...PRODUCTO_VACIO })}>+ Nuevo producto</button>
+      {!lista ? <p className="text-gray-500">Cargando…</p> : lista.length === 0 ? (
+        <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 ring-1 ring-black/5">Todavía no cargaste productos propios.</p>
+      ) : (
+        <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          {lista.map((p) => {
+            const precios = p.variantes.map((v: any) => v.precio);
+            const stock = p.variantes.reduce((a: number, v: any) => a + v.stock, 0);
+            return (
+              <li key={p.id} className="flex items-center gap-3 p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {p.imagenes?.[0] ? <img src={p.imagenes[0]} alt="" className="h-14 w-11 rounded object-cover" /> : <div className="h-14 w-11 rounded bg-gray-100" />}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{p.nombre}{!p.activo && <span className="ml-2 text-xs text-gray-400">(oculto)</span>}</p>
+                  <p className="text-xs text-gray-500">{precios.length ? fmt(Math.min(...precios)) : '-'} · {stock} en stock · {p.categoria}</p>
+                </div>
+                <button type="button" className={btnSec} onClick={() => setEditando({
+                  ...p,
+                  variantes: p.variantes.map((v: any) => ({ ...v, precio: String(v.precio), stock: String(v.stock), sku: v.sku || '' })),
+                })}>Editar</button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function EditorProductoPropio({ inicial, onToast, onCerrar }: { inicial: any; onToast: (s: string) => void; onCerrar: (cambio: boolean) => void }) {
+  const [f, setF] = useState<any>(inicial);
+  const [subiendo, setSubiendo] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const setVar = (k: number, campo: string, v: string) => setF((x: any) => ({ ...x, variantes: x.variantes.map((y: any, j: number) => (j === k ? { ...y, [campo]: v } : y)) }));
+
+  async function subirFotos(files: any) {
+    const arr = Array.from(files || []).slice(0, 8 - f.imagenes.length);
+    if (!arr.length) return;
+    setSubiendo(true);
+    for (const file of arr) {
+      const fd = new FormData();
+      fd.append('file', await reducirImagen(file, 1600));
+      fd.append('kind', 'producto');
+      const r = await fetch('/api/mi-tienda/upload', { method: 'POST', body: fd, credentials: 'include' });
+      const d: any = await r.json().catch(() => ({}));
+      if (!r.ok) { onToast(d.error || 'No se pudo subir una foto'); continue; }
+      setF((x: any) => ({ ...x, imagenes: [...x.imagenes, d.url] }));
+    }
+    setSubiendo(false);
+  }
+
+  async function guardar() {
+    setSaving(true);
+    try {
+      const body = { ...f, variantes: f.variantes.map((v: any) => ({ ...v, precio: Number(v.precio), stock: Number(v.stock) })) };
+      await api('/propios', f.id ? 'PUT' : 'POST', body);
+      onToast('Producto guardado');
+      onCerrar(true);
+    } catch (e: any) { onToast(e.message); }
+    setSaving(false);
+  }
+
+  async function borrar() {
+    if (!f.id || !(globalThis as any).confirm?.('¿Borrar este producto de tu tienda?')) return;
+    try { await api(`/propios?id=${f.id}`, 'DELETE'); onToast('Producto borrado'); onCerrar(true); } catch (e: any) { onToast(e.message); }
+  }
+
+  return (
+    <div className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">{f.id ? 'Editar producto' : 'Nuevo producto'}</h3>
+        <button type="button" className="text-sm text-gray-500" onClick={() => onCerrar(false)}>Cancelar</button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">Nombre *<input className={`${input} mt-1`} value={f.nombre} onChange={(e) => setF({ ...f, nombre: val(e) })} placeholder="Mochila urbana" /></label>
+        <label className="text-sm">Categoría<input className={`${input} mt-1`} value={f.categoria} onChange={(e) => setF({ ...f, categoria: val(e) })} placeholder="Accesorios > Mochilas" /></label>
+      </div>
+      <label className="block text-sm">Descripción<textarea className={`${input} mt-1`} rows={4} value={f.descripcion || ''} onChange={(e) => setF({ ...f, descripcion: val(e) })} /></label>
+
+      <div>
+        <p className="mb-2 text-sm">Fotos (hasta 8)</p>
+        <div className="flex flex-wrap gap-2">
+          {f.imagenes.map((u: string, k: number) => (
+            <div key={u} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="" className="h-24 w-20 rounded object-cover" />
+              <button type="button" className="absolute right-1 top-1 rounded-full bg-white/90 px-1.5 text-xs" onClick={() => setF((x: any) => ({ ...x, imagenes: x.imagenes.filter((_: any, j: number) => j !== k) }))}>✕</button>
+              {k > 0 && <button type="button" className="absolute bottom-1 left-1 rounded bg-white/90 px-1 text-[10px]" onClick={() => setF((x: any) => { const n = [...x.imagenes]; [n[0], n[k]] = [n[k], n[0]]; return { ...x, imagenes: n }; })}>Principal</button>}
+            </div>
+          ))}
+          {f.imagenes.length < 8 && (
+            <label className="flex h-24 w-20 cursor-pointer items-center justify-center rounded border-2 border-dashed border-gray-300 text-center text-xs text-gray-500">
+              {subiendo ? 'Subiendo…' : '+ Fotos'}
+              <input type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => subirFotos((e.target as any).files)} />
+            </label>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-sm">Variantes y precios</p>
+        <p className="mb-2 text-xs text-gray-500">Si no tiene talles ni colores, dejá esos campos vacíos y cargá una sola fila.</p>
+        <div className="space-y-2">
+          {f.variantes.map((v: any, k: number) => (
+            <div key={v.id || k} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_110px_90px_1fr_auto]">
+              <input className={input} placeholder="Talle / tamaño" value={v.talle} onChange={(e) => setVar(k, 'talle', val(e))} />
+              <input className={input} placeholder="Color / modelo" value={v.color} onChange={(e) => setVar(k, 'color', val(e))} />
+              <input className={input} placeholder="Precio $" inputMode="numeric" value={v.precio} onChange={(e) => setVar(k, 'precio', val(e).replace(/[^0-9]/g, ''))} />
+              <input className={input} placeholder="Stock" inputMode="numeric" value={v.stock} onChange={(e) => setVar(k, 'stock', val(e).replace(/[^0-9]/g, ''))} />
+              <input className={input} placeholder="Código (opcional)" value={v.sku || ''} onChange={(e) => setVar(k, 'sku', val(e))} />
+              <button type="button" className="text-xs text-red-600" disabled={f.variantes.length === 1} onClick={() => setF((x: any) => ({ ...x, variantes: x.variantes.filter((_: any, j: number) => j !== k) }))}>Quitar</button>
+            </div>
+          ))}
+        </div>
+        <button type="button" className={`${btnSec} mt-2`} onClick={() => setF((x: any) => ({ ...x, variantes: [...x.variantes, { talle: '', color: '', precio: x.variantes[x.variantes.length - 1]?.precio || '', stock: '', sku: '' }] }))}>+ Variante</button>
+      </div>
+
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label className="flex items-center gap-2"><input type="checkbox" checked={f.activo} onChange={(e) => setF({ ...f, activo: chk(e) })} /> Visible en la tienda</label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={f.destacado} onChange={(e) => setF({ ...f, destacado: chk(e) })} /> Destacado</label>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button type="button" className={btn} disabled={saving || subiendo} onClick={guardar}>{saving ? 'Guardando…' : 'Guardar'}</button>
+        {f.id && <button type="button" className="text-sm text-red-600" onClick={borrar}>Borrar producto</button>}
+      </div>
     </div>
   );
 }

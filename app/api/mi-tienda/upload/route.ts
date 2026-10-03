@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get('file') as any;
   const k = String(form?.get('kind') || 'logo');
-  const kind = ['logo', 'banner', 'slide'].includes(k) ? k : 'logo';
+  const kind = ['logo', 'banner', 'slide', 'producto'].includes(k) ? k : 'logo';
   if (!file || typeof file.arrayBuffer !== 'function') return bad('No llegó la imagen.');
   const ext = TIPOS[file.type];
   if (!ext) return bad('La imagen tiene que ser PNG, JPG o WEBP.');

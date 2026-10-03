@@ -437,6 +437,7 @@ model Tienda {
   cupones           TiendaCupon[]
   productos         TiendaProducto[]
   ordenes           OrdenTienda[]
+  productosPropios TiendaProductoPropio[]
 }
 
 model TiendaMetodoPago {
@@ -563,8 +564,42 @@ model OrdenTiendaItem {
   qty        Int
   precio     Float   // precio unitario cobrado a la clienta
   mayorista  Float   // costo unitario Nadin
+  propio     Boolean @default(false) // producto cargado por la revendedora (no lo arma Nadin)
 
   orden      OrdenTienda @relation(fields: [ordenId], references: [id], onDelete: Cascade)
 
   @@index([ordenId])
+}
+
+// Productos que la revendedora vende por su cuenta (no son de Nadin)
+model TiendaProductoPropio {
+  id          String   @id @default(cuid())
+  tiendaId    String
+  nombre      String
+  descripcion String?
+  categoria   String   @default("Otros")   // "Accesorios > Mochilas"
+  imagenes    Json     @default("[]")      // string[]
+  activo      Boolean  @default(true)
+  destacado   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tienda      Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+  variantes   TiendaVariantePropia[]
+
+  @@index([tiendaId])
+}
+
+model TiendaVariantePropia {
+  id          String  @id @default(cuid())
+  productoId  String
+  talle       String  @default("")  // opción 1 (talle, tamaño, modelo…)
+  color       String  @default("")  // opción 2
+  precio      Float
+  stock       Int     @default(0)
+  sku         String?
+
+  producto    TiendaProductoPropio @relation(fields: [productoId], references: [id], onDelete: Cascade)
+
+  @@index([productoId])
 }
