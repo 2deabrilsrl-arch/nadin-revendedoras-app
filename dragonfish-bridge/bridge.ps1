@@ -55,6 +55,8 @@ if (Test-Path $SentFile) {
 function Guardar-Enviados { $Enviados | ConvertTo-Json | Set-Content -Path $SentFile -Encoding UTF8 }
 
 $AppHeaders = @{ Authorization = "Bearer $($Cfg.BridgeSecret)" }
+# Las URLs de prueba de Vercel están protegidas: este header deja pasar al puente
+if ($Cfg.VercelBypass) { $AppHeaders['x-vercel-protection-bypass'] = "" + $Cfg.VercelBypass }
 function Informar($id, $ok, $comprobante, $errorMsg, $definitivo) {
   $body = @{ id = $id; ok = $ok; comprobante = $comprobante; error = $errorMsg; definitivo = [bool]$definitivo }
   Invoke-Json 'POST' "$($Cfg.AppUrl)/api/dragonfish/resultado" $AppHeaders $body | Out-Null

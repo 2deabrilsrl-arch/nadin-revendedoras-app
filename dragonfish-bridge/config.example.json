@@ -1,6 +1,7 @@
 {
   "AppUrl": "https://nadin-revendedoras-app.vercel.app",
   "BridgeSecret": "PEGAR_ACA_EL_MISMO_VALOR_QUE_DRAGONFISH_BRIDGE_SECRET_EN_VERCEL",
+  "VercelBypass": "",
 
   "DfUrl": "http://localhost:8008",
   "DfIdCliente": "TNMAYO",
