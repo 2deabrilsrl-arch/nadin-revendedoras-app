@@ -3,6 +3,8 @@
 // Panel "Mi Tienda Web" de la revendedora
 import { useCallback, useEffect, useState } from 'react';
 import { PLANTILLAS, ICONOS, DISENO_DEFAULT, SECCIONES_INFO, seccionNueva } from '@/lib/tienda-diseno';
+import { reducirImagen } from '@/components/tienda/reducirImagen';
+import { tnImgClient } from '@/components/tienda/img';
 
 type Tab = 'pedidos' | 'portada' | 'productos' | 'diseno' | 'pagos' | 'envios' | 'cupones';
 
@@ -378,7 +380,7 @@ function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => v
     if (!file) return;
     setSubiendo(key);
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', await reducirImagen(file, 1920));
     fd.append('kind', 'slide');
     const r = await fetch('/api/mi-tienda/upload', { method: 'POST', body: fd, credentials: 'include' });
     const res: any = await r.json().catch(() => ({}));
@@ -410,7 +412,7 @@ function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => v
     switch (s.tipo) {
       case 'carrusel': return `${s.slides.length} imagen${s.slides.length === 1 ? '' : 'es'}`;
       case 'beneficios': return s.items.map((b: any) => b.titulo).join(' · ');
-      case 'productos': return `${s.titulo || 'Sin título'} · ${({ destacados: 'destacados', mas_vendidos: 'más vendidos', categoria: 'de una categoría', todos: 'todos' } as any)[s.fuente]} · ${s.formato}`;
+      case 'productos': return `${s.titulo || 'Sin título'} · ${({ destacados: 'destacados', mas_vendidos: 'más vendidos', categoria: 'de una categoría', todos: 'todos', elegidos: `${(s.productos || []).length} elegidos` } as any)[s.fuente]} · ${s.formato}`;
       case 'banners': return `${s.items.length} banner${s.items.length === 1 ? '' : 's'}`;
       default: return s.titulo || '';
     }
@@ -480,7 +482,13 @@ function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => v
               <option value="mas_vendidos">Más vendidos</option>
               <option value="categoria">De una categoría</option>
               <option value="todos">Todos (con páginas)</option>
+              <option value="elegidos">Elegidos por mí (a mano)</option>
             </select>
+            {s.fuente === 'elegidos' && (
+              <div className="sm:col-span-2">
+                <SelectorProductos ids={s.productos || []} onChange={(ids) => upd(s.id, { productos: ids })} />
+              </div>
+            )}
             {s.fuente === 'categoria' && (
               <select className={`${input} sm:col-span-2`} value={s.categoria} onChange={(e) => upd(s.id, { categoria: val(e) })}>
                 <option value="">Elegí la categoría…</option>
@@ -493,9 +501,11 @@ function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => v
                   <option value="grilla">Grilla</option>
                   <option value="slider">Carrusel deslizable</option>
                 </select>
-                <select className={input} value={s.cantidad} onChange={(e) => upd(s.id, { cantidad: Number(val(e)) })}>
-                  {[4, 8, 12, 16].map((n) => <option key={n} value={n}>{n} productos</option>)}
-                </select>
+                {s.fuente !== 'elegidos' && (
+                  <select className={input} value={s.cantidad} onChange={(e) => upd(s.id, { cantidad: Number(val(e)) })}>
+                    {[4, 8, 12, 16].map((n) => <option key={n} value={n}>{n} productos</option>)}
+                  </select>
+                )}
               </>
             )}
             {s.fuente === 'destacados' && <p className="text-xs text-gray-500 sm:col-span-2">Los destacados se eligen en la pestaña “Productos”. Si no marcaste ninguno, esta sección no se muestra.</p>}
@@ -720,7 +730,7 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
   async function subir(kind: 'logo' | 'banner', file: any) {
     if (!file) return;
     const fd = new FormData();
-    fd.append('file', file);
+    fd.append('file', await reducirImagen(file, kind === 'logo' ? 600 : 1920));
     fd.append('kind', kind);
     const r = await fetch('/api/mi-tienda/upload', { method: 'POST', body: fd, credentials: 'include' });
     const d: any = await r.json().catch(() => ({}));
@@ -1049,6 +1059,96 @@ function Cupones({ onToast }: { onToast: (s: string) => void }) {
         </div>
         <button className={btn} onClick={crear}>Crear cupón</button>
       </div>
+    </div>
+  );
+}
+
+// Selector de productos para las secciones "Elegidos por mí": buscar, agregar, ordenar y quitar
+function SelectorProductos({ ids, onChange }: { ids: string[]; onChange: (ids: string[]) => void }) {
+  const [q, setQ] = useState('');
+  const [res, setRes] = useState<any[]>([]);
+  const [info, setInfo] = useState<Record<string, any>>({});
+  const [buscando, setBuscando] = useState(false);
+
+  // Datos (foto y nombre) de los ya elegidos
+  useEffect(() => {
+    const faltan = ids.filter((id) => !info[id]);
+    if (!faltan.length) return;
+    fetch(`/api/mi-tienda/productos?ids=${faltan.join(',')}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d: any) => setInfo((x) => ({ ...x, ...Object.fromEntries((d.productos || []).map((p: any) => [p.id, p])) })))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ids.join(',')]);
+
+  async function buscar() {
+    if (q.trim().length < 2) return;
+    setBuscando(true);
+    const d: any = await fetch(`/api/mi-tienda/productos?q=${encodeURIComponent(q.trim())}`, { credentials: 'include' }).then((r) => r.json()).catch(() => ({}));
+    setRes(d.productos || []);
+    setInfo((x) => ({ ...x, ...Object.fromEntries((d.productos || []).map((p: any) => [p.id, p])) }));
+    setBuscando(false);
+  }
+  const mover = (k: number, dir: number) => {
+    const j = k + dir;
+    if (j < 0 || j >= ids.length) return;
+    const n = [...ids];
+    [n[k], n[j]] = [n[j], n[k]];
+    onChange(n);
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl bg-gray-50 p-3">
+      <p className="text-xs text-gray-500">Buscá y agregá los productos que querés mostrar, en el orden que quieras (hasta 48). Los que se queden sin stock se ocultan solos.</p>
+      {ids.length > 0 && (
+        <ul className="space-y-1">
+          {ids.map((id, k) => {
+            const p = info[id];
+            return (
+              <li key={id} className="flex items-center gap-2 rounded-lg bg-white p-2 text-sm ring-1 ring-black/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {p?.image ? <img src={tnImgClient(p.image, 120)} alt="" className="h-10 w-8 rounded object-cover" /> : <div className="h-10 w-8 rounded bg-gray-100" />}
+                <span className="min-w-0 flex-1 truncate">{p?.nombre || 'Producto no disponible'}</span>
+                <button type="button" className="px-1 text-gray-500" onClick={() => mover(k, -1)} aria-label="Subir">↑</button>
+                <button type="button" className="px-1 text-gray-500" onClick={() => mover(k, 1)} aria-label="Bajar">↓</button>
+                <button type="button" className="px-1 text-xs text-red-600" onClick={() => onChange(ids.filter((x) => x !== id))}>Quitar</button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className="flex gap-2">
+        <input
+          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+          placeholder="Buscar producto (ej: boxer, corpiño, 5051)"
+          value={q}
+          onChange={(e) => setQ((e.target as any).value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscar(); } }}
+        />
+        <button type="button" className="rounded-xl bg-gray-900 px-4 py-2 text-sm text-white" onClick={buscar}>{buscando ? '…' : 'Buscar'}</button>
+      </div>
+      {res.length > 0 && (
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {res.map((p) => {
+            const ya = ids.includes(p.id);
+            return (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  disabled={ya || ids.length >= 48}
+                  onClick={() => onChange([...ids, p.id])}
+                  className={`w-full rounded-lg bg-white p-2 text-left text-xs ring-1 ${ya ? 'opacity-50 ring-green-500' : 'ring-black/5 hover:ring-gray-400'}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {p.image && <img src={tnImgClient(p.image, 240)} alt="" loading="lazy" className="mb-1 aspect-[3/4] w-full rounded object-cover" />}
+                  <span className="line-clamp-2">{p.nombre}</span>
+                  <span className="mt-1 block font-semibold">{ya ? '✓ Agregado' : '+ Agregar'}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

@@ -8,7 +8,18 @@ interface Slide { imagen: string; imagenMobile?: string; titulo?: string; texto?
 export default function HeroCarousel({ slides }: { slides: Slide[] }) {
   const ref = useRef<any>(null);
   const [i, setI] = useState(0);
+  const [visible, setVisible] = useState(true);
   const n = slides.length;
+
+  // Solo avanza solo cuando se ve en pantalla (no compite con el scroll de la página)
+  useEffect(() => {
+    const el = ref.current;
+    const IO = (globalThis as any).IntersectionObserver;
+    if (!el || !IO) return;
+    const io = new IO((e: any[]) => setVisible(!!e[0]?.isIntersecting), { threshold: 0.3 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const ir = (k: number) => {
     const el = ref.current;
@@ -18,11 +29,11 @@ export default function HeroCarousel({ slides }: { slides: Slide[] }) {
   };
 
   useEffect(() => {
-    if (n < 2) return;
-    const t = setInterval(() => ir(i + 1), 5500);
+    if (n < 2 || !visible) return;
+    const t = setInterval(() => { if (!(globalThis as any).document?.hidden) ir(i + 1); }, 5500);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, n]);
+  }, [i, n, visible]);
 
   if (!n) return null;
 
@@ -30,10 +41,11 @@ export default function HeroCarousel({ slides }: { slides: Slide[] }) {
     <section className="relative" aria-roledescription="carrusel" aria-label="Novedades">
       <div
         ref={ref}
-        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         onScroll={(e) => {
           const el = e.currentTarget as any;
-          setI(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+          const k = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+          if (k !== i) setI(k);
         }}
       >
         {slides.map((s, k) => {

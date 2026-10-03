@@ -66,6 +66,7 @@ const ESTILOS_CSS = `
 .tienda .t-benefits{background:#fff}
 .tienda .t-cta-band{background:var(--t-tint)}
 /* Tarjetas */
+.t-lazy-sec{content-visibility:auto;contain-intrinsic-size:auto 900px}
 .tienda[data-tarjeta=enmarcada] .t-card{background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:calc(var(--t-radius) + 4px);padding:.5rem;transition:box-shadow .3s}
 .tienda[data-tarjeta=enmarcada] .t-card:hover{box-shadow:0 10px 30px -12px rgba(0,0,0,.18)}
 .tienda[data-tarjeta=enmarcada] .t-card-body{padding:0 .35rem .35rem}

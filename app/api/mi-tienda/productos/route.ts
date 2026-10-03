@@ -17,7 +17,12 @@ export async function GET(req: Request) {
     prisma.tiendaProducto.findMany({ where: { tiendaId: tienda.id } }),
   ]);
   const ocultos = overrides.filter((o) => o.oculto).map((o) => o.productId);
-  const lista = (q ? buscar(catalogo, q) : catalogo.filter((p) => p.destacado)).slice(0, 40);
+  // ?ids=a,b,c → esos productos en ese orden (para el selector de "elegidos a mano")
+  const ids = (new URL(req.url).searchParams.get('ids') || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 48);
+  const porId = new Map(catalogo.map((p) => [p.id, p]));
+  const lista = ids.length
+    ? (ids.map((id) => porId.get(id)).filter(Boolean) as typeof catalogo)
+    : (q ? buscar(catalogo, q) : catalogo.filter((p) => p.destacado)).slice(0, 40);
   return NextResponse.json({
     productos: lista.map((p) => ({ id: p.id, nombre: p.nombre, image: p.image, precio: p.precioDesde, destacado: p.destacado, disponible: p.disponible })),
     ocultos: ocultos.length,

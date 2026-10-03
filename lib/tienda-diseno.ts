@@ -15,7 +15,7 @@ export type Seccion =
   | { id: string; tipo: 'carrusel'; visible: boolean; slides: Slide[] }
   | { id: string; tipo: 'beneficios'; visible: boolean; items: Beneficio[] }
   | { id: string; tipo: 'categorias'; visible: boolean; titulo: string; formato: 'tarjetas' | 'circulos'; cantidad: number }
-  | { id: string; tipo: 'productos'; visible: boolean; titulo: string; fuente: 'destacados' | 'mas_vendidos' | 'categoria' | 'todos'; categoria: string; formato: 'grilla' | 'slider'; cantidad: number }
+  | { id: string; tipo: 'productos'; visible: boolean; titulo: string; fuente: 'destacados' | 'mas_vendidos' | 'categoria' | 'todos' | 'elegidos'; categoria: string; formato: 'grilla' | 'slider'; cantidad: number; productos?: string[] }
   | { id: string; tipo: 'banners'; visible: boolean; items: BannerItem[] }
   | { id: string; tipo: 'imagen_texto'; visible: boolean; imagen: string; titulo: string; texto: string; boton: string; link: string; lado: 'izq' | 'der' }
   | { id: string; tipo: 'texto'; visible: boolean; titulo: string; texto: string }
@@ -167,7 +167,13 @@ function normSeccion(raw: any): Seccion | null {
     case 'productos':
       return {
         ...base, tipo: 'productos', titulo: txt(raw.titulo, 60),
-        fuente: oneOf(raw.fuente, ['destacados', 'mas_vendidos', 'categoria', 'todos'] as const, 'destacados'),
+        fuente: oneOf(raw.fuente, ['destacados', 'mas_vendidos', 'categoria', 'todos', 'elegidos'] as const, 'destacados'),
+        // Productos elegidos a mano, en el orden que los puso la revendedora
+        productos: (Array.isArray(raw.productos) ? raw.productos : [])
+          .map((x: any) => String(x).replace(/[^\w-]/g, '').slice(0, 40))
+          .filter(Boolean)
+          .filter((x: string, i: number, a: string[]) => a.indexOf(x) === i)
+          .slice(0, 48),
         categoria: txt(raw.categoria, 200).replace(/[^\w\-/]/g, ''),
         formato: oneOf(raw.formato, ['grilla', 'slider'] as const, 'grilla'),
         cantidad: int(raw.cantidad, 2, 48, 8),

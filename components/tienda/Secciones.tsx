@@ -27,7 +27,9 @@ export default function Secciones({ secciones, ctx }: { secciones: Seccion[]; ct
       {lista.map((s, i) => {
         const esTodos = s.tipo === 'productos' && s.fuente === 'todos' && primeraTodos;
         if (esTodos) primeraTodos = false;
-        return <Bloque key={s.id} s={s} ctx={ctx} primera={i === 0} paginar={esTodos} />;
+        const bloque = <Bloque key={s.id} s={s} ctx={ctx} primera={i === 0} paginar={esTodos} />;
+        // Lo que está más abajo no se dibuja hasta que se acerca a la pantalla (scroll más fluido)
+        return i < 2 ? bloque : <div key={s.id} className="t-lazy-sec">{bloque}</div>;
       })}
     </>
   );
@@ -119,6 +121,10 @@ function Bloque({ s, ctx, primera, paginar }: { s: Seccion; ctx: Ctx; primera: b
       let lista: ProductoTienda[] = productos;
       let verTodo: string | undefined;
       if (s.fuente === 'destacados') lista = productos.filter((p) => p.destacado);
+      if (s.fuente === 'elegidos') {
+        const porId = new Map(productos.map((p) => [p.id, p]));
+        lista = (s.productos || []).map((id) => porId.get(id)).filter(Boolean) as typeof productos;
+      }
       if (s.fuente === 'mas_vendidos') lista = [...productos].sort((a, b) => a.rank - b.rank);
       if (s.fuente === 'categoria' && s.categoria) {
         const path = s.categoria.split('/').filter(Boolean);
@@ -136,7 +142,7 @@ function Bloque({ s, ctx, primera, paginar }: { s: Seccion; ctx: Ctx; primera: b
           </Contenedor>
         );
       }
-      const items = lista.slice(0, s.cantidad);
+      const items = s.fuente === 'elegidos' ? lista : lista.slice(0, s.cantidad);
       if (items.length < 2) return null;
       return (
         <Contenedor className="pt-16">

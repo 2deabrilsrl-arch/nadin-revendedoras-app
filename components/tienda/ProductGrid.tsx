@@ -50,7 +50,7 @@ export default function ProductGrid({
                 )}
                 {p.images[1] && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={tnImg(p.images[1])} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100" />
+                  <img src={tnImg(p.images[1])} alt="" loading="lazy" className="absolute inset-0 hidden h-full w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100 [@media(hover:hover)]:block" />
                 )}
                 {!p.disponible && <span className="t-badge absolute left-2 top-2 bg-gray-900/85 text-white">Sin stock</span>}
                 {p.disponible && p.ultimasUnidades && <span className="t-badge absolute left-2 top-2 bg-white text-gray-900">Últimas unidades</span>}
