@@ -12,6 +12,9 @@ import { TiendaCartProvider } from '@/components/tienda/TiendaCart';
 import HeaderTienda from '@/components/tienda/HeaderTienda';
 import Icon from '@/components/tienda/Icon';
 import PreviewEditable from '@/components/tienda/PreviewEditable';
+import PopupBienvenida from '@/components/tienda/PopupBienvenida';
+import Tracker from '@/components/tienda/Tracker';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,11 +117,18 @@ export default async function TiendaLayout({ children, params }: { children: Rea
   const diseno = normalizarDiseno(tienda.diseno);
   const plantilla = getPlantilla(diseno.plantilla);
   const [productos, pagos] = await Promise.all([getCatalogoTienda(tienda), getPagosPublicos(tienda.id)]);
-  const categorias = buildCategorias(productos).slice(0, 7).map((c) => ({
+  const categoriasTodas = buildCategorias(productos).slice(0, 7).map((c) => ({
     nombre: c.nombre,
     href: `${prefix}/categoria/${c.path.join('/')}`,
     hijos: c.hijos.slice(0, 10).map((h) => ({ nombre: h.nombre, href: `${prefix}/categoria/${h.path.join('/')}` })),
   }));
+  // Menú: categorías (si las quiere mostrar) + links propios (páginas, categorías, externos)
+  const enlaceMenu = (l: string) => (l.startsWith('/') ? `${prefix}${l}` : l);
+  const categorias = [
+    ...(diseno.menu.categorias ? categoriasTodas : []),
+    ...diseno.menu.extras.map((x) => ({ nombre: x.titulo, href: enlaceMenu(x.link), hijos: [] as { nombre: string; href: string }[] })),
+  ];
+  const paginas = await prisma.tiendaPagina.findMany({ where: { tiendaId: tienda.id, visible: true, enPie: true }, orderBy: [{ orden: 'asc' }, { createdAt: 'asc' }], select: { slug: true, titulo: true } });
 
   const primary = safeColor(tienda.colorPrimario, '#e11d74');
   const secondary = safeColor(tienda.colorSecundario, '#111827');
@@ -152,6 +162,10 @@ export default async function TiendaLayout({ children, params }: { children: Rea
         )}
 
         {(tienda as any).modoEditor && <PreviewEditable />}
+        {tienda.activa && !(tienda as any).modoEditor && <Tracker apiBase={`/api/tienda/${tienda.slug}`} />}
+        {(tienda.activa || (tienda as any).modoEditor) && (
+          <PopupBienvenida popup={diseno.popup} tiendaId={tienda.id} apiBase={`/api/tienda/${tienda.slug}`} enEditor={!!(tienda as any).modoEditor} />
+        )}
         {(tienda as any).enBorrador && (
           <div className="sticky top-0 z-50 flex items-center justify-center gap-3 bg-blue-600 px-4 py-2 text-xs text-white">
             <span>Estás viendo el <strong>borrador</strong> de tu diseño (todavía no está publicado).</span>
@@ -197,17 +211,18 @@ export default async function TiendaLayout({ children, params }: { children: Rea
                 {tienda.tiktok && <a href={`https://tiktok.com/@${tienda.tiktok.replace('@', '')}`} target="_blank" rel="noopener" aria-label="TikTok"><Icon name="tiktok" /></a>}
               </div>
             </div>
-            {categorias.length > 0 && (
+            {categoriasTodas.length > 0 && (
               <div>
                 <p className="t-h !text-xs">Categorías</p>
                 <ul className="mt-4 space-y-2 text-gray-600">
-                  {categorias.slice(0, 6).map((c) => <li key={c.href}><a href={c.href} className="hover:text-gray-900">{c.nombre}</a></li>)}
+                  {categoriasTodas.slice(0, 6).map((c) => <li key={c.href}><a href={c.href} className="hover:text-gray-900">{c.nombre}</a></li>)}
                 </ul>
               </div>
             )}
             <div>
               <p className="t-h !text-xs">Ayuda</p>
               <ul className="mt-4 space-y-2 text-gray-600">
+                {paginas.map((pg) => <li key={pg.slug}><a href={`${prefix}/p/${pg.slug}`} className="hover:text-gray-900">{pg.titulo}</a></li>)}
                 {wa && <li><a href={`https://wa.me/${wa}`} target="_blank" rel="noopener" className="hover:text-gray-900">Escribinos por WhatsApp</a></li>}
                 {tienda.email && <li><a href={`mailto:${tienda.email}`} className="hover:text-gray-900">{tienda.email}</a></li>}
                 <li><a href={`${prefix}/terminos`} className="hover:text-gray-900">Términos y condiciones</a></li>

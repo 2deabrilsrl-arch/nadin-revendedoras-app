@@ -56,6 +56,7 @@ export default function ProductGrid({
                 )}
                 {!p.disponible && <span className="t-badge absolute left-2 top-2 bg-gray-900/85 text-white">Sin stock</span>}
                 {p.disponible && p.ultimasUnidades && !p.enOferta && <span className="t-badge absolute left-2 top-2 bg-white text-gray-900">Últimas unidades</span>}
+                {p.disponible && p.promo && <span className="t-badge absolute right-2 top-2 bg-gray-900 text-white">{p.promo}</span>}
                 {p.disponible && p.enOferta && !!p.descuentoPct && <span className="t-badge absolute left-2 top-2 text-white" style={{ background: 'var(--t-primary)' }}>{p.descuentoPct}% OFF</span>}
               </div>
               <div className="t-card-body mt-3 space-y-1 px-0.5">

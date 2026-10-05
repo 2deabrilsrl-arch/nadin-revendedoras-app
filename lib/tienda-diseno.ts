@@ -47,12 +47,30 @@ export interface Detalle {
   guiaTalles: { activo: boolean; imagen: string; texto: string };
 }
 
+export interface Menu {
+  categorias: boolean;                         // mostrar las categorías en el menú
+  extras: { titulo: string; link: string }[];  // links propios (páginas, categorías, externos)
+}
+
+export interface Popup {
+  activo: boolean;
+  titulo: string;
+  texto: string;
+  imagen: string;
+  pide: 'email' | 'whatsapp' | 'ninguno';
+  boton: string;
+  cupon: string;     // código que se muestra al dejar los datos
+  segundos: number;  // cuánto esperar antes de mostrarlo
+}
+
 export interface Diseno {
   plantilla: Plantilla;
   header: 'auto' | 'centrado' | 'izquierda';
   anuncio: Anuncio;
   listado: Listado;
   detalle: Detalle;
+  menu: Menu;
+  popup: Popup;
   secciones: Seccion[];
 }
 
@@ -198,6 +216,8 @@ const BENEFICIOS_DEFAULT: Beneficio[] = [
 
 export const ANUNCIO_VACIO: Anuncio = { activo: false, texto: '', mensajes: [], link: '', desliza: false };
 export const LISTADO_DEFAULT: Listado = { colMobile: 2, colDesktop: 4, segundaFoto: true };
+export const MENU_DEFAULT: Menu = { categorias: true, extras: [] };
+export const POPUP_DEFAULT: Popup = { activo: false, titulo: '¡Bienvenida!', texto: 'Dejanos tu WhatsApp y enterate primero de las novedades y ofertas.', imagen: '', pide: 'whatsapp', boton: 'Quiero enterarme', cupon: '', segundos: 6 };
 export const DETALLE_DEFAULT: Detalle = { cuotas: { activo: false, cantidad: 3, sinInteres: true }, guiaTalles: { activo: false, imagen: '', texto: '' } };
 
 export const DISENO_DEFAULT: Diseno = {
@@ -206,6 +226,8 @@ export const DISENO_DEFAULT: Diseno = {
   anuncio: ANUNCIO_VACIO,
   listado: LISTADO_DEFAULT,
   detalle: DETALLE_DEFAULT,
+  menu: MENU_DEFAULT,
+  popup: POPUP_DEFAULT,
   secciones: [
     { id: 'carrusel', tipo: 'carrusel', visible: true, slides: [] },
     { id: 'beneficios', tipo: 'beneficios', visible: true, items: BENEFICIOS_DEFAULT },
@@ -340,7 +362,7 @@ function desdeV2(d: any): Diseno {
   }
   if (d.categoriasDestacadas === false) (secciones.find((s) => s.tipo === 'categorias') as any).visible = false;
   if (d.masVendidos === false) (secciones.find((s) => s.id === 'masvendidos') as any).visible = false;
-  return { plantilla: mapa[d.estilo] || 'esencial', header: 'auto', anuncio: ANUNCIO_VACIO, listado: LISTADO_DEFAULT, detalle: DETALLE_DEFAULT, secciones };
+  return { plantilla: mapa[d.estilo] || 'esencial', header: 'auto', anuncio: ANUNCIO_VACIO, listado: LISTADO_DEFAULT, detalle: DETALLE_DEFAULT, menu: MENU_DEFAULT, popup: POPUP_DEFAULT, secciones };
 }
 
 export function normalizarDiseno(raw: any): Diseno {
@@ -362,6 +384,8 @@ export function normalizarDiseno(raw: any): Diseno {
   const det = (d.detalle && typeof d.detalle === 'object') ? d.detalle : {};
   const cuo = (det.cuotas && typeof det.cuotas === 'object') ? det.cuotas : {};
   const gt = (det.guiaTalles && typeof det.guiaTalles === 'object') ? det.guiaTalles : {};
+  const mn = (d.menu && typeof d.menu === 'object') ? d.menu : {};
+  const pp = (d.popup && typeof d.popup === 'object') ? d.popup : {};
   return {
     plantilla: oneOf(base.plantilla, PLANTILLAS.map((p) => p.id), 'esencial'),
     header: oneOf(d.header, ['auto', 'centrado', 'izquierda'] as const, 'auto'),
@@ -380,6 +404,23 @@ export function normalizarDiseno(raw: any): Diseno {
     detalle: {
       cuotas: { activo: !!cuo.activo, cantidad: int(cuo.cantidad, 2, 18, 3), sinInteres: cuo.sinInteres !== false },
       guiaTalles: { activo: !!gt.activo && !!(httpsUrl(gt.imagen) || txt(gt.texto, 2000)), imagen: httpsUrl(gt.imagen), texto: txt(gt.texto, 2000) },
+    },
+    menu: {
+      categorias: mn.categorias !== false,
+      extras: (Array.isArray(mn.extras) ? mn.extras : [])
+        .map((x: any) => ({ titulo: txt(x?.titulo, 30), link: link(x?.link) }))
+        .filter((x: any) => x.titulo && x.link)
+        .slice(0, 8),
+    },
+    popup: {
+      activo: !!pp.activo,
+      titulo: txt(pp.titulo, 60) || POPUP_DEFAULT.titulo,
+      texto: txt(pp.texto, 200),
+      imagen: httpsUrl(pp.imagen),
+      pide: oneOf(pp.pide, ['email', 'whatsapp', 'ninguno'] as const, 'whatsapp'),
+      boton: txt(pp.boton, 30) || 'Enviar',
+      cupon: txt(pp.cupon, 30).toUpperCase().replace(/[^A-Z0-9_-]/g, ''),
+      segundos: int(pp.segundos, 0, 60, 6),
     },
     secciones: Array.isArray(d.secciones) ? secciones : secciones.length ? secciones : JSON.parse(JSON.stringify(DISENO_DEFAULT.secciones)),
   };

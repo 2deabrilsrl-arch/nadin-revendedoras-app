@@ -8,12 +8,13 @@ interface Pago { id: string; tipo: string; nombre: string; descuentoPct: number 
 interface Envio { id: string; tipo: string; nombre: string; descripcion: string | null; precio: number; gratisDesde: number | null; pideDireccion: boolean }
 interface Config { pagos: Pago[]; envios: Envio[]; hayCupones: boolean }
 interface Cot {
-  errores: string[]; subtotal: number; descuentoCupon: number; descuentoPago: number; envioCosto: number; total: number;
+  errores: string[]; subtotal: number; descuentoPromo: number; promos: string[]; descuentoCupon: number; descuentoPago: number; envioCosto: number; total: number;
   cupon: { codigo: string } | null; cuponError: string | null;
 }
 
 export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: string; terminosHref: string }) {
-  const { items, setQty, remove, clear, prefix } = useTiendaCart();
+  const { items, setQty, remove, clear, add, prefix } = useTiendaCart();
+  const [carritoToken, setCarritoToken] = useState('');
   const [config, setConfig] = useState<Config | null>(null);
   const [envioId, setEnvioId] = useState('');
   const [pagoId, setPagoId] = useState('');
@@ -34,6 +35,40 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
       if (c.pagos?.length === 1) setPagoId(c.pagos[0].id);
     }).catch(() => setError('No pudimos cargar las opciones de pago y envío.'));
   }, [apiBase]);
+
+  // Carrito abandonado: token por navegador; ?recuperar=token vuelve a cargar el carrito guardado
+  useEffect(() => {
+    const g: any = globalThis as any;
+    const clave = `tn_ct_${apiBase}`;
+    const rec = new URLSearchParams(g.location?.search || '').get('recuperar');
+    let tk = '';
+    try { tk = g.localStorage?.getItem(clave) || ''; } catch { /* nada */ }
+    if (rec && /^[\w-]{16,60}$/.test(rec)) {
+      tk = rec;
+      fetch(`${apiBase}/carrito?token=${rec}`).then((r) => r.json()).then((d: any) => {
+        if (Array.isArray(d.items) && d.items.length && !items.length) d.items.forEach((i: any) => add(i));
+        if (d.nombre || d.telefono || d.email) setCliente((c) => ({ ...c, nombre: d.nombre || c.nombre, telefono: d.telefono || c.telefono, email: d.email || c.email }));
+      }).catch(() => {});
+    }
+    if (!tk) tk = `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+    try { g.localStorage?.setItem(clave, tk); } catch { /* nada */ }
+    setCarritoToken(tk);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBase]);
+
+  useEffect(() => {
+    if (!carritoToken || !items.length) return;
+    const tel = cliente.telefono.replace(/\D/g, '');
+    const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cliente.email);
+    if (cliente.nombre.trim().length < 2 || (tel.length < 8 && !mailOk)) return;
+    const t = setTimeout(() => {
+      fetch(`${apiBase}/carrito`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: carritoToken, ...cliente, items }),
+      }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [apiBase, carritoToken, cliente, items]);
 
   const payloadItems = useMemo(() => items.map((i) => ({ productId: i.productId, variantId: i.variantId, qty: i.qty })), [items]);
 
@@ -60,11 +95,12 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
       const r = await fetch(`${apiBase}/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: payloadItems, envioId, pagoId, cupon, cliente, direccion: envioSel?.pideDireccion ? dir : null, nota, aceptaTerminos: acepta }),
+        body: JSON.stringify({ items: payloadItems, envioId, pagoId, cupon, cliente, direccion: envioSel?.pideDireccion ? dir : null, nota, aceptaTerminos: acepta, carritoToken }),
       });
       const data: any = await r.json();
       if (!r.ok) { setError(data.error || 'No pudimos crear el pedido.'); setEnviando(false); return; }
       clear();
+      try { (globalThis as any).localStorage?.removeItem(`tn_ct_${apiBase}`); } catch { /* nada */ }
       (globalThis as any).location.href = data.redirectUrl || `${prefix}/pedido/${data.token}`;
     } catch {
       setError('Hubo un problema de conexión. Probá de nuevo.');
@@ -196,6 +232,7 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
         )}
         <dl className="space-y-1 text-sm">
           <div className="flex justify-between"><dt>Subtotal</dt><dd>{formatPrecio(cot?.subtotal ?? 0)}</dd></div>
+          {!!cot?.descuentoPromo && <div className="flex justify-between text-green-700"><dt>Promos{cot.promos?.length ? <span className="block text-xs font-normal">{cot.promos.join(' · ')}</span> : null}</dt><dd>−{formatPrecio(cot.descuentoPromo)}</dd></div>}
           {!!cot?.descuentoCupon && <div className="flex justify-between text-green-700"><dt>Cupón</dt><dd>−{formatPrecio(cot.descuentoCupon)}</dd></div>}
           {!!cot?.descuentoPago && <div className="flex justify-between text-green-700"><dt>Descuento {pagoSel?.nombre}</dt><dd>−{formatPrecio(cot.descuentoPago)}</dd></div>}
           {envioSel && <div className="flex justify-between"><dt>Envío</dt><dd>{cot?.envioCosto ? formatPrecio(cot.envioCosto) : 'Gratis'}</dd></div>}

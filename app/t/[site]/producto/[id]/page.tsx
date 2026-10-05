@@ -9,6 +9,7 @@ import AddToCart from '@/components/tienda/AddToCart';
 import Gallery from '@/components/tienda/Gallery';
 import ProductGrid, { TituloSeccion, precioTransferencia } from '@/components/tienda/ProductGrid';
 import { normalizarDiseno } from '@/lib/tienda-diseno';
+import Tracker from '@/components/tienda/Tracker';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,7 @@ export default async function ProductoPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:py-10">
+      {tienda.activa && <Tracker apiBase={`/api/tienda/${tienda.slug}`} tipo="producto" productId={producto.id} />}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <nav aria-label="Ruta" className="mb-6 text-xs uppercase tracking-[0.12em] text-gray-400">
         <a href={prefix || '/'} className="hover:text-gray-700">Inicio</a>
@@ -108,6 +110,7 @@ export default async function ProductoPage({ params }: Props) {
         <div className="lg:pt-2">
           {producto.brand && <p className="mb-2 text-xs uppercase tracking-[0.16em] text-gray-400">{producto.brand}</p>}
           <h1 className="t-title mb-5 text-2xl leading-snug text-gray-900 sm:text-3xl">{producto.nombre}</h1>
+          {producto.promo && <p className="mb-4 inline-block rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">Promo {producto.promo}</p>}
           <AddToCart
             productId={producto.id}
             nombre={producto.nombre}

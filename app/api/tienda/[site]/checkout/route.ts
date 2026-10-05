@@ -66,6 +66,8 @@ export async function POST(req: Request, { params }: { params: { site: string } 
           envioCosto: c.envioCosto,
           subtotal: c.subtotal,
           descuento: c.descuentoCupon + c.descuentoPago,
+          descuentoPromo: c.descuentoPromo,
+          promosTexto: c.promos.join(' · ').slice(0, 300) || null,
           cuponCodigo: c.cupon?.codigo || null,
           total: c.total,
           totalMayorista: c.totalMayorista,
@@ -79,6 +81,12 @@ export async function POST(req: Request, { params }: { params: { site: string } 
         },
       });
     });
+
+    // Si venía de un carrito guardado, lo marcamos como recuperado
+    const carritoToken = str(body.carritoToken, 60);
+    if (carritoToken) {
+      await prisma.tiendaCarrito.updateMany({ where: { token: carritoToken, tiendaId: tienda.id }, data: { estado: 'recuperado', ordenId: orden.id } }).catch(() => {});
+    }
 
     let redirectUrl: string | null = null;
     if (c.pago.tipo === 'mercadopago') {

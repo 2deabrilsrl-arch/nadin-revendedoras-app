@@ -439,6 +439,10 @@ model Tienda {
   productos         TiendaProducto[]
   ordenes           OrdenTienda[]
   productosPropios TiendaProductoPropio[]
+  paginas          TiendaPagina[]
+  contactos        TiendaContacto[]
+  promociones      TiendaPromocion[]
+  carritos         TiendaCarrito[]
 }
 
 model TiendaMetodoPago {
@@ -525,6 +529,8 @@ model OrdenTienda {
   envioCosto      Float     @default(0)
   subtotal        Float
   descuento       Float     @default(0)
+  descuentoPromo  Float     @default(0) // promociones automáticas (2x1, 3x2, % off)
+  promosTexto     String?
   cuponCodigo     String?
   total           Float
   totalMayorista  Float
@@ -604,4 +610,103 @@ model TiendaVariantePropia {
   producto    TiendaProductoPropio @relation(fields: [productoId], references: [id], onDelete: Cascade)
 
   @@index([productoId])
+}
+
+// Páginas propias de la tienda (Cómo comprar, Cambios, Envíos…)
+model TiendaPagina {
+  id        String   @id @default(cuid())
+  tiendaId  String
+  slug      String
+  titulo    String
+  contenido String   @default("")
+  visible   Boolean  @default(true)
+  enPie     Boolean  @default(true)  // link en el pie de página
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tienda    Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@unique([tiendaId, slug])
+}
+
+// Contactos que deja la gente (pop-up de bienvenida, etc.)
+model TiendaContacto {
+  id        String   @id @default(cuid())
+  tiendaId  String
+  nombre    String?
+  email     String?
+  telefono  String?
+  origen    String   @default("popup")
+  createdAt DateTime @default(now())
+
+  tienda    Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@index([tiendaId, createdAt])
+}
+
+// Estadísticas por día
+model TiendaStatDia {
+  id             String   @id @default(cuid())
+  tiendaId       String
+  fecha          DateTime @db.Date
+  visitas        Int      @default(0)
+  vistasProducto Int      @default(0)
+  carritos       Int      @default(0)
+
+  @@unique([tiendaId, fecha])
+}
+
+model TiendaStatProducto {
+  id        String   @id @default(cuid())
+  tiendaId  String
+  productId String
+  fecha     DateTime @db.Date
+  vistas    Int      @default(0)
+
+  @@unique([tiendaId, productId, fecha])
+  @@index([tiendaId, fecha])
+}
+
+// Promociones automáticas: lleva N paga M, o % de descuento
+model TiendaPromocion {
+  id         String    @id @default(cuid())
+  tiendaId   String
+  nombre     String
+  tipo       String    // nxm | porcentaje
+  lleva      Int       @default(3)
+  paga       Int       @default(2)
+  porcentaje Float     @default(0)
+  alcance    String    @default("todo") // todo | categoria | productos
+  categoria  String?   // path de slugs: "mujer/corpinos"
+  productos  Json      @default("[]")
+  activa     Boolean   @default(true)
+  desde      DateTime?
+  hasta      DateTime?
+  createdAt  DateTime  @default(now())
+
+  tienda     Tienda    @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@index([tiendaId])
+}
+
+// Carritos que llegaron a dejar sus datos pero no compraron
+model TiendaCarrito {
+  id         String    @id @default(cuid())
+  tiendaId   String
+  token      String    @unique
+  nombre     String?
+  email      String?
+  telefono   String?
+  items      Json      @default("[]")
+  total      Float     @default(0)
+  estado     String    @default("abierto") // abierto | avisado | recuperado
+  avisadoAt  DateTime?
+  ordenId    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  tienda     Tienda    @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@index([tiendaId, updatedAt])
 }

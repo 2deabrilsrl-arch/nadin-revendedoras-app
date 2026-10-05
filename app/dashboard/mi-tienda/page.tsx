@@ -3,8 +3,9 @@
 // Panel "Mi Tienda Web" de la revendedora
 import { useCallback, useEffect, useState } from 'react';
 import { reducirImagen } from '@/components/tienda/reducirImagen';
+import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
 
-type Tab = 'pedidos' | 'portada' | 'productos' | 'diseno' | 'pagos' | 'envios' | 'cupones';
+type Tab = 'pedidos' | 'portada' | 'productos' | 'paginas' | 'clientes' | 'estadisticas' | 'diseno' | 'pagos' | 'envios' | 'cupones';
 
 const fmt = (n: number) => `$${Math.round(n || 0).toLocaleString('es-AR')}`;
 const val = (e: any) => (e.target as any).value;
@@ -82,10 +83,13 @@ export default function MiTiendaPage() {
     { id: 'pedidos', label: 'Pedidos web' },
     { id: 'portada', label: 'Diseño' },
     { id: 'productos', label: 'Productos' },
+    { id: 'estadisticas', label: 'Estadísticas' },
+    { id: 'clientes', label: 'Clientes' },
+    { id: 'paginas', label: 'Páginas' },
     { id: 'diseno', label: 'Marca y datos' },
     { id: 'pagos', label: 'Cobros' },
     { id: 'envios', label: 'Entregas' },
-    { id: 'cupones', label: 'Cupones' },
+    { id: 'cupones', label: 'Promos y cupones' },
   ];
 
   return (
@@ -132,8 +136,16 @@ export default function MiTiendaPage() {
         ))}
       </nav>
 
-      {tab === 'pedidos' && <Pedidos onToast={setToast} tienda={t} onTienda={(nt: any) => setInfo({ ...info, tienda: { ...t, ...nt } })} />}
+      {tab === 'pedidos' && (
+        <div className="space-y-8">
+          <Pedidos onToast={setToast} tienda={t} onTienda={(nt: any) => setInfo({ ...info, tienda: { ...t, ...nt } })} />
+          <CarritosAbandonados tiendaNombre={t.nombre} />
+        </div>
+      )}
       {tab === 'productos' && <ProductosTienda onToast={setToast} slug={t.slug} />}
+      {tab === 'paginas' && <Paginas onToast={setToast} urlApp={info.urlApp} />}
+      {tab === 'clientes' && <Clientes onToast={setToast} />}
+      {tab === 'estadisticas' && <Estadisticas onToast={setToast} />}
       {tab === 'portada' && <Portada info={info} />}
       {tab === 'diseno' && <Diseno info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Guardado'); }} />}
       {tab === 'pagos' && <Pagos onToast={setToast} />}
@@ -729,6 +741,8 @@ function Cupones({ onToast }: { onToast: (s: string) => void }) {
   if (!cupones) return <p className="text-gray-500">Cargando…</p>;
   return (
     <div className="space-y-4">
+      <Promociones onToast={onToast} />
+      <h3 className="pt-2 font-semibold">Cupones de descuento</h3>
       <p className="text-sm text-gray-600">El descuento sale de tu ganancia: Nadin te cobra siempre el mismo costo.</p>
       {cupones.map((c) => (
         <div key={c.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-black/5">
@@ -964,5 +978,350 @@ function EditorProductoPropio({ inicial, slug, onToast, onCerrar }: { inicial: a
         {f.id && <button type="button" className="text-sm text-red-600" onClick={borrar}>Borrar producto</button>}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Páginas propias (Cómo comprar, Cambios, Envíos…)
+// ---------------------------------------------------------------------
+
+function Paginas({ onToast, urlApp }: { onToast: (s: string) => void; urlApp: string }) {
+  const [data, setData] = useState<any>(null);
+  const [editando, setEditando] = useState<any>(null);
+  const cargar = useCallback(() => { api('/paginas').then(setData).catch((e) => onToast(e.message)); }, [onToast]);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  async function crear(modelo?: string) {
+    try { const r = await api('/paginas', 'POST', modelo ? { modelo } : { titulo: 'Nueva página' }); cargar(); setEditando(r.pagina); } catch (e: any) { onToast(e.message); }
+  }
+  async function guardar() {
+    try { await api('/paginas', 'PUT', editando); onToast('Página guardada'); setEditando(null); cargar(); } catch (e: any) { onToast(e.message); }
+  }
+  async function borrar(id: string) {
+    if (!(globalThis as any).confirm('¿Borrar esta página?')) return;
+    try { await api(`/paginas?id=${id}`, 'DELETE'); setEditando(null); cargar(); } catch (e: any) { onToast(e.message); }
+  }
+
+  if (!data) return <p className="text-gray-500">Cargando…</p>;
+  if (editando) {
+    return (
+      <div className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">Editar página</h3>
+          <button className="text-sm text-gray-500" onClick={() => setEditando(null)}>Cancelar</button>
+        </div>
+        <input className={input} value={editando.titulo} onChange={(e) => setEditando({ ...editando, titulo: val(e) })} placeholder="Título" />
+        <textarea className={`${input} font-mono`} rows={14} value={editando.contenido} onChange={(e) => setEditando({ ...editando, contenido: val(e) })} />
+        <p className="text-xs text-gray-500">Tip: empezá una línea con <code>## </code> para un subtítulo y con <code>- </code> para una lista. Dejá una línea vacía entre párrafos.</p>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={!!editando.visible} onChange={(e) => setEditando({ ...editando, visible: chk(e) })} /> Publicada</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={!!editando.enPie} onChange={(e) => setEditando({ ...editando, enPie: chk(e) })} /> Link en el pie de página</label>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className={btn} onClick={guardar}>Guardar</button>
+          <a href={`${urlApp}/p/${editando.slug}`} target="_blank" className={btnSec}>Ver</a>
+          <button className="ml-auto text-sm text-red-600" onClick={() => borrar(editando.id)}>Borrar</button>
+        </div>
+      </div>
+    );
+  }
+  const faltan = data.modelos.filter((m: any) => !data.paginas.some((p: any) => p.slug === m.slug));
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-600">Páginas con información para tus clientas. Aparecen en el pie de la tienda y las podés sumar al menú desde <strong>Diseño → Menú</strong>.</p>
+      {data.paginas.length > 0 && (
+        <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          {data.paginas.map((p: any) => (
+            <li key={p.id} className="flex items-center gap-3 p-4">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{p.titulo}</p>
+                <p className="text-xs text-gray-500">/p/{p.slug}{!p.visible && ' · oculta'}</p>
+              </div>
+              <button className={btnSec} onClick={() => setEditando(p)}>Editar</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {faltan.length > 0 && (
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+          <p className="mb-2 text-sm font-medium">Crear con texto sugerido</p>
+          <div className="flex flex-wrap gap-2">
+            {faltan.map((m: any) => <button key={m.slug} className={btnSec} onClick={() => crear(m.slug)}>+ {m.titulo}</button>)}
+          </div>
+        </div>
+      )}
+      <button className={btn} onClick={() => crear()}>+ Página en blanco</button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Clientes
+// ---------------------------------------------------------------------
+
+function Clientes({ onToast }: { onToast: (s: string) => void }) {
+  const [lista, setLista] = useState<any[] | null>(null);
+  const [q, setQ] = useState('');
+  const [filtro, setFiltro] = useState<'todas' | 'compra' | 'suscripta'>('todas');
+  useEffect(() => { api('/clientes').then((d) => setLista(d.clientes)).catch((e) => onToast(e.message)); }, [onToast]);
+
+  if (!lista) return <p className="text-gray-500">Cargando…</p>;
+  const t = q.trim().toLowerCase();
+  const vista = lista.filter((c) => (filtro === 'todas' || c.origen === filtro) && (!t || `${c.nombre} ${c.email || ''} ${c.telefono || ''} ${c.localidad}`.toLowerCase().includes(t)));
+
+  function exportar() {
+    const filas = [['Nombre', 'Teléfono', 'Email', 'Localidad', 'Pedidos', 'Compras pagadas', 'Total gastado', 'Última actividad', 'Origen']];
+    vista.forEach((c) => filas.push([c.nombre, c.telefono || '', c.email || '', c.localidad, c.pedidos, c.comprados, Math.round(c.gastado), new Date(c.ultima).toLocaleDateString('es-AR'), c.origen === 'compra' ? 'Compró' : 'Pop-up']));
+    const csv = '﻿' + filas.map((f) => f.map((x: any) => `"${String(x).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const g: any = globalThis as any;
+    const a = g.document.createElement('a');
+    a.href = g.URL.createObjectURL(new g.Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `clientes-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <input className={`${input} max-w-xs`} placeholder="Buscar por nombre, teléfono o email" value={q} onChange={(e) => setQ(val(e))} />
+        <select className={`${input} w-auto`} value={filtro} onChange={(e) => setFiltro(val(e))}>
+          <option value="todas">Todas ({lista.length})</option>
+          <option value="compra">Compraron</option>
+          <option value="suscripta">Dejaron sus datos</option>
+        </select>
+        <button className={`${btnSec} ml-auto`} onClick={exportar} disabled={!vista.length}>⬇ Exportar Excel</button>
+      </div>
+      {vista.length === 0 ? (
+        <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 ring-1 ring-black/5">Todavía no hay clientas acá. Aparecen cuando alguien compra o deja sus datos en el pop-up.</p>
+      ) : (
+        <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+          {vista.map((c, k) => {
+            const wa = (c.telefono || '').replace(/\D/g, '');
+            return (
+              <li key={k} className="flex flex-wrap items-center gap-3 p-4">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{c.nombre || 'Sin nombre'} {c.origen === 'suscripta' && <span className="ml-1 rounded bg-blue-50 px-1.5 text-[10px] font-semibold text-blue-700">POP-UP</span>}</p>
+                  <p className="truncate text-xs text-gray-500">{[c.telefono, c.email, c.localidad].filter(Boolean).join(' · ')}</p>
+                </div>
+                <div className="text-right text-xs text-gray-600">
+                  {c.comprados > 0 ? <p><strong>{fmt(c.gastado)}</strong> en {c.comprados} compra{c.comprados === 1 ? '' : 's'}</p> : <p>{c.pedidos ? `${c.pedidos} pedido(s) sin pagar` : 'Sin compras'}</p>}
+                  <p className="text-gray-400">{new Date(c.ultima).toLocaleDateString('es-AR')}</p>
+                </div>
+                {wa && <a href={`https://wa.me/${wa.length === 10 ? `549${wa}` : wa}`} target="_blank" className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white">WhatsApp</a>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Estadísticas
+// ---------------------------------------------------------------------
+
+function Estadisticas({ onToast }: { onToast: (s: string) => void }) {
+  const [dias, setDias] = useState(30);
+  const [d, setD] = useState<any>(null);
+  useEffect(() => { setD(null); api(`/estadisticas?dias=${dias}`).then(setD).catch((e) => onToast(e.message)); }, [dias, onToast]);
+
+  const tarjeta = (titulo: string, valor: string, sub?: string) => (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+      <p className="text-xs text-gray-500">{titulo}</p>
+      <p className="mt-1 text-2xl font-bold tabular-nums">{valor}</p>
+      {sub && <p className="text-xs text-gray-400">{sub}</p>}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        {[7, 30, 90].map((n) => (
+          <button key={n} onClick={() => setDias(n)} className={`rounded-full px-3 py-1 text-sm ${dias === n ? 'bg-gray-900 text-white' : 'bg-white ring-1 ring-black/5'}`}>Últimos {n} días</button>
+        ))}
+      </div>
+      {!d ? <p className="text-gray-500">Cargando…</p> : (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {tarjeta('Visitas', d.totales.visitas.toLocaleString('es-AR'), `${d.totales.vistasProducto.toLocaleString('es-AR')} vistas de productos`)}
+            {tarjeta('Pedidos', String(d.totales.pedidos), `${d.totales.pagados} pagados`)}
+            {tarjeta('Ventas', fmt(d.totales.ventas), `Ganancia ${fmt(d.totales.ganancia)}`)}
+            {tarjeta('Conversión', `${d.totales.conversion}%`, 'de las visitas compró')}
+          </div>
+
+          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+            <p className="mb-3 text-sm font-medium">Visitas por día</p>
+            <div className="flex h-36 items-end gap-[2px]" role="img" aria-label="Gráfico de visitas por día">
+              {(() => {
+                const max = Math.max(1, ...d.porDia.map((x: any) => x.visitas));
+                return d.porDia.map((x: any) => (
+                  <div key={x.fecha} className="group relative flex-1">
+                    <div className={`w-full rounded-t ${x.pedidos ? 'bg-pink-500' : 'bg-pink-200'}`} style={{ height: `${Math.max(2, (x.visitas / max) * 136)}px` }} />
+                    <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-[10px] text-white group-hover:block">
+                      {new Date(`${x.fecha}T12:00:00`).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}: {x.visitas} visitas · {x.pedidos} pedidos
+                    </span>
+                  </div>
+                ));
+              })()}
+            </div>
+            <p className="mt-2 text-xs text-gray-400">Las barras más oscuras son días con pedidos.</p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            {([['Más vistos', d.masVistos, (x: any) => `${x.vistas} vistas`], ['Más vendidos', d.masVendidos, (x: any) => `${x.unidades} u. · ${fmt(x.total)}`]] as const).map(([titulo, items, detalle]: any) => (
+              <div key={titulo} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
+                <p className="mb-3 text-sm font-medium">{titulo}</p>
+                {items.length === 0 ? <p className="text-sm text-gray-400">Todavía sin datos.</p> : (
+                  <ul className="space-y-2">
+                    {items.map((x: any) => (
+                      <li key={x.productId} className="flex items-center gap-3 text-sm">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        {x.imagen ? <img src={x.imagen} alt="" className="h-10 w-8 rounded object-cover" /> : <div className="h-10 w-8 rounded bg-gray-100" />}
+                        <span className="min-w-0 flex-1 truncate">{x.nombre}</span>
+                        <span className="text-xs text-gray-500">{detalle(x)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Promociones automáticas (3x2, 2x1, % off)
+// ---------------------------------------------------------------------
+
+const PROMO_VACIA = { nombre: '', tipo: 'nxm', lleva: 3, paga: 2, porcentaje: '', alcance: 'todo', categoria: '', productos: [] as string[], desde: '', hasta: '' };
+
+function Promociones({ onToast }: { onToast: (s: string) => void }) {
+  const [lista, setLista] = useState<any[] | null>(null);
+  const [n, setN] = useState<any>(null);
+  const [cats, setCats] = useState<{ nombre: string; path: string }[]>([]);
+  const cargar = useCallback(() => api('/promociones').then((d) => setLista(d.promociones)).catch((e) => onToast(e.message)), [onToast]);
+  useEffect(() => {
+    cargar();
+    api('').then((d) => fetch(`/api/tienda/${d.tienda.slug}/categorias`)).then((r: any) => r.json()).then((x: any) => setCats(x.categorias || [])).catch(() => {});
+  }, [cargar]);
+
+  async function crear() {
+    try {
+      await api('/promociones', 'POST', { ...n, porcentaje: Number(n.porcentaje) || 0, desde: n.desde || null, hasta: n.hasta ? `${n.hasta}T23:59:59` : null });
+      setN(null); cargar(); onToast('Promoción creada');
+    } catch (e: any) { onToast(e.message); }
+  }
+
+  const describir = (p: any) => `${p.tipo === 'nxm' ? `Llevá ${p.lleva} pagá ${p.paga}` : `${p.porcentaje}% OFF`} · ${p.alcance === 'todo' ? 'toda la tienda' : p.alcance === 'categoria' ? `categoría ${(cats.find((c) => c.path === p.categoria)?.nombre) || p.categoria}` : `${(p.productos || []).length} productos`}${p.hasta ? ` · hasta ${new Date(p.hasta).toLocaleDateString('es-AR')}` : ''}`;
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <h3 className="font-semibold">Promociones automáticas</h3>
+        <p className="text-sm text-gray-600">Se aplican solas en el carrito y se muestran en los productos (ej: “3x2”). Salen de tu ganancia.</p>
+      </div>
+      {lista?.map((p) => (
+        <div key={p.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-sm shadow-sm ring-1 ring-black/5">
+          <div>
+            <p className="font-semibold">{p.nombre}</p>
+            <p className="text-gray-600">{describir(p)}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1"><input type="checkbox" checked={p.activa} onChange={async (e) => { await api('/promociones', 'PUT', { id: p.id, activa: chk(e) }); cargar(); }} /> Activa</label>
+            <button className="text-red-700" onClick={async () => { if ((globalThis as any).confirm('¿Borrar promoción?')) { await api(`/promociones?id=${p.id}`, 'DELETE'); cargar(); } }}>Borrar</button>
+          </div>
+        </div>
+      ))}
+      {!n ? (
+        <button className={btnSec} onClick={() => setN({ ...PROMO_VACIA })}>+ Nueva promoción</button>
+      ) : (
+        <div className="space-y-3 rounded-2xl border border-dashed border-gray-300 bg-white p-5">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <select className={input} value={n.tipo} onChange={(e) => setN({ ...n, tipo: val(e) })}>
+              <option value="nxm">Llevá X, pagá Y (3x2, 2x1…)</option>
+              <option value="porcentaje">% de descuento</option>
+            </select>
+            {n.tipo === 'nxm' ? (
+              <div className="flex items-center gap-2 text-sm">
+                Llevá <input className={`${input} w-16`} type="number" min={2} value={n.lleva} onChange={(e) => setN({ ...n, lleva: Number(val(e)) })} />
+                pagá <input className={`${input} w-16`} type="number" min={1} value={n.paga} onChange={(e) => setN({ ...n, paga: Number(val(e)) })} />
+              </div>
+            ) : (
+              <input className={input} type="number" placeholder="% (ej 20)" value={n.porcentaje} onChange={(e) => setN({ ...n, porcentaje: val(e) })} />
+            )}
+            <input className={input} placeholder="Nombre (opcional)" value={n.nombre} onChange={(e) => setN({ ...n, nombre: val(e) })} />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <select className={input} value={n.alcance} onChange={(e) => setN({ ...n, alcance: val(e) })}>
+              <option value="todo">En toda la tienda</option>
+              <option value="categoria">En una categoría</option>
+              <option value="productos">En productos elegidos</option>
+            </select>
+            {n.alcance === 'categoria' && (
+              <select className={`${input} sm:col-span-2`} value={n.categoria} onChange={(e) => setN({ ...n, categoria: val(e) })}>
+                <option value="">Elegí la categoría…</option>
+                {cats.map((c) => <option key={c.path} value={c.path}>{c.nombre}</option>)}
+              </select>
+            )}
+          </div>
+          {n.alcance === 'productos' && <SelectorProductos ids={n.productos} max={100} onChange={(ids) => setN({ ...n, productos: ids })} />}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="text-xs text-gray-500">Desde (opcional)<input className={input} type="date" value={n.desde} onChange={(e) => setN({ ...n, desde: val(e) })} /></label>
+            <label className="text-xs text-gray-500">Hasta (opcional)<input className={input} type="date" value={n.hasta} onChange={(e) => setN({ ...n, hasta: val(e) })} /></label>
+          </div>
+          <div className="flex gap-2">
+            <button className={btn} onClick={crear}>Crear promoción</button>
+            <button className={btnSec} onClick={() => setN(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Carritos abandonados
+// ---------------------------------------------------------------------
+
+function CarritosAbandonados({ tiendaNombre }: { tiendaNombre: string }) {
+  const [lista, setLista] = useState<any[] | null>(null);
+  const [abierto, setAbierto] = useState<string | null>(null);
+  useEffect(() => { api('/carritos').then((d) => setLista(d.carritos)).catch(() => setLista([])); }, []);
+  if (!lista || !lista.length) return null;
+  return (
+    <section className="space-y-3">
+      <div>
+        <h3 className="font-semibold">🛒 Carritos abandonados ({lista.length})</h3>
+        <p className="text-sm text-gray-600">Dejaron sus datos pero no terminaron la compra. Escribiles: muchas compran con un empujoncito. Si dejaron email, les mandamos un recordatorio automático a las 2 horas.</p>
+      </div>
+      <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+        {lista.map((c) => {
+          const tel = String(c.telefono || '').replace(/\D/g, '');
+          const wa = tel ? (tel.length === 10 ? `549${tel}` : tel) : '';
+          const msg = `¡Hola${c.nombre ? ` ${c.nombre.split(' ')[0]}` : ''}! Vi que dejaste unos productos en tu carrito de ${tiendaNombre}. ¿Te ayudo a terminar la compra? Lo tenés guardado acá: ${c.link}`;
+          return (
+            <li key={c.id} className="p-4 text-sm">
+              <div className="flex flex-wrap items-center gap-3">
+                <button className="min-w-0 flex-1 text-left" onClick={() => setAbierto(abierto === c.id ? null : c.id)}>
+                  <p className="font-medium">{c.nombre || 'Sin nombre'} · {fmt(c.total)}</p>
+                  <p className="text-xs text-gray-500">{(c.items as any[]).length} producto(s) · {new Date(c.updatedAt).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}{c.estado === 'avisado' ? ' · recordatorio enviado' : ''}</p>
+                </button>
+                {wa && <a href={`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`} target="_blank" className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white">Escribir por WhatsApp</a>}
+              </div>
+              {abierto === c.id && (
+                <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                  {(c.items as any[]).map((i, k) => <li key={k}>{i.qty} × {i.nombre} {i.talle && `· ${i.talle}`} {i.color && `· ${i.color}`}</li>)}
+                  {c.email && <li className="pt-1">Email: {c.email}</li>}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

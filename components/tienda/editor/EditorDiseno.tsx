@@ -37,7 +37,7 @@ const PALETAS = [
   ['#8b5cf6', '#2e1065'], ['#0d9488', '#134e4a'], ['#f97316', '#431407'], ['#2563eb', '#0f172a'],
 ];
 
-type Panel = 'menu' | 'plantillas' | 'colores' | 'letra' | 'encabezado' | 'inicio' | 'listado' | 'detalle';
+type Panel = 'menu' | 'plantillas' | 'colores' | 'letra' | 'encabezado' | 'inicio' | 'listado' | 'detalle' | 'navegacion' | 'popup';
 
 export function MiniPlantilla({ id }: { id: string }) {
   // Vista en miniatura de cada plantilla
@@ -172,12 +172,14 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
   const [subiendo, setSubiendo] = useState('');
   const [publicando, setPublicando] = useState(false);
   const [cats, setCats] = useState<{ nombre: string; path: string }[]>([]);
+  const [paginas, setPaginas] = useState<{ slug: string; titulo: string }[]>([]);
   const iframeRef = useRef<any>(null);
   const scrollRef = useRef(0);
   const primera = useRef(true);
 
   useEffect(() => {
     fetch(`/api/tienda/${t.slug}/categorias`).then((r) => r.json()).then((x: any) => setCats(x.categorias || [])).catch(() => {});
+    api('/paginas').then((x) => setPaginas(x.paginas || [])).catch(() => {});
   }, [t.slug]);
 
   // Tocar un bloque en la vista previa abre su configuración (como en Tiendanube)
@@ -557,6 +559,8 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
             <Item id="inicio" icono="🏠" titulo="Página de inicio" detalle={`${d.secciones.filter((s: any) => s.visible).length} secciones visibles`} />
             <Item id="listado" icono="▦" titulo="Listado de productos" detalle="Productos por fila y fotos" />
             <Item id="detalle" icono="👙" titulo="Detalle de producto" detalle="Cuotas y guía de talles" />
+            <Item id="navegacion" icono="☰" titulo="Menú" detalle="Categorías y links a tus páginas" />
+            <Item id="popup" icono="💬" titulo="Pop-up de bienvenida" detalle={d.popup.activo ? 'Activado' : 'Desactivado'} />
             <div className="mt-4 border-t border-gray-100 px-5 pt-4 text-xs text-gray-500">
               <p>El logo, el nombre y tus redes se cambian en <strong>Mi Tienda → Marca y datos</strong>.</p>
               {estado !== 'publicado' && <button type="button" className="mt-3 text-red-600 underline" onClick={descartar}>Descartar cambios sin publicar</button>}
@@ -707,6 +711,82 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
         );
       }
 
+      case 'navegacion': {
+        const m = d.menu;
+        const setM = (c: any) => setD({ ...d, menu: { ...m, ...c } });
+        const opciones = [
+          ...paginas.map((pg) => ({ l: `Página: ${pg.titulo}`, v: `/p/${pg.slug}` })),
+          ...cats.map((c) => ({ l: `Categoría: ${c.nombre}`, v: `/categoria/${c.path}` })),
+        ];
+        return (
+          <div>
+            <Volver titulo="Menú" />
+            <div className="space-y-5 p-5">
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!m.categorias} onChange={(e) => setM({ categorias: chk(e) })} /> Mostrar las categorías automáticamente</label>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Links del menú</p>
+                {m.extras.map((x: any, k: number) => (
+                  <div key={k} className="space-y-1 rounded-lg bg-gray-50 p-2">
+                    <div className="flex gap-1">
+                      <input className={input} placeholder="Texto (ej: Ofertas)" value={x.titulo} onChange={(e) => setM({ extras: m.extras.map((y: any, j: number) => (j === k ? { ...y, titulo: val(e) } : y)) })} />
+                      <button type="button" className="px-1 text-gray-500 disabled:opacity-25" disabled={k === 0} onClick={() => { const n = [...m.extras]; [n[k - 1], n[k]] = [n[k], n[k - 1]]; setM({ extras: n }); }}>↑</button>
+                      <button type="button" className="px-1 text-xs text-red-600" onClick={() => setM({ extras: m.extras.filter((_: any, j: number) => j !== k) })}>✕</button>
+                    </div>
+                    <select className={input} value={opciones.some((o) => o.v === x.link) ? x.link : '__otro'} onChange={(e) => { const v = val(e); if (v !== '__otro') setM({ extras: m.extras.map((y: any, j: number) => (j === k ? { ...y, link: v } : y)) }); }}>
+                      <option value="">Elegí a dónde lleva…</option>
+                      {opciones.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                      <option value="__otro">Otro link (https://…)</option>
+                    </select>
+                    {!opciones.some((o) => o.v === x.link) && (
+                      <input className={input} placeholder="https://…" value={x.link} onChange={(e) => setM({ extras: m.extras.map((y: any, j: number) => (j === k ? { ...y, link: val(e) } : y)) })} />
+                    )}
+                  </div>
+                ))}
+                {m.extras.length < 8 && <button type="button" className={`${btnSec} w-full`} onClick={() => setM({ extras: [...m.extras, { titulo: '', link: '' }] })}>+ Agregar link</button>}
+              </div>
+              <p className="text-xs text-gray-500">Tus páginas (Cómo comprar, Cambios…) se crean en <strong>Mi Tienda → Páginas</strong> y también aparecen en el pie de página.</p>
+            </div>
+          </div>
+        );
+      }
+
+      case 'popup': {
+        const pp = d.popup;
+        const setP = (c: any) => setD({ ...d, popup: { ...pp, ...c } });
+        return (
+          <div>
+            <Volver titulo="Pop-up de bienvenida" />
+            <div className="space-y-4 p-5">
+              <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={!!pp.activo} onChange={(e) => setP({ activo: chk(e) })} /> Mostrar el pop-up</label>
+              <p className="text-xs text-gray-500">Aparece una sola vez a cada visitante. Los datos que dejen los ves en <strong>Mi Tienda → Clientes</strong>.</p>
+              <input className={input} placeholder="Título" value={pp.titulo} onChange={(e) => setP({ titulo: val(e) })} />
+              <textarea className={input} rows={3} placeholder="Texto" value={pp.texto} onChange={(e) => setP({ texto: val(e) })} />
+              <div className="grid grid-cols-2 gap-2">
+                <select className={input} value={pp.pide} onChange={(e) => setP({ pide: val(e) })}>
+                  <option value="whatsapp">Pedir WhatsApp</option>
+                  <option value="email">Pedir email</option>
+                  <option value="ninguno">Solo mensaje</option>
+                </select>
+                <input className={input} placeholder="Texto del botón" value={pp.boton} onChange={(e) => setP({ boton: val(e) })} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input className={input} placeholder="Cupón de regalo (opcional)" value={pp.cupon} onChange={(e) => setP({ cupon: val(e).toUpperCase() })} />
+                <select className={input} value={pp.segundos} onChange={(e) => setP({ segundos: Number(val(e)) })}>
+                  {[0, 3, 6, 10, 20].map((n) => <option key={n} value={n}>{n === 0 ? 'Al entrar' : `A los ${n} seg`}</option>)}
+                </select>
+              </div>
+              <p className="text-xs text-gray-500">Si ponés un cupón, crealo también en <strong>Mi Tienda → Cupones</strong> con el mismo código.</p>
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {pp.imagen && <img src={pp.imagen} alt="" className="h-12 w-20 rounded object-cover" />}
+                <ImgInput label={pp.imagen ? 'Cambiar imagen' : '+ Imagen (opcional)'} k="popup" onUrl={(u) => setP({ imagen: u })} />
+                {pp.imagen && <button type="button" className="text-xs text-red-600" onClick={() => setP({ imagen: '' })}>Quitar</button>}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       case 'detalle': {
         const dt = d.detalle;
         const setC = (c: any) => setD({ ...d, detalle: { ...dt, cuotas: { ...dt.cuotas, ...c } } });
@@ -834,7 +914,7 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
             <iframe
               key={recarga}
               ref={iframeRef}
-              src={`/t/${t.slug}?vista=${recarga}`}
+              src={`/t/${t.slug}?vista=${recarga}${panel === 'popup' ? '&popup=1' : ''}`}
               title="Vista previa de la tienda"
               className="h-full w-full border-0"
               onLoad={() => { try { iframeRef.current?.contentWindow?.scrollTo(0, scrollRef.current); } catch { /* nada */ } }}

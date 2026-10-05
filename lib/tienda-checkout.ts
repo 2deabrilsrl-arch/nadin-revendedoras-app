@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { getCatalogoTienda, getTiendaBaseUrl, formatPrecio, PREFIJO_VARIANTE_PROPIA, type TiendaConUser } from '@/lib/tienda';
 import { enviarNotificacionGeneral } from '@/lib/notifications';
 import { crearConsolidacion, FORMAS_PAGO_NADIN, TIPOS_ENVIO_NADIN } from '@/lib/consolidacion';
+import { getPromosActivas, aplicarPromos } from '@/lib/tienda-promos';
 
 export interface ItemEntrada {
   productId: string;
@@ -31,6 +32,8 @@ export interface LineaCalculada {
 
 export interface Cotizacion {
   lineas: LineaCalculada[];
+  descuentoPromo: number;
+  promos: string[];
   errores: string[];
   subtotal: number;
   descuentoCupon: number;
@@ -92,6 +95,11 @@ export async function cotizar(
   const subtotal = lineas.reduce((a, l) => a + l.precio * l.qty, 0);
   const totalMayorista = lineas.reduce((a, l) => a + l.mayorista * l.qty, 0);
 
+  // Promociones automáticas (3x2, % off…)
+  const promoRes = aplicarPromos(lineas, byId as any, await getPromosActivas(tienda.id));
+  const descuentoPromo = Math.min(promoRes.descuento, subtotal);
+  const baseCupon = subtotal - descuentoPromo;
+
   // Cupón
   let cupon: Cotizacion['cupon'] = null;
   let cuponError: string | null = null;
@@ -103,11 +111,11 @@ export async function cotizar(
     if (!c || !c.activo) cuponError = 'El cupón no existe o no está activo.';
     else if (c.venceAt && c.venceAt < new Date()) cuponError = 'El cupón está vencido.';
     else if (c.usosMax != null && c.usos >= c.usosMax) cuponError = 'El cupón ya alcanzó su límite de usos.';
-    else if (c.minimo && subtotal < c.minimo) cuponError = `El cupón es válido para compras desde ${formatPrecio(c.minimo)}.`;
+    else if (c.minimo && baseCupon < c.minimo) cuponError = `El cupón es válido para compras desde ${formatPrecio(c.minimo)}.`;
     else {
       cupon = { id: c.id, codigo: c.codigo, tipo: c.tipo };
-      if (c.tipo === 'porcentaje') descuentoCupon = round(subtotal * Math.min(Math.max(c.valor, 0), 100) / 100);
-      else if (c.tipo === 'monto') descuentoCupon = round(Math.min(Math.max(c.valor, 0), subtotal));
+      if (c.tipo === 'porcentaje') descuentoCupon = round(baseCupon * Math.min(Math.max(c.valor, 0), 100) / 100);
+      else if (c.tipo === 'monto') descuentoCupon = round(Math.min(Math.max(c.valor, 0), baseCupon));
       else if (c.tipo === 'envio_gratis') envioGratisCupon = true;
     }
   }
@@ -119,7 +127,7 @@ export async function cotizar(
     const m = await prisma.tiendaMetodoPago.findFirst({ where: { id: input.pagoId, tiendaId: tienda.id, activo: true } });
     if (m) {
       pago = { id: m.id, tipo: m.tipo, nombre: m.nombre };
-      if (m.descuentoPct > 0) descuentoPago = round((subtotal - descuentoCupon) * Math.min(m.descuentoPct, 50) / 100);
+      if (m.descuentoPct > 0) descuentoPago = round((baseCupon - descuentoCupon) * Math.min(m.descuentoPct, 50) / 100);
     }
   }
 
@@ -135,8 +143,8 @@ export async function cotizar(
     }
   }
 
-  const total = Math.max(0, subtotal - descuentoCupon - descuentoPago + envioCosto);
-  return { lineas, errores, subtotal, descuentoCupon, descuentoPago, envioCosto, total, totalMayorista, cupon, cuponError, envio, pago };
+  const total = Math.max(0, subtotal - descuentoPromo - descuentoCupon - descuentoPago + envioCosto);
+  return { lineas, errores, subtotal, descuentoPromo, promos: promoRes.detalle, descuentoCupon, descuentoPago, envioCosto, total, totalMayorista, cupon, cuponError, envio, pago };
 }
 
 // ---------------------------------------------------------------------

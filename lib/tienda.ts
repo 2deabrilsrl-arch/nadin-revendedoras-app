@@ -6,6 +6,7 @@ import { headers, cookies } from 'next/headers';
 import { verifySessionToken, SESSION_COOKIE } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { calcularPrecioVenta } from '@/lib/precios';
+import { getPromosActivas, aplica, etiquetaPromo } from '@/lib/tienda-promos';
 
 // ---------------------------------------------------------------------
 // Tipos
@@ -40,6 +41,7 @@ export interface ProductoTienda {
   propio?: boolean; // cargado por la revendedora (no es de Nadin)
   enOferta?: boolean;
   descuentoPct?: number; // mayor % de descuento entre sus variantes
+  promo?: string | null; // etiqueta de promo automática que le aplica (ej: "3x2")
 }
 
 /** Los productos propios usan ids con prefijo para no chocar con los de Tiendanube */
@@ -244,10 +246,11 @@ function oferta(variantes: VarianteTienda[]) {
 
 /** Catálogo con precios, ocultos y destacados de esta tienda. */
 export async function getCatalogoTienda(tienda: TiendaConUser): Promise<ProductoTienda[]> {
-  const [base, overrides, propios] = await Promise.all([
+  const [base, overrides, propios, promos] = await Promise.all([
     getCatalogoBase(),
     prisma.tiendaProducto.findMany({ where: { tiendaId: tienda.id } }),
     prisma.tiendaProductoPropio.findMany({ where: { tiendaId: tienda.id, activo: true }, include: { variantes: true } }),
+    getPromosActivas(tienda.id).catch(() => []),
   ]);
   const ov = new Map(overrides.map((o) => [o.productId, o]));
   const margen = margenEfectivo(tienda, tienda.user.margen);
@@ -322,6 +325,9 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
       ...oferta(variantes),
     });
   }
+
+  // Etiqueta de la primera promo automática que le aplica a cada producto
+  if (promos.length) for (const p of out) { const pr = promos.find((x) => aplica(x, p)); p.promo = pr ? etiquetaPromo(pr) : null; }
 
   // Destacados primero, después más vendidos, sin stock al final
   out.sort((a, b) => {
