@@ -85,8 +85,9 @@ function Get-FiscalCF($dfs) {
 # y se cargan en config.json: "SituacionFiscalRI", "SituacionFiscalMONO", "SituacionFiscalEXENTO"
 function Get-SituacionCuit($sit) {
   $v = $Cfg."SituacionFiscal$sit"
-  # Verificado en Dragonfish: 1 = Responsable Inscripto
+  # Verificados en Dragonfish: 1 = Responsable Inscripto, 7 = Responsable Monotributo
   if (($null -eq $v -or "$v" -eq '') -and $sit -eq 'RI') { $v = 1 }
+  if (($null -eq $v -or "$v" -eq '') -and $sit -eq 'MONO') { $v = 7 }
   if ($null -eq $v -or "$v" -eq '') {
     throw "Falta en config.json 'SituacionFiscal$sit' (el número de esa situación fiscal en Dragonfish)"
   }
@@ -209,45 +210,61 @@ try {
       $cuit = ("" + $rev.cuit) -replace '\D', ''
       $dni = ("" + $rev.dni) -replace '\D', ''
 
-      # Qué código de cliente usar (regla Nadin: código = DNI o CUIT)
-      #  1) Si Nadin le cargó un código de Dragonfish (clientes viejos), se usa ese y no se crea nada.
-      #  2) Monotributo / Resp. Inscripto / Exento: los primeros 10 números del CUIT (sin el verificador).
-      #  3) Consumidor Final: el DNI.
+      # Qué código de cliente usar (regla Nadin: el código es el DNI; si no tiene, el CUIT)
+      #  - Si Nadin le cargó un código de Dragonfish (clientes viejos), se usa ese y no se crea nada.
+      #  - Si no, se busca en este orden: DNI del perfil -> DNI dentro del CUIT -> primeros 10 del CUIT.
+      #  - Si no existe con ninguno, se crea: persona = DNI; empresa (CUIT 30/33/34) = primeros 10 del CUIT.
       $codFijo = ("" + $rev.codigoDragonfish).Trim()
       $usaCuit = ($sit -ne 'CF')
+      $dniValido = ($dni -and [int64]$dni -ge 100000)   # descarta DNI vacíos o de relleno (00000002)
+      if ($usaCuit -and $cuit.Length -ne 11 -and -not $codFijo) {
+        $msg = "La revendedora $($rev.name) es $sit pero no tiene un CUIT válido cargado. Que lo complete en su perfil y reintentá."
+        Log "[$($c.referencia)] ERROR $msg"
+        if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
+        continue
+      }
+      if (-not $usaCuit -and -not $dniValido -and -not $codFijo) {
+        $msg = "La revendedora $($rev.name) tiene un DNI inválido ('$($rev.dni)'). Corregilo en la app y reintentá."
+        Log "[$($c.referencia)] ERROR $msg"
+        if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
+        continue
+      }
+
+      $candidatos = @()
       if ($codFijo) {
+        $candidatos = @($codFijo)
         $codCliente = $codFijo
       }
-      elseif ($usaCuit) {
-        if ($cuit.Length -ne 11) {
-          $msg = "La revendedora $($rev.name) es $sit pero no tiene un CUIT válido cargado. Que lo complete en su perfil y reintentá."
-          Log "[$($c.referencia)] ERROR $msg"
-          if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
-          continue
-        }
-        $codCliente = $cuit.Substring(0, 10)
-      }
       else {
-        # DNI vacío o de relleno (00000002, 12345...) = no se puede usar como cliente
-        if (-not $dni -or [int64]$dni -lt 100000) {
-          $msg = "La revendedora $($rev.name) tiene un DNI inválido ('$($rev.dni)'). Corregilo en la app y reintentá."
-          Log "[$($c.referencia)] ERROR $msg"
-          if (-not $Cfg.DryRun) { Informar $c.id $false $null $msg $true }
-          continue
+        $dniCorto = if ($dniValido) { $dni.Substring(0, [Math]::Min(10, $dni.Length)) } else { $null }
+        $esEmpresa = $false; $dniDeCuit = $null; $cuit10 = $null
+        if ($cuit.Length -eq 11) {
+          $esEmpresa = @('30', '33', '34') -contains $cuit.Substring(0, 2)
+          $dniDeCuit = ($cuit.Substring(2, 8)).TrimStart('0')
+          $cuit10 = $cuit.Substring(0, 10)
         }
-        $codCliente = $dni.Substring(0, [Math]::Min(10, $dni.Length))
+        foreach ($x in @($dniCorto, $(if (-not $esEmpresa) { $dniDeCuit }), $cuit10)) {
+          if ($x -and -not ($candidatos -contains $x)) { $candidatos += $x }
+        }
+        # Código con el que se crearía si no existe
+        $codCliente = if ($esEmpresa) { $cuit10 } elseif ($dniCorto) { $dniCorto } elseif ($dniDeCuit) { $dniDeCuit } else { $cuit10 }
       }
 
       # Cliente: existe solo si Dragonfish devuelve ESE código (algunas versiones responden 200 vacío)
       $existe = $false
-      try {
-        $cliDf = Invoke-Json 'GET' "$Df/Cliente/$codCliente/" $DfHeaders $null
-        if ($cliDf -and $cliDf.Codigo -and (("" + $cliDf.Codigo).Trim() -eq $codCliente)) {
-          $existe = $true
-          Log "[$($c.referencia)] cliente $codCliente encontrado: $($cliDf.Nombre)"
+      foreach ($cand in $candidatos) {
+        try {
+          $cliDf = Invoke-Json 'GET' "$Df/Cliente/$cand/" $DfHeaders $null
+          if ($cliDf -and $cliDf.Codigo -and (("" + $cliDf.Codigo).Trim() -eq $cand)) {
+            $existe = $true
+            $codCliente = $cand
+            Log "[$($c.referencia)] cliente $cand encontrado: $($cliDf.Nombre)"
+            break
+          }
         }
+        catch { if (-not ((Get-ErrorBody $_) -match '(HTTP 40[04]|\b40[04]\b)')) { throw } }
       }
-      catch { if (-not ((Get-ErrorBody $_) -match '(HTTP 40[04]|\b40[04]\b)')) { throw } }
+      if (-not $existe) { Log "[$($c.referencia)] no está con ninguno de estos códigos: $($candidatos -join ', ')" }
       if (-not $existe) {
         if ($codFijo) { throw "El código de Dragonfish $codFijo cargado para $($rev.name) no existe" }
         if (-not $Cfg.CrearClientes) { throw "El cliente $codCliente no existe en Dragonfish" }
