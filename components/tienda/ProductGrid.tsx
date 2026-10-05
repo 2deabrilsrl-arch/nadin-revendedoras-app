@@ -31,7 +31,7 @@ export default function ProductGrid({
   }
   const ulClass = formato === 'slider'
     ? '-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:gap-5 [scrollbar-width:thin] [&>li]:w-[46%] [&>li]:shrink-0 [&>li]:snap-start sm:[&>li]:w-[31%] lg:[&>li]:w-[23%]'
-    : `grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 ${columnas === 4 ? 'md:grid-cols-3 lg:grid-cols-4' : 'md:grid-cols-3'}`;
+    : `t-grid grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 ${columnas === 4 ? 'md:grid-cols-3 lg:grid-cols-4' : 'md:grid-cols-3'}`;
   return (
     <ul className={ulClass}>
       {productos.map((p, i) => {
@@ -51,7 +51,7 @@ export default function ProductGrid({
                 )}
                 {p.images[1] && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={tnImg(p.images[1])} alt="" loading="lazy" className="absolute inset-0 hidden h-full w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100 [@media(hover:hover)]:block" />
+                  <img src={tnImg(p.images[1])} alt="" loading="lazy" className="t-foto2 absolute inset-0 hidden h-full w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100 [@media(hover:hover)]:block" />
                 )}
                 {!p.disponible && <span className="t-badge absolute left-2 top-2 bg-gray-900/85 text-white">Sin stock</span>}
                 {p.disponible && p.ultimasUnidades && <span className="t-badge absolute left-2 top-2 bg-white text-gray-900">Últimas unidades</span>}

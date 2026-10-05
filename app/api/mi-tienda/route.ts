@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserAndTienda, noAuth, bad, s, sOrNull, num, bool, RESERVED_SLUGS } from '@/lib/mi-tienda';
-import { slugify, getTiendaBaseUrl } from '@/lib/tienda';
+import { slugify, getTiendaBaseUrl, PREVIEW_COOKIE } from '@/lib/tienda';
 import { normalizarDiseno } from '@/lib/tienda-diseno';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,7 @@ export async function GET() {
   if (!ctx) return noAuth();
   const { tienda, user } = ctx;
   return NextResponse.json({
-    tienda: { ...tienda, diseno: normalizarDiseno(tienda.diseno) },
+    tienda: { ...tienda, diseno: normalizarDiseno(tienda.diseno), disenoBorrador: borradorLimpio(tienda.disenoBorrador) },
     url: getTiendaBaseUrl(tienda),
     urlApp: `/t/${tienda.slug}`,
     margenUsuaria: user.margen,
@@ -22,11 +22,55 @@ export async function GET() {
   });
 }
 
+/** Borrador del editor: diseño + colores + letra, siempre validado */
+function borradorLimpio(raw: any) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    diseno: normalizarDiseno(raw.diseno),
+    colorPrimario: typeof raw.colorPrimario === 'string' && HEX.test(raw.colorPrimario) ? raw.colorPrimario : null,
+    colorSecundario: typeof raw.colorSecundario === 'string' && HEX.test(raw.colorSecundario) ? raw.colorSecundario : null,
+    fuente: ['moderna', 'elegante', 'clasica'].includes(raw.fuente) ? raw.fuente : null,
+  };
+}
+
+function conCookiePreview(res: NextResponse, tiendaId: string | null) {
+  if (tiendaId) res.cookies.set(PREVIEW_COOKIE, tiendaId, { httpOnly: true, sameSite: 'lax', secure: true, path: '/', maxAge: 60 * 60 * 6 });
+  else res.cookies.set(PREVIEW_COOKIE, '', { path: '/', maxAge: 0 });
+  return res;
+}
+
 export async function PUT(req: Request) {
   const ctx = await getUserAndTienda();
   if (!ctx) return noAuth();
   const { tienda } = ctx;
   const b: any = await req.json().catch(() => ({}));
+
+  // Editor de diseño: guardar borrador / publicar / descartar
+  if (b.accion === 'borrador') {
+    const borrador = borradorLimpio(b.borrador);
+    if (!borrador) return bad('Borrador inválido.');
+    await prisma.tienda.update({ where: { id: tienda.id }, data: { disenoBorrador: borrador as any } });
+    return conCookiePreview(NextResponse.json({ ok: true, borrador }), tienda.id);
+  }
+  if (b.accion === 'publicar') {
+    const borrador = borradorLimpio(b.borrador ?? tienda.disenoBorrador);
+    if (!borrador) return bad('No hay cambios para publicar.');
+    const updated = await prisma.tienda.update({
+      where: { id: tienda.id },
+      data: {
+        diseno: borrador.diseno as any,
+        ...(borrador.colorPrimario ? { colorPrimario: borrador.colorPrimario } : {}),
+        ...(borrador.colorSecundario ? { colorSecundario: borrador.colorSecundario } : {}),
+        ...(borrador.fuente ? { fuente: borrador.fuente } : {}),
+        disenoBorrador: null as any,
+      },
+    });
+    return NextResponse.json({ tienda: { ...updated, diseno: normalizarDiseno(updated.diseno), disenoBorrador: null }, url: getTiendaBaseUrl(updated) });
+  }
+  if (b.accion === 'descartar') {
+    await prisma.tienda.update({ where: { id: tienda.id }, data: { disenoBorrador: null as any } });
+    return conCookiePreview(NextResponse.json({ ok: true }), null);
+  }
 
   const data: Record<string, any> = {
     nombre: s(b.nombre, 40),
@@ -84,5 +128,5 @@ export async function PUT(req: Request) {
 
   Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
   const updated = await prisma.tienda.update({ where: { id: tienda.id }, data });
-  return NextResponse.json({ tienda: { ...updated, diseno: normalizarDiseno(updated.diseno) }, url: getTiendaBaseUrl(updated) });
+  return NextResponse.json({ tienda: { ...updated, diseno: normalizarDiseno(updated.diseno), disenoBorrador: borradorLimpio(updated.disenoBorrador) }, url: getTiendaBaseUrl(updated) });
 }

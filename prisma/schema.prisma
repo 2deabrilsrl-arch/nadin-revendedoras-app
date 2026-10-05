@@ -426,6 +426,7 @@ model Tienda {
   nadinTipoEnvio    String?  // retiro | envio
   nadinTransporte   String?  // nombre del transporte si es envío
   diseno            Json?    // portada: anuncio, slides, beneficios, estilo
+  disenoBorrador    Json?    // cambios sin publicar del editor: { diseno, colorPrimario, colorSecundario, fuente }
   metaPixelId       String?
   ga4Id             String?
   createdAt         DateTime @default(now())

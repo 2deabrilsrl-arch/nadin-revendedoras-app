@@ -54,6 +54,13 @@ export async function generateMetadata({ params }: { params: { site: string } })
 
 const ESTILOS_CSS = `
 #nadin-app-chrome,#nadin-app-chrome-bottom{display:none!important}
+.tienda[data-cm="1"] .t-grid{grid-template-columns:minmax(0,1fr)}
+@media(min-width:1024px){.tienda[data-cd="3"] .t-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.tienda[data-cd="4"] .t-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.tienda[data-cd="5"] .t-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.tienda[data-sf="0"] .t-foto2{display:none!important}
+@keyframes t-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.t-marquee{display:flex;width:max-content;animation:t-marquee 28s linear infinite}
+.t-marquee:hover{animation-play-state:paused}
+@media(prefers-reduced-motion:reduce){.t-marquee{animation:none}}
 .tienda{--t-radius:2px;--t-btn-radius:2px;--t-bg:#fff;--t-tint:color-mix(in srgb,var(--t-primary) 8%,#fff);background:var(--t-bg);font-family:var(--font-moderna),system-ui,sans-serif;color:#1f2937}
 .tienda .t-title{font-family:var(--t-font-title);letter-spacing:.01em;color:var(--t-secondary)}
 .tienda .t-h{font-family:var(--t-font-title);font-size:.95rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--t-secondary)}
@@ -129,6 +136,9 @@ export default async function TiendaLayout({ children, params }: { children: Rea
       className={`tienda ${playfair.variable} ${lora.variable} ${montserrat.variable} min-h-screen`}
       data-plantilla={plantilla.id}
       data-tarjeta={plantilla.tarjeta}
+      data-cm={diseno.listado.colMobile}
+      data-cd={diseno.listado.colDesktop}
+      data-sf={diseno.listado.segundaFoto ? '1' : '0'}
       style={{ ['--t-primary' as any]: primary, ['--t-secondary' as any]: secondary, ['--t-font-title' as any]: fontVar }}
     >
       <style>{ESTILOS_CSS}</style>
@@ -140,13 +150,36 @@ export default async function TiendaLayout({ children, params }: { children: Rea
           </div>
         )}
 
-        {diseno.anuncio.activo && (
-          <div className="px-4 py-2 text-center text-xs font-medium tracking-wide text-white" style={{ background: secondary }}>
-            {anuncioHref ? <a href={anuncioHref} className="hover:underline">{diseno.anuncio.texto}</a> : diseno.anuncio.texto}
+        {(tienda as any).enBorrador && (
+          <div className="sticky top-0 z-50 flex items-center justify-center gap-3 bg-blue-600 px-4 py-2 text-xs text-white">
+            <span>Estás viendo el <strong>borrador</strong> de tu diseño (todavía no está publicado).</span>
+            <a href={`/api/mi-tienda/preview?volver=${encodeURIComponent(home)}`} className="underline">Ver la versión publicada</a>
           </div>
         )}
 
-        <HeaderTienda variante={plantilla.header} nombre={tienda.nombre} logoUrl={tienda.logoUrl} home={home} buscarHref={`${prefix}/buscar`} categorias={categorias} />
+        {diseno.anuncio.activo && (
+          <div className="overflow-hidden px-4 py-2 text-xs font-medium tracking-wide text-white" style={{ background: secondary }}>
+            {diseno.anuncio.desliza ? (
+              <div className="t-marquee" aria-label={diseno.anuncio.mensajes.join(' · ')}>
+                {[0, 1].map((k) => (
+                  <div key={k} className="flex shrink-0" aria-hidden={k === 1}>
+                    {[...diseno.anuncio.mensajes, ...diseno.anuncio.mensajes].map((m, j) => <span key={j} className="px-8 uppercase">{m}</span>)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-1 text-center">
+                {diseno.anuncio.mensajes.map((m, j) => (
+                  <span key={j} className={j > 0 ? 'hidden sm:inline' : ''}>
+                    {anuncioHref ? <a href={anuncioHref} className="hover:underline">{m}</a> : m}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <HeaderTienda variante={diseno.header === 'auto' ? plantilla.header : diseno.header} nombre={tienda.nombre} logoUrl={tienda.logoUrl} home={home} buscarHref={`${prefix}/buscar`} categorias={categorias} />
 
         <main>{children}</main>
 

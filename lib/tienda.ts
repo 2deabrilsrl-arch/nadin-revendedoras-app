@@ -2,7 +2,8 @@
 // Lógica compartida de Tiendas Nadin: resolver tienda, catálogo con precios
 // de la revendedora, categorías y URLs. Solo servidor.
 
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
+import { verifySessionToken, SESSION_COOKIE } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { calcularPrecioVenta } from '@/lib/precios';
 
@@ -131,7 +132,34 @@ export async function getTiendaBySite(site: string) {
       user: { select: { id: true, margen: true, name: true, telefono: true } },
     },
   });
-  return tienda;
+  if (!tienda) return null;
+  return aplicarBorrador(tienda);
+}
+
+export const PREVIEW_COOKIE = 'tienda_preview';
+
+/**
+ * Vista previa del editor: si la dueña está mirando su tienda con la cookie de
+ * vista previa, se muestra el borrador (diseño, colores y letra sin publicar).
+ */
+async function aplicarBorrador<T extends { id: string; userId: string; disenoBorrador: any }>(tienda: T): Promise<T & { enBorrador: boolean }> {
+  try {
+    const jar = cookies();
+    const b = tienda.disenoBorrador as any;
+    if (!b || jar.get(PREVIEW_COOKIE)?.value !== tienda.id) return { ...tienda, enBorrador: false };
+    const sesion = await verifySessionToken(jar.get(SESSION_COOKIE)?.value);
+    if (sesion?.uid !== tienda.userId) return { ...tienda, enBorrador: false };
+    return {
+      ...tienda,
+      diseno: b.diseno ?? (tienda as any).diseno,
+      colorPrimario: b.colorPrimario || (tienda as any).colorPrimario,
+      colorSecundario: b.colorSecundario || (tienda as any).colorSecundario,
+      fuente: b.fuente || (tienda as any).fuente,
+      enBorrador: true,
+    };
+  } catch {
+    return { ...tienda, enBorrador: false };
+  }
 }
 
 export type TiendaConUser = NonNullable<Awaited<ReturnType<typeof getTiendaBySite>>>;

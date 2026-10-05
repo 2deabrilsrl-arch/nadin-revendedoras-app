@@ -5,6 +5,8 @@ import type { ProductoTienda, CategoriaNodo, TiendaConUser } from '@/lib/tienda'
 import { filtrarPorCategoria, PAGE_SIZE } from '@/lib/tienda';
 import ProductGrid, { Paginacion, TituloSeccion, tnImg } from './ProductGrid';
 import HeroCarousel from './HeroCarousel';
+import Contador from './Contador';
+import { productPath, formatPrecio } from '@/lib/tienda';
 import Icon from './Icon';
 
 interface Ctx {
@@ -126,6 +128,8 @@ function Bloque({ s, ctx, primera, paginar }: { s: Seccion; ctx: Ctx; primera: b
         lista = (s.productos || []).map((id) => porId.get(id)).filter(Boolean) as typeof productos;
       }
       if (s.fuente === 'mas_vendidos') lista = [...productos].sort((a, b) => a.rank - b.rank);
+      // Nuevos: los ids de Tiendanube crecen con el tiempo (los propios van primero)
+      if (s.fuente === 'nuevos') lista = [...productos].sort((a, b) => (Number(b.id) || Infinity) - (Number(a.id) || Infinity));
       if (s.fuente === 'categoria' && s.categoria) {
         const path = s.categoria.split('/').filter(Boolean);
         lista = filtrarPorCategoria(productos, path);
@@ -148,6 +152,48 @@ function Bloque({ s, ctx, primera, paginar }: { s: Seccion; ctx: Ctx; primera: b
         <Contenedor className="pt-16">
           {s.titulo && <TituloSeccion href={verTodo}>{s.titulo}</TituloSeccion>}
           <ProductGrid productos={items} prefix={prefix} descTransfer={descTransfer} formato={s.formato} />
+        </Contenedor>
+      );
+    }
+
+    case 'contador': {
+      const fin = new Date(s.hasta).getTime();
+      if (!s.hasta || !Number.isFinite(fin) || fin < Date.now()) return null; // terminó la oferta: no se muestra
+      const href = enlace(prefix, s.link);
+      return (
+        <Contenedor className="pt-14">
+          <div className="relative overflow-hidden rounded-[var(--t-radius)] px-6 py-12 text-center text-white" style={{ background: 'var(--t-primary)' }}>
+            {s.imagen && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={s.imagen} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+            )}
+            <div className="relative">
+              {s.titulo && <h2 className="t-title text-3xl !text-white sm:text-4xl">{s.titulo}</h2>}
+              {s.texto && <p className="mx-auto mt-3 max-w-xl text-white/90">{s.texto}</p>}
+              <div className="mt-6"><Contador hasta={s.hasta} /></div>
+              {s.boton && href && <a href={href} className="t-btn-light mt-8 inline-block">{s.boton}</a>}
+            </div>
+          </div>
+        </Contenedor>
+      );
+    }
+
+    case 'producto_principal': {
+      const p = productos.find((x) => x.id === s.productoId);
+      if (!p) return null;
+      return (
+        <Contenedor className="pt-16">
+          {s.titulo && <TituloSeccion>{s.titulo}</TituloSeccion>}
+          <a href={`${prefix}${productPath(p)}`} className="group grid items-center gap-8 md:grid-cols-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={tnImg(p.image, 640)} alt={p.nombre} loading="lazy" className="aspect-[4/5] w-full rounded-[var(--t-radius)] bg-gray-50 object-cover" />
+            <div className="text-center md:text-left">
+              <p className="text-xs uppercase tracking-[0.16em] text-gray-500">{p.brand}</p>
+              <h3 className="t-title mt-2 text-3xl sm:text-4xl">{p.nombre}</h3>
+              <p className="mt-4 text-2xl font-semibold">{formatPrecio(p.precioDesde)}</p>
+              <span className="t-btn mt-8">Ver producto</span>
+            </div>
+          </a>
         </Contenedor>
       );
     }
