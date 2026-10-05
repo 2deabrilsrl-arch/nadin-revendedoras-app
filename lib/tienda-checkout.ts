@@ -251,6 +251,7 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
   const orden = await prisma.ordenTienda.findUnique({ where: { id: ordenId }, include: { tienda: true } });
   if (!orden) return;
   const hayNadin = await prisma.ordenTiendaItem.count({ where: { ordenId, propio: false } });
+  if (mpPaymentId) await emailRevendedoraOrden(ordenId, 'pagada'); // si lo marcó ella a mano, no hace falta avisarle
 
   if (orden.tienda.envioAutoNadin && hayNadin > 0) {
     try {
@@ -395,4 +396,45 @@ export async function emailOrden(
 
 export function escapeHtml(s: string) {
   return (s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+/**
+ * Aviso por email a la revendedora: pedido nuevo o pedido pagado.
+ * Va al email de la tienda (o al de su cuenta si no cargó uno), con el detalle y un botón de WhatsApp a la clienta.
+ */
+export async function emailRevendedoraOrden(ordenId: string, tipo: 'nueva' | 'pagada') {
+  try {
+    const o = await prisma.ordenTienda.findUnique({
+      where: { id: ordenId },
+      include: { items: true, tienda: { include: { user: { select: { email: true, name: true } } } } },
+    });
+    if (!o) return;
+    const to = o.tienda.email || (o.tienda as any).user?.email;
+    if (!to) return;
+    const tel = (o.clienteTelefono || '').replace(/\D/g, '');
+    const wa = tel ? `https://wa.me/${tel.length === 10 ? `549${tel}` : tel}?text=${encodeURIComponent(`¡Hola ${o.clienteNombre}! Te escribo de ${o.tienda.nombre} por tu pedido #${o.numero}.`)}` : '';
+    const panel = `${appUrl()}/dashboard/mi-tienda?tab=pedidos`;
+    const dir: any = o.direccion || null;
+    const filas = o.items.map((i) =>
+      `<tr><td style="padding:4px 8px 4px 0">${escapeHtml(i.nombre)}${i.talle ? ` · ${escapeHtml(i.talle)}` : ''}${i.color ? ` · ${escapeHtml(i.color)}` : ''}${i.propio ? ' <em>(tuyo)</em>' : ''}</td><td style="padding:4px 8px">×${i.qty}</td><td style="padding:4px 0;text-align:right">${formatPrecio(i.precio * i.qty)}</td></tr>`
+    ).join('');
+    const titulo = tipo === 'nueva' ? `🛍️ Nuevo pedido web #${o.numero}` : `💰 Pedido web #${o.numero} pagado`;
+    const intro = tipo === 'nueva'
+      ? `<p><strong>${escapeHtml(o.clienteNombre)}</strong> hizo un pedido en tu tienda. Pago elegido: <strong>${escapeHtml(o.metodoPagoNombre)}</strong> (todavía sin acreditar).</p>`
+      : `<p><strong>${escapeHtml(o.clienteNombre)}</strong> pagó su pedido. ${o.tienda.envioAutoNadin ? 'Los productos de Nadin se envían solos a Nadin.' : 'Entrá a la app para enviarlo a Nadin y asegurar el stock.'}</p>`;
+    const html = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#111;max-width:560px">
+      <h2 style="margin:0 0 8px">${titulo}</h2>${intro}
+      <table style="border-collapse:collapse;width:100%;margin:8px 0">${filas}
+        <tr><td colspan="2" style="padding-top:8px;border-top:1px solid #eee"><strong>Total</strong></td><td style="padding-top:8px;border-top:1px solid #eee;text-align:right"><strong>${formatPrecio(o.total)}</strong></td></tr></table>
+      <p style="margin:8px 0">Entrega: ${escapeHtml(o.envioNombre)}${dir ? ` — ${escapeHtml([dir.calle, dir.numero, dir.localidad, dir.provincia].filter(Boolean).join(' '))}` : ''}</p>
+      <p style="margin:8px 0">Clienta: ${escapeHtml(o.clienteNombre)} · ${escapeHtml(o.clienteTelefono || '')}${o.clienteEmail ? ` · ${escapeHtml(o.clienteEmail)}` : ''}</p>
+      ${o.nota ? `<p style="margin:8px 0">Nota: ${escapeHtml(o.nota)}</p>` : ''}
+      <p style="margin:16px 0">
+        ${wa ? `<a href="${wa}" style="background:#22c55e;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:bold;margin-right:8px">Escribirle por WhatsApp</a>` : ''}
+        <a href="${panel}" style="background:#db2777;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:bold">Ver en la app</a>
+      </p></div>`;
+    await emailOrden(to, `${titulo} — ${formatPrecio(o.total)}`, html, o.clienteEmail);
+  } catch (e) {
+    console.error('Email a revendedora falló', e);
+  }
 }

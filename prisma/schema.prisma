@@ -401,6 +401,7 @@ model Tienda {
   userId            String   @unique
   slug              String   @unique // subdominio: {slug}.<TIENDAS_ROOT_DOMAIN>
   dominioPropio     String?  @unique // ej: www.lenceriamaria.com.ar
+  dominioPendiente  String?  @unique // dominio cargado que todavía no apunta bien (se activa solo)
   activa            Boolean  @default(false)
   nombre            String
   eslogan           String?

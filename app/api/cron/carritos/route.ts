@@ -1,8 +1,10 @@
 // Cron cada hora: recordatorio por email a quienes dejaron el carrito hace más de 2 horas
+// + activa los dominios propios que ya quedaron apuntando bien
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTiendaBaseUrl, formatPrecio } from '@/lib/tienda';
 import { emailOrden, escapeHtml } from '@/lib/tienda-checkout';
+import { revisarDominiosPendientes } from '@/lib/dominios';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -31,5 +33,6 @@ export async function GET(req: Request) {
     await prisma.tiendaCarrito.update({ where: { id: c.id }, data: { estado: 'avisado', avisadoAt: new Date() } });
     enviados++;
   }
-  return NextResponse.json({ ok: true, enviados });
+  const dominios = await revisarDominiosPendientes().catch(() => 0);
+  return NextResponse.json({ ok: true, enviados, dominios });
 }

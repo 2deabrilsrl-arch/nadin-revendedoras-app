@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTiendaBySite, getTiendaBaseUrl, formatPrecio } from '@/lib/tienda';
-import { cotizar, crearPreferenciaMP, emailOrden, escapeHtml } from '@/lib/tienda-checkout';
+import { cotizar, crearPreferenciaMP, emailOrden, emailRevendedoraOrden, escapeHtml } from '@/lib/tienda-checkout';
 import { enviarNotificacionGeneral } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
@@ -107,6 +107,7 @@ export async function POST(req: Request, { params }: { params: { site: string } 
       mensaje: `${nombre} compró por ${formatPrecio(orden.total)} (${c.pago.nombre}). Pendiente de pago.`,
       metadata: JSON.stringify({ ordenId: orden.id }),
     }).catch(() => {});
+    emailRevendedoraOrden(orden.id, 'nueva').catch(() => {});
     emailOrden(
       email,
       `Recibimos tu pedido #${orden.numero} - ${tienda.nombre}`,

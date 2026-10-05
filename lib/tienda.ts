@@ -132,7 +132,7 @@ export async function getTiendaBySite(site: string) {
   const isHost = s.includes('.');
   const alt = s.startsWith('www.') ? s.slice(4) : `www.${s}`;
   const tienda = await prisma.tienda.findFirst({
-    where: isHost ? { dominioPropio: { in: [s, alt] } } : { slug: s },
+    where: isHost ? { OR: [{ dominioPropio: { in: [s, alt] } }, { dominioPendiente: { in: [s, alt] } }] } : { slug: s },
     include: {
       user: { select: { id: true, margen: true, name: true, telefono: true } },
     },

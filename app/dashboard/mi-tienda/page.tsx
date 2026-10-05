@@ -530,7 +530,7 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
     setErr('');
     try {
       const body = { ...f, ...extra, margen: f.margen === '' ? null : Number(f.margen) };
-      delete body.id; delete body.diseno; delete body.userId; delete body.dominioPropio; delete body.createdAt; delete body.updatedAt;
+      delete body.id; delete body.diseno; delete body.userId; delete body.dominioPropio; delete body.dominioPendiente; delete body.createdAt; delete body.updatedAt;
       const d = await api('', 'PUT', body);
       setF({ ...d.tienda, margen: d.tienda.margen ?? '' });
       onSaved({ tienda: d.tienda, url: d.url, urlApp: `/t/${d.tienda.slug}` });
@@ -590,6 +590,8 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
           <span className="block text-xs text-gray-500">Contá quién sos y dónde vendés. Ayuda a aparecer en Google.</span>
           <textarea className={`${input} mt-1`} rows={4} value={f.descripcion ?? ''} onChange={set('descripcion')} maxLength={2000} /></label>
       </section>
+
+      <DominioPropio onCambio={() => api('').then((d: any) => onSaved({ tienda: d.tienda, url: d.url })).catch(() => {})} />
 
       <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <h2 className="font-semibold">Precios</h2>
@@ -1186,6 +1188,124 @@ function Clientes({ onToast }: { onToast: (s: string) => void }) {
         </ul>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Dominio propio (alta automática en Vercel)
+// ---------------------------------------------------------------------
+
+function DominioPropio({ onCambio }: { onCambio: () => void }) {
+  const [d, setD] = useState<any>(null);
+  const [texto, setTexto] = useState('');
+  const [cargando, setCargando] = useState(false);
+  const [err, setErr] = useState('');
+  const [copiado, setCopiado] = useState('');
+
+  const revisar = useCallback(async () => {
+    setCargando(true);
+    setErr('');
+    try { setD(await api('/dominio')); } catch (e: any) { setErr(e.message); }
+    setCargando(false);
+  }, []);
+  useEffect(() => { revisar(); }, [revisar]);
+
+  async function conectar() {
+    setCargando(true);
+    setErr('');
+    try {
+      const r = await api('/dominio', 'POST', { dominio: texto });
+      setD({ habilitado: true, estado: r.estado });
+      setTexto('');
+      onCambio();
+    } catch (e: any) { setErr(e.message); }
+    setCargando(false);
+  }
+
+  async function desconectar() {
+    if (!(globalThis as any).confirm('¿Desconectar tu dominio? Tu tienda va a seguir funcionando con la dirección de Nadin.')) return;
+    setCargando(true);
+    try { await api('/dominio', 'DELETE'); setD({ ...d, estado: null }); onCambio(); } catch (e: any) { setErr(e.message); }
+    setCargando(false);
+  }
+
+  const copiar = (v: string) => {
+    (globalThis as any).navigator?.clipboard?.writeText(v);
+    setCopiado(v);
+    setTimeout(() => setCopiado(''), 1500);
+  };
+
+  if (!d) return <section className="rounded-2xl bg-white p-5 text-sm text-gray-500 shadow-sm ring-1 ring-black/5">Cargando dominio…</section>;
+  const e = d.estado;
+
+  return (
+    <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+      <div>
+        <h2 className="font-semibold">Dominio propio</h2>
+        <p className="text-xs text-gray-500">Si compraste tu dominio (ej: www.lenceriamaria.com.ar), conectalo para que tu tienda se vea con tu dirección.</p>
+      </div>
+
+      {!d.habilitado && <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">Todavía no está habilitado. Avisale a Nadin.</p>}
+
+      {d.habilitado && !e && (
+        <>
+          <div className="flex gap-2">
+            <input className={input} placeholder="www.tudominio.com.ar" value={texto} onChange={(ev) => setTexto(val(ev))} inputMode="url" autoCapitalize="none" />
+            <button className={btn} disabled={cargando || !texto.trim()} onClick={conectar}>{cargando ? 'Conectando…' : 'Conectar'}</button>
+          </div>
+          <p className="text-xs text-gray-500">¿No tenés dominio? Los .com.ar se compran en <a href="https://nic.ar" target="_blank" rel="noopener" className="underline">nic.ar</a> (necesitás clave fiscal). Después volvé acá.</p>
+        </>
+      )}
+
+      {e && (
+        <div className="space-y-3">
+          <div className={`flex flex-wrap items-center gap-2 rounded-lg p-3 text-sm ${e.activo ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}>
+            <span className="font-semibold">{e.activo ? '✅ Funcionando' : '⏳ Esperando que apunte'}</span>
+            <a href={`https://${e.dominio}`} target="_blank" rel="noopener" className="font-mono underline">{e.dominio}</a>
+          </div>
+          <p className="text-sm text-gray-700">{e.mensaje}</p>
+
+          {e.registros?.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Datos para cargar donde compraste el dominio</p>
+              <div className="overflow-x-auto rounded-lg ring-1 ring-gray-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-50 text-gray-500"><tr><th className="p-2">Tipo</th><th className="p-2">Nombre / Host</th><th className="p-2">Valor / Destino</th><th className="p-2"></th></tr></thead>
+                  <tbody>
+                    {e.registros.map((r: any, i: number) => (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="p-2 font-semibold">{r.tipo}</td>
+                        <td className="p-2 font-mono">{r.nombre}</td>
+                        <td className="p-2 font-mono break-all">
+                          <button type="button" onClick={() => copiar(r.valor)} className="underline decoration-dotted" title="Copiar">{r.valor}</button>
+                          {copiado === r.valor && <span className="ml-1 text-green-700">copiado</span>}
+                        </td>
+                        <td className="p-2">{r.ok ? '✅' : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <details className="rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
+                <summary className="cursor-pointer font-semibold">Paso a paso (NIC.ar y otros)</summary>
+                <ol className="mt-2 list-decimal space-y-1 pl-4">
+                  <li>Entrá al panel donde compraste el dominio (DonWeb, Hostinger, GoDaddy, Cloudflare, etc.). Si lo compraste en NIC.ar, NIC.ar no tiene panel de DNS: usá el de tu hosting o creá una cuenta gratis en Cloudflare y delegá el dominio ahí desde NIC.ar.</li>
+                  <li>Buscá la sección <strong>DNS</strong>, <strong>Zona DNS</strong> o <strong>Registros DNS</strong>.</li>
+                  <li>Por cada fila de la tabla de arriba, agregá un registro con ese <strong>Tipo</strong>, <strong>Nombre</strong> y <strong>Valor</strong>. Si ya existe uno con el mismo nombre y tipo, editalo o borralo (por ejemplo, el que apuntaba a Tiendanube).</li>
+                  <li>Guardá y volvé acá. Tocá <strong>Revisar ahora</strong>. Puede tardar de unos minutos a 24 horas; te avisamos con una notificación cuando quede funcionando.</li>
+                </ol>
+              </details>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {!e.activo && <button className={btn} disabled={cargando} onClick={revisar}>{cargando ? 'Revisando…' : 'Revisar ahora'}</button>}
+            <button className={btnSec} disabled={cargando} onClick={desconectar}>Desconectar dominio</button>
+          </div>
+        </div>
+      )}
+      {err && <p className="text-sm text-red-700">{err}</p>}
+    </section>
   );
 }
 
