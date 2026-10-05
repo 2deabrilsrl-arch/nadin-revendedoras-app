@@ -223,9 +223,9 @@ async function getCatalogoBase(): Promise<ProductoBase[]> {
           talle: v.talle || '',
           color: v.color || '',
           stock: Number(v.stock) || 0,
-          // Si Nadin la tiene en oferta en Tiendanube, el costo es el promocional
-          mayorista: Number(v.promoPrice) > 0 && Number(v.promoPrice) < Number(v.price) ? Number(v.promoPrice) : Number(v.price) || 0,
-          mayoristaLista: Number(v.price) || 0,
+          // price ya viene con la oferta de Nadin aplicada (catalog-sync); listPrice = sin oferta
+          mayorista: Number(v.price) || 0,
+          mayoristaLista: Number(v.listPrice) || Number(v.price) || 0,
         })),
       });
     } catch {

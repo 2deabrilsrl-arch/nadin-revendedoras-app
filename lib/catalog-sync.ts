@@ -217,9 +217,14 @@ export async function formatProductsWithFullCategories(products: any[]) {
         variants: (product.variants || []).map((variant: any) => ({
           id: variant.id,
           sku: variant.sku || '',
-          price: parseFloat(variant.price) || 0,
-          // Precio promocional de Tiendanube (oferta). 0 = sin oferta
-          promoPrice: parseFloat(variant.promotional_price) || 0,
+          // Precio mayorista que paga la revendedora: si Nadin lo tiene en oferta en Tiendanube,
+          // se usa el promocional (en toda la app y en las tiendas). listPrice = precio sin oferta.
+          price: (() => {
+            const lista = parseFloat(variant.price) || 0;
+            const promo = parseFloat(variant.promotional_price) || 0;
+            return promo > 0 && promo < lista ? promo : lista;
+          })(),
+          listPrice: parseFloat(variant.price) || 0,
           stock: variant.stock || 0,
           talle: variant.values?.[1]?.es || '',
           color: variant.values?.[0]?.es || ''
