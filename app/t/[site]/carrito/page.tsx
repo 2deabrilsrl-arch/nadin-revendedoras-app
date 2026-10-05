@@ -15,7 +15,7 @@ export default async function CarritoPage({ params }: { params: { site: string }
       {!tienda.activa && (
         <p className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">La tienda no está publicada: podés probar el carrito, pero no se pueden confirmar compras.</p>
       )}
-      <CheckoutClient apiBase={`/api/tienda/${tienda.slug}`} terminosHref={`${prefix}/terminos`} />
+      <CheckoutClient apiBase={`/api/tienda/${tienda.slug}`} terminosHref={`${prefix}/terminos`} privacidadHref={`${prefix}/privacidad`} />
     </div>
   );
 }

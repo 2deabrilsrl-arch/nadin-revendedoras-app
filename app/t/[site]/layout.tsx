@@ -164,7 +164,7 @@ export default async function TiendaLayout({ children, params }: { children: Rea
         {(tienda as any).modoEditor && <PreviewEditable />}
         {tienda.activa && !(tienda as any).modoEditor && <Tracker apiBase={`/api/tienda/${tienda.slug}`} />}
         {(tienda.activa || (tienda as any).modoEditor) && (
-          <PopupBienvenida popup={diseno.popup} tiendaId={tienda.id} apiBase={`/api/tienda/${tienda.slug}`} enEditor={!!(tienda as any).modoEditor} />
+          <PopupBienvenida popup={diseno.popup} tiendaId={tienda.id} apiBase={`/api/tienda/${tienda.slug}`} enEditor={!!(tienda as any).modoEditor} tiendaNombre={tienda.nombre} privacidadHref={`${prefix}/privacidad`} />
         )}
         {(tienda as any).enBorrador && (
           <div className="sticky top-0 z-50 flex items-center justify-center gap-3 bg-blue-600 px-4 py-2 text-xs text-white">
@@ -226,6 +226,7 @@ export default async function TiendaLayout({ children, params }: { children: Rea
                 {wa && <li><a href={`https://wa.me/${wa}`} target="_blank" rel="noopener" className="hover:text-gray-900">Escribinos por WhatsApp</a></li>}
                 {tienda.email && <li><a href={`mailto:${tienda.email}`} className="hover:text-gray-900">{tienda.email}</a></li>}
                 <li><a href={`${prefix}/terminos`} className="hover:text-gray-900">Términos y condiciones</a></li>
+                <li><a href={`${prefix}/privacidad`} className="hover:text-gray-900">Privacidad</a></li>
                 <li><a href={`${prefix}/arrepentimiento`} className="hover:text-gray-900">Botón de arrepentimiento</a></li>
                 <li><a href="https://www.argentina.gob.ar/produccion/defensadelconsumidor/formulario" target="_blank" rel="noopener" className="hover:text-gray-900">Defensa del consumidor</a></li>
               </ul>

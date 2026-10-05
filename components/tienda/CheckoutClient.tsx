@@ -12,7 +12,7 @@ interface Cot {
   cupon: { codigo: string } | null; cuponError: string | null;
 }
 
-export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: string; terminosHref: string }) {
+export default function CheckoutClient({ apiBase, terminosHref, privacidadHref = '' }: { apiBase: string; terminosHref: string; privacidadHref?: string }) {
   const { items, setQty, remove, clear, add, prefix } = useTiendaCart();
   const [carritoToken, setCarritoToken] = useState('');
   const [config, setConfig] = useState<Config | null>(null);
@@ -240,7 +240,7 @@ export default function CheckoutClient({ apiBase, terminosHref }: { apiBase: str
         </dl>
         <label className="flex items-start gap-2 text-xs text-gray-600">
           <input type="checkbox" checked={acepta} onChange={(e) => setAcepta((e.target as any).checked)} className="mt-0.5" required />
-          <span>Acepto los <a href={terminosHref} target="_blank" className="underline">términos y condiciones</a>.</span>
+          <span>Acepto los <a href={terminosHref} target="_blank" className="underline">términos y condiciones</a>{privacidadHref && <> y la <a href={privacidadHref} target="_blank" className="underline">política de privacidad</a></>}. Si no termino la compra, la tienda puede escribirme para recordarme el carrito.</span>
         </label>
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
         <button

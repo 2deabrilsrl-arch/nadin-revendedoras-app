@@ -1063,7 +1063,17 @@ function Clientes({ onToast }: { onToast: (s: string) => void }) {
   const [lista, setLista] = useState<any[] | null>(null);
   const [q, setQ] = useState('');
   const [filtro, setFiltro] = useState<'todas' | 'compra' | 'suscripta'>('todas');
-  useEffect(() => { api('/clientes').then((d) => setLista(d.clientes)).catch((e) => onToast(e.message)); }, [onToast]);
+  const cargar = useCallback(() => { api('/clientes').then((d) => setLista(d.clientes)).catch((e) => onToast(e.message)); }, [onToast]);
+  useEffect(() => { cargar(); }, [cargar]);
+
+  async function borrar(c: any) {
+    if (!(globalThis as any).confirm(`¿Borrar los datos de contacto de ${c.nombre || c.telefono || c.email}?\n\nSe borran su suscripción del pop-up y sus carritos sin terminar. Los pedidos se mantienen como respaldo de la venta.`)) return;
+    try {
+      await api('/clientes', 'DELETE', { telefono: c.telefono, email: c.email });
+      onToast('Datos borrados');
+      cargar();
+    } catch (e: any) { onToast(e.message); }
+  }
 
   if (!lista) return <p className="text-gray-500">Cargando…</p>;
   const t = q.trim().toLowerCase();
@@ -1108,6 +1118,7 @@ function Clientes({ onToast }: { onToast: (s: string) => void }) {
                   <p className="text-gray-400">{new Date(c.ultima).toLocaleDateString('es-AR')}</p>
                 </div>
                 {wa && <a href={`https://wa.me/${wa.length === 10 ? `549${wa}` : wa}`} target="_blank" className="rounded-full bg-green-500 px-3 py-1 text-xs font-semibold text-white">WhatsApp</a>}
+                <button onClick={() => borrar(c)} className="text-xs text-gray-400 underline hover:text-red-700" title="Si te pide que borres sus datos">Borrar datos</button>
               </li>
             );
           })}

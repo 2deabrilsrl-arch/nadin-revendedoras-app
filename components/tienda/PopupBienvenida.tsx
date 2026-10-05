@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { Popup } from '@/lib/tienda-diseno';
 
-export default function PopupBienvenida({ popup, tiendaId, apiBase, enEditor = false }: { popup: Popup; tiendaId: string; apiBase: string; enEditor?: boolean }) {
+export default function PopupBienvenida({ popup, tiendaId, apiBase, enEditor = false, tiendaNombre = 'la tienda', privacidadHref = '' }: { popup: Popup; tiendaId: string; apiBase: string; enEditor?: boolean; tiendaNombre?: string; privacidadHref?: string }) {
   const [ver, setVer] = useState(false);
   const [dato, setDato] = useState('');
   const [estado, setEstado] = useState<'form' | 'enviando' | 'ok'>('form');
@@ -76,6 +76,10 @@ export default function PopupBienvenida({ popup, tiendaId, apiBase, enEditor = f
                   />
                   {error && <p className="text-xs text-red-600">{error}</p>}
                   <button disabled={estado === 'enviando'} className="t-btn w-full">{estado === 'enviando' ? 'Enviando…' : popup.boton}</button>
+                  <p className="text-[11px] leading-snug text-gray-400">
+                    Al dejar tu {popup.pide === 'email' ? 'email' : 'WhatsApp'} aceptás recibir novedades y promos de {tiendaNombre}. Podés darte de baja cuando quieras.
+                    {privacidadHref && <> <a href={privacidadHref} target="_blank" className="underline">Privacidad</a></>}
+                  </p>
                 </form>
               )}
               <button onClick={cerrar} className="text-xs text-gray-400 underline">No, gracias</button>
