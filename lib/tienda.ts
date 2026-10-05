@@ -142,13 +142,14 @@ export const PREVIEW_COOKIE = 'tienda_preview';
  * Vista previa del editor: si la dueña está mirando su tienda con la cookie de
  * vista previa, se muestra el borrador (diseño, colores y letra sin publicar).
  */
-async function aplicarBorrador<T extends { id: string; userId: string; disenoBorrador: any }>(tienda: T): Promise<T & { enBorrador: boolean }> {
+async function aplicarBorrador<T extends { id: string; userId: string; disenoBorrador: any }>(tienda: T): Promise<T & { enBorrador: boolean; modoEditor: boolean }> {
   try {
     const jar = cookies();
     const b = tienda.disenoBorrador as any;
-    if (!b || jar.get(PREVIEW_COOKIE)?.value !== tienda.id) return { ...tienda, enBorrador: false };
+    if (jar.get(PREVIEW_COOKIE)?.value !== tienda.id) return { ...tienda, enBorrador: false, modoEditor: false };
     const sesion = await verifySessionToken(jar.get(SESSION_COOKIE)?.value);
-    if (sesion?.uid !== tienda.userId) return { ...tienda, enBorrador: false };
+    if (sesion?.uid !== tienda.userId) return { ...tienda, enBorrador: false, modoEditor: false };
+    if (!b) return { ...tienda, enBorrador: false, modoEditor: true };
     return {
       ...tienda,
       diseno: b.diseno ?? (tienda as any).diseno,
@@ -156,9 +157,10 @@ async function aplicarBorrador<T extends { id: string; userId: string; disenoBor
       colorSecundario: b.colorSecundario || (tienda as any).colorSecundario,
       fuente: b.fuente || (tienda as any).fuente,
       enBorrador: true,
+      modoEditor: true,
     };
   } catch {
-    return { ...tienda, enBorrador: false };
+    return { ...tienda, enBorrador: false, modoEditor: false };
   }
 }
 

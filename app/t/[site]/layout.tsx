@@ -11,6 +11,7 @@ import { getSession } from '@/lib/session';
 import { TiendaCartProvider } from '@/components/tienda/TiendaCart';
 import HeaderTienda from '@/components/tienda/HeaderTienda';
 import Icon from '@/components/tienda/Icon';
+import PreviewEditable from '@/components/tienda/PreviewEditable';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,6 +151,7 @@ export default async function TiendaLayout({ children, params }: { children: Rea
           </div>
         )}
 
+        {(tienda as any).modoEditor && <PreviewEditable />}
         {(tienda as any).enBorrador && (
           <div className="sticky top-0 z-50 flex items-center justify-center gap-3 bg-blue-600 px-4 py-2 text-xs text-white">
             <span>Estás viendo el <strong>borrador</strong> de tu diseño (todavía no está publicado).</span>
@@ -158,7 +160,7 @@ export default async function TiendaLayout({ children, params }: { children: Rea
         )}
 
         {diseno.anuncio.activo && (
-          <div className="overflow-hidden px-4 py-2 text-xs font-medium tracking-wide text-white" style={{ background: secondary }}>
+          <div className="overflow-hidden px-4 py-2 text-xs font-medium tracking-wide text-white" style={{ background: secondary }} data-sec="__encabezado" data-sec-nombre="Barra de anuncios">
             {diseno.anuncio.desliza ? (
               <div className="t-marquee" aria-label={diseno.anuncio.mensajes.join(' · ')}>
                 {[0, 1].map((k) => (

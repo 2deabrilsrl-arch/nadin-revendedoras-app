@@ -180,6 +180,22 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
     fetch(`/api/tienda/${t.slug}/categorias`).then((r) => r.json()).then((x: any) => setCats(x.categorias || [])).catch(() => {});
   }, [t.slug]);
 
+  // Tocar un bloque en la vista previa abre su configuración (como en Tiendanube)
+  useEffect(() => {
+    const w: any = globalThis as any;
+    const onMsg = (e: any) => {
+      if (e.origin !== w.location.origin || e.data?.tipo !== 'nadin-editar') return;
+      const id = String(e.data.id || '');
+      setVerPreview(false);
+      if (id === '__encabezado') { setPanel('encabezado'); return; }
+      setPanel('inicio');
+      setAbierta(id);
+      setTimeout(() => w.document.getElementById(`sec-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    };
+    w.addEventListener('message', onMsg);
+    return () => w.removeEventListener('message', onMsg);
+  }, []);
+
   useEffect(() => {
     if (!toast) return;
     const k = setTimeout(() => setToast(''), 3000);
@@ -305,15 +321,37 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
       case 'carrusel':
         return (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">Ideal: 1920×730 px (compu) y 1080×1350 px (celular). Hasta 6 imágenes.</p>
+            <p className="text-xs text-gray-500">Hasta 6 imágenes. Cargá una para computadora y, si querés, otra para celular (se ve mejor y carga más rápido).</p>
             {s.slides.map((sl: any, k: number) => (
-              <div key={k} className="space-y-2 rounded-xl bg-gray-50 p-3">
-                <div className="flex items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={sl.imagen} alt="" className="h-14 w-28 rounded object-cover" />
-                  <ImgInput label="Cambiar" k={`${s.id}-${k}`} onUrl={(u) => upd(s.id, { slides: s.slides.map((x: any, j: number) => (j === k ? { ...x, imagen: u } : x)) })} />
-                  <ImgInput label={sl.imagenMobile ? 'Cambiar versión celular' : '+ Versión celular'} k={`${s.id}-m${k}`} onUrl={(u) => upd(s.id, { slides: s.slides.map((x: any, j: number) => (j === k ? { ...x, imagenMobile: u } : x)) })} />
-                  <button type="button" className="ml-auto text-xs text-red-600" onClick={() => upd(s.id, { slides: s.slides.filter((_: any, j: number) => j !== k) })}>Quitar</button>
+              <div key={k} className="space-y-3 rounded-xl bg-gray-50 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-700">Imagen {k + 1}</span>
+                  <span className="flex items-center gap-1">
+                    <button type="button" className="px-1 text-gray-500 disabled:opacity-25" disabled={k === 0} onClick={() => { const n = [...s.slides]; [n[k - 1], n[k]] = [n[k], n[k - 1]]; upd(s.id, { slides: n }); }} aria-label="Subir">↑</button>
+                    <button type="button" className="px-1 text-gray-500 disabled:opacity-25" disabled={k === s.slides.length - 1} onClick={() => { const n = [...s.slides]; [n[k + 1], n[k]] = [n[k], n[k + 1]]; upd(s.id, { slides: n }); }} aria-label="Bajar">↓</button>
+                    <button type="button" className="ml-2 text-xs text-red-600" onClick={() => upd(s.id, { slides: s.slides.filter((_: any, j: number) => j !== k) })}>Quitar</button>
+                  </span>
+                </div>
+                <div className="grid grid-cols-[1.6fr_1fr] gap-3">
+                  <div className="space-y-1">
+                    <p className="text-[11px] text-gray-500">🖥️ Computadora · 1920×730 px</p>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={sl.imagen} alt="" className="aspect-[21/8] w-full rounded object-cover ring-1 ring-black/5" />
+                    <ImgInput label="Cambiar" k={`${s.id}-${k}`} onUrl={(u) => upd(s.id, { slides: s.slides.map((x: any, j: number) => (j === k ? { ...x, imagen: u } : x)) })} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] text-gray-500">📱 Celular · 1080×1350 px</p>
+                    {sl.imagenMobile ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={sl.imagenMobile} alt="" className="aspect-[4/5] w-full rounded object-cover ring-1 ring-black/5" />
+                    ) : (
+                      <div className="flex aspect-[4/5] w-full items-center justify-center rounded border-2 border-dashed border-gray-300 p-1 text-center text-[10px] text-gray-400">Usa la de computadora</div>
+                    )}
+                    <span className="flex flex-wrap items-center gap-1">
+                      <ImgInput label={sl.imagenMobile ? 'Cambiar' : '+ Subir'} k={`${s.id}-m${k}`} onUrl={(u) => upd(s.id, { slides: s.slides.map((x: any, j: number) => (j === k ? { ...x, imagenMobile: u } : x)) })} />
+                      {sl.imagenMobile && <button type="button" className="text-[11px] text-red-600" onClick={() => upd(s.id, { slides: s.slides.map((x: any, j: number) => (j === k ? { ...x, imagenMobile: undefined } : x)) })}>Quitar</button>}
+                    </span>
+                  </div>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {(['titulo', 'boton', 'texto', 'link'] as const).map((f) => (
@@ -672,12 +710,12 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
           <div>
             <Volver titulo="Página de inicio" />
             <div className="space-y-2 p-4">
-              <p className="px-1 text-xs text-gray-500">Ordená con las flechas, mostrá u ocultá con el ojo y tocá una sección para editarla.</p>
+              <p className="px-1 text-xs text-gray-500">Ordená con las flechas, mostrá u ocultá con el ojo y tocá una sección para editarla. También podés tocar el bloque directamente en la vista previa.</p>
               <ul className="space-y-2">
                 {d.secciones.map((s: any, i: number) => {
                   const meta = info2(s.tipo);
                   return (
-                    <li key={s.id} className={`rounded-xl border bg-white ${abierta === s.id ? 'border-pink-300' : 'border-gray-200'}`}>
+                    <li key={s.id} id={`sec-${s.id}`} className={`scroll-mt-2 rounded-xl border bg-white ${abierta === s.id ? 'border-pink-300 ring-2 ring-pink-100' : 'border-gray-200'}`}>
                       <div className="flex items-center gap-1.5 p-2.5">
                         <button type="button" className={`min-w-0 flex-1 text-left ${s.visible ? '' : 'opacity-50'}`} onClick={() => setAbierta(abierta === s.id ? null : s.id)}>
                           <span className="block text-sm font-medium">{meta?.nombre}</span>

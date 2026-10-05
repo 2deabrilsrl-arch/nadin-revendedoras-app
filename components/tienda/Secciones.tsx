@@ -1,6 +1,6 @@
 // Render de las secciones modulares de la home (server component)
 import type { Seccion } from '@/lib/tienda-diseno';
-import { youtubeId } from '@/lib/tienda-diseno';
+import { youtubeId, SECCIONES_INFO } from '@/lib/tienda-diseno';
 import type { ProductoTienda, CategoriaNodo, TiendaConUser } from '@/lib/tienda';
 import { filtrarPorCategoria, PAGE_SIZE } from '@/lib/tienda';
 import ProductGrid, { Paginacion, TituloSeccion, tnImg } from './ProductGrid';
@@ -29,9 +29,13 @@ export default function Secciones({ secciones, ctx }: { secciones: Seccion[]; ct
       {lista.map((s, i) => {
         const esTodos = s.tipo === 'productos' && s.fuente === 'todos' && primeraTodos;
         if (esTodos) primeraTodos = false;
-        const bloque = <Bloque key={s.id} s={s} ctx={ctx} primera={i === 0} paginar={esTodos} />;
-        // Lo que está más abajo no se dibuja hasta que se acerca a la pantalla (scroll más fluido)
-        return i < 2 ? bloque : <div key={s.id} className="t-lazy-sec">{bloque}</div>;
+        // data-sec: en la vista previa del editor, tocar el bloque abre su configuración.
+        // t-lazy-sec: lo de más abajo no se dibuja hasta que se acerca a la pantalla (scroll más fluido)
+        return (
+          <div key={s.id} data-sec={s.id} data-sec-nombre={SECCIONES_INFO.find((x) => x.tipo === s.tipo)?.nombre || 'Sección'} className={i < 2 ? '' : 't-lazy-sec'}>
+            <Bloque s={s} ctx={ctx} primera={i === 0} paginar={esTodos} />
+          </div>
+        );
       })}
     </>
   );
