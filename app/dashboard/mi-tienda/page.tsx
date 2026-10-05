@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { reducirImagen } from '@/components/tienda/reducirImagen';
 import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
+import { ShoppingBag, Users, BarChart3, Palette, Package, FileText, Tag, CreditCard, Truck, Store, Menu, ChevronDown } from 'lucide-react';
 
 type Tab = 'pedidos' | 'portada' | 'productos' | 'paginas' | 'clientes' | 'estadisticas' | 'diseno' | 'pagos' | 'envios' | 'cupones';
 
@@ -29,6 +30,7 @@ const btnSec = 'rounded-lg border border-gray-300 px-3 py-1.5 text-sm';
 
 export default function MiTiendaPage() {
   const [tab, setTab] = useState<Tab>('pedidos');
+  const [menuAbierto, setMenuAbierto] = useState(false);
   const [info, setInfo] = useState<any>(null);
   const [error, setError] = useState('');
   const [sinSesion, setSinSesion] = useState(false);
@@ -79,21 +81,70 @@ export default function MiTiendaPage() {
   if (!info) return <p className="p-6 text-gray-500">Cargando tu tienda…</p>;
 
   const t = info.tienda;
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'pedidos', label: 'Pedidos web' },
-    { id: 'portada', label: 'Diseño' },
-    { id: 'productos', label: 'Productos' },
-    { id: 'estadisticas', label: 'Estadísticas' },
-    { id: 'clientes', label: 'Clientes' },
-    { id: 'paginas', label: 'Páginas' },
-    { id: 'diseno', label: 'Marca y datos' },
-    { id: 'pagos', label: 'Cobros' },
-    { id: 'envios', label: 'Entregas' },
-    { id: 'cupones', label: 'Promos y cupones' },
+  // Menú lateral agrupado como en Tiendanube
+  const grupos: { titulo: string; items: { id: Tab; label: string; icon: any }[] }[] = [
+    { titulo: 'Ventas', items: [
+      { id: 'pedidos', label: 'Pedidos web', icon: ShoppingBag },
+      { id: 'clientes', label: 'Clientes', icon: Users },
+      { id: 'estadisticas', label: 'Estadísticas', icon: BarChart3 },
+    ] },
+    { titulo: 'Mi tienda', items: [
+      { id: 'portada', label: 'Diseño', icon: Palette },
+      { id: 'productos', label: 'Productos', icon: Package },
+      { id: 'paginas', label: 'Páginas', icon: FileText },
+    ] },
+    { titulo: 'Marketing', items: [
+      { id: 'cupones', label: 'Promos y cupones', icon: Tag },
+    ] },
+    { titulo: 'Configuración', items: [
+      { id: 'pagos', label: 'Cobros', icon: CreditCard },
+      { id: 'envios', label: 'Entregas', icon: Truck },
+      { id: 'diseno', label: 'Marca y datos', icon: Store },
+    ] },
   ];
+  const actual = grupos.flatMap((g) => g.items).find((x) => x.id === tab);
+  const elegir = (id: Tab) => {
+    setTab(id);
+    setMenuAbierto(false);
+    const g: any = globalThis as any;
+    try {
+      const u = new URL(g.location.href);
+      u.searchParams.set('tab', id);
+      u.searchParams.delete('mp');
+      g.history.replaceState(null, '', u.toString());
+    } catch { /* nada */ }
+    g.scrollTo?.({ top: 0, behavior: 'smooth' });
+  };
+  const listaMenu = (
+    <nav className="space-y-4" aria-label="Secciones de Mi tienda">
+      {grupos.map((g) => (
+        <div key={g.titulo}>
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{g.titulo}</p>
+          <ul className="space-y-0.5">
+            {g.items.map((x) => {
+              const Icono = x.icon;
+              const activo = tab === x.id;
+              return (
+                <li key={x.id}>
+                  <button
+                    onClick={() => elegir(x.id)}
+                    aria-current={activo ? 'page' : undefined}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition ${activo ? 'bg-pink-50 text-pink-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    <Icono className={`h-4 w-4 shrink-0 ${activo ? 'text-pink-600' : 'text-gray-400'}`} />
+                    {x.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
 
   return (
-    <div className="mx-auto min-h-screen max-w-4xl bg-gray-50/60 p-4 pb-24">
+    <div className="mx-auto min-h-screen max-w-6xl bg-gray-50/60 p-4 pb-24">
       <div className="mb-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 p-5 text-white">
         <p className="text-sm opacity-90">Mi tienda web</p>
         <h1 className="text-2xl font-bold">{t.nombre}</h1>
@@ -122,19 +173,27 @@ export default function MiTiendaPage() {
         </div>
       </div>
 
-      <nav className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4" role="tablist">
-        {tabs.map((x) => (
-          <button
-            key={x.id}
-            role="tab"
-            aria-selected={tab === x.id}
-            onClick={() => setTab(x.id)}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${tab === x.id ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 ring-1 ring-black/5 hover:text-gray-900'}`}
-          >
-            {x.label}
-          </button>
-        ))}
-      </nav>
+      {/* Celular: botón que despliega todas las secciones hacia abajo */}
+      <div className="mb-4 md:hidden">
+        <button
+          onClick={() => setMenuAbierto(!menuAbierto)}
+          aria-expanded={menuAbierto}
+          className="flex w-full items-center gap-3 rounded-xl bg-white px-4 py-3 text-left text-sm font-semibold shadow-sm ring-1 ring-black/5"
+        >
+          <Menu className="h-4 w-4 text-gray-500" />
+          <span className="flex-1">{actual?.label || 'Secciones'}</span>
+          <ChevronDown className={`h-4 w-4 text-gray-400 transition ${menuAbierto ? 'rotate-180' : ''}`} />
+        </button>
+        {menuAbierto && <div className="mt-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-black/5">{listaMenu}</div>}
+      </div>
+
+      <div className="md:grid md:grid-cols-[210px_minmax(0,1fr)] md:gap-6">
+        {/* Compu: barra lateral izquierda fija */}
+        <aside className="hidden md:block">
+          <div className="sticky top-24 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">{listaMenu}</div>
+        </aside>
+
+        <div className="min-w-0">
 
       {tab === 'pedidos' && (
         <div className="space-y-8">
@@ -151,6 +210,8 @@ export default function MiTiendaPage() {
       {tab === 'pagos' && <Pagos onToast={setToast} />}
       {tab === 'envios' && <Envios onToast={setToast} />}
       {tab === 'cupones' && <Cupones onToast={setToast} />}
+        </div>
+      </div>
 
       {toast && (
         <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm text-white shadow-lg" role="status">
