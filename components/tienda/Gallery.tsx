@@ -21,7 +21,7 @@ export default function Gallery({ images, alt }: { images: string[]; alt: string
       )}
       <div className="flex-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={tnImgClient(images[i], 1024)} alt={alt} className="aspect-[3/4] w-full rounded-[var(--t-radius)] bg-gray-50 object-cover" />
+        <img src={tnImgClient(images[i], 640)} srcSet={`${tnImgClient(images[i], 640)} 640w, ${images[i]} 1024w`} sizes="(min-width: 1024px) 50vw, 100vw" alt={alt} className="aspect-[3/4] w-full rounded-[var(--t-radius)] bg-gray-50 object-cover" />
       </div>
     </div>
   );

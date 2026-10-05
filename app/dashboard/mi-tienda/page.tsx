@@ -135,7 +135,7 @@ export default function MiTiendaPage() {
       </nav>
 
       {tab === 'pedidos' && <Pedidos onToast={setToast} tienda={t} onTienda={(nt: any) => setInfo({ ...info, tienda: { ...t, ...nt } })} />}
-      {tab === 'productos' && <ProductosTienda onToast={setToast} />}
+      {tab === 'productos' && <ProductosTienda onToast={setToast} slug={t.slug} />}
       {tab === 'portada' && <Portada info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Diseño guardado'); }} onToast={setToast} />}
       {tab === 'diseno' && <Diseno info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Guardado'); }} />}
       {tab === 'pagos' && <Pagos onToast={setToast} />}
@@ -671,7 +671,7 @@ function Portada({ info, onSaved, onToast }: { info: any; onSaved: (d: any) => v
 // Productos: destacar y ocultar
 // ---------------------------------------------------------------------
 
-function ProductosTienda({ onToast }: { onToast: (s: string) => void }) {
+function ProductosTienda({ onToast, slug }: { onToast: (s: string) => void; slug: string }) {
   const [vista, setVista] = useState<'nadin' | 'propios'>('nadin');
   return (
     <div className="space-y-4">
@@ -681,7 +681,7 @@ function ProductosTienda({ onToast }: { onToast: (s: string) => void }) {
             className={`rounded-full px-4 py-1.5 text-sm font-medium ${vista === id ? 'bg-gray-900 text-white' : 'text-gray-600'}`}>{label}</button>
         ))}
       </div>
-      {vista === 'nadin' ? <ProductosNadin onToast={onToast} /> : <MisProductos onToast={onToast} />}
+      {vista === 'nadin' ? <ProductosNadin onToast={onToast} /> : <MisProductos onToast={onToast} slug={slug} />}
     </div>
   );
 }
@@ -1181,7 +1181,7 @@ function SelectorProductos({ ids, onChange }: { ids: string[]; onChange: (ids: s
 
 const PRODUCTO_VACIO = { nombre: '', categoria: '', descripcion: '', imagenes: [] as string[], activo: true, destacado: false, variantes: [{ talle: '', color: '', precio: '', stock: '', sku: '' }] as any[] };
 
-function MisProductos({ onToast }: { onToast: (s: string) => void }) {
+function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: string }) {
   const [lista, setLista] = useState<any[] | null>(null);
   const [editando, setEditando] = useState<any | null>(null);
 
@@ -1191,7 +1191,7 @@ function MisProductos({ onToast }: { onToast: (s: string) => void }) {
   useEffect(() => { cargar(); }, [cargar]);
 
   if (editando) {
-    return <EditorProductoPropio inicial={editando} onToast={onToast} onCerrar={(cambio) => { setEditando(null); if (cambio) cargar(); }} />;
+    return <EditorProductoPropio inicial={editando} slug={slug} onToast={onToast} onCerrar={(cambio) => { setEditando(null); if (cambio) cargar(); }} />;
   }
 
   return (
@@ -1230,8 +1230,19 @@ function MisProductos({ onToast }: { onToast: (s: string) => void }) {
   );
 }
 
-function EditorProductoPropio({ inicial, onToast, onCerrar }: { inicial: any; onToast: (s: string) => void; onCerrar: (cambio: boolean) => void }) {
+function EditorProductoPropio({ inicial, slug, onToast, onCerrar }: { inicial: any; slug: string; onToast: (s: string) => void; onCerrar: (cambio: boolean) => void }) {
   const [f, setF] = useState<any>(inicial);
+  // Categorías existentes de la tienda (las de Nadin + las propias ya creadas)
+  const [cats, setCats] = useState<string[]>([]);
+  const [nuevaCat, setNuevaCat] = useState(false);
+  const [padre, setPadre] = useState('');
+  const [nombreCat, setNombreCat] = useState('');
+  useEffect(() => {
+    fetch(`/api/tienda/${slug}/categorias`).then((r) => r.json())
+      .then((x: any) => setCats((x.categorias || []).map((c: any) => String(c.nombre).replace(/ › /g, ' > '))))
+      .catch(() => {});
+  }, [slug]);
+  const opciones = Array.from(new Set([...cats, ...(f.categoria ? [f.categoria] : [])])).sort((a, b) => a.localeCompare(b, 'es'));
   const [subiendo, setSubiendo] = useState(false);
   const [saving, setSaving] = useState(false);
   const setVar = (k: number, campo: string, v: string) => setF((x: any) => ({ ...x, variantes: x.variantes.map((y: any, j: number) => (j === k ? { ...y, [campo]: v } : y)) }));
@@ -1253,6 +1264,7 @@ function EditorProductoPropio({ inicial, onToast, onCerrar }: { inicial: any; on
   }
 
   async function guardar() {
+    if (!f.categoria) return onToast('Elegí una categoría.');
     setSaving(true);
     try {
       const body = { ...f, variantes: f.variantes.map((v: any) => ({ ...v, precio: Number(v.precio), stock: Number(v.stock) })) };
@@ -1277,7 +1289,37 @@ function EditorProductoPropio({ inicial, onToast, onCerrar }: { inicial: any; on
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">Nombre *<input className={`${input} mt-1`} value={f.nombre} onChange={(e) => setF({ ...f, nombre: val(e) })} placeholder="Mochila urbana" /></label>
-        <label className="text-sm">Categoría<input className={`${input} mt-1`} value={f.categoria} onChange={(e) => setF({ ...f, categoria: val(e) })} placeholder="Accesorios > Mochilas" /></label>
+        <div className="text-sm">
+          Categoría *
+          {!nuevaCat ? (
+            <select className={`${input} mt-1`} value={f.categoria || ''} onChange={(e) => {
+              if (val(e) === '__nueva') { setNuevaCat(true); return; }
+              setF({ ...f, categoria: val(e) });
+            }}>
+              <option value="">Elegí una categoría…</option>
+              {opciones.map((c) => <option key={c} value={c}>{c.replace(/ > /g, ' › ')}</option>)}
+              <option value="__nueva">+ Crear una categoría nueva…</option>
+            </select>
+          ) : (
+            <div className="mt-1 space-y-2 rounded-lg bg-gray-50 p-2">
+              <select className={input} value={padre} onChange={(e) => setPadre(val(e))}>
+                <option value="">Categoría principal (sin padre)</option>
+                {opciones.filter((c) => c.split(' > ').length < 3).map((c) => <option key={c} value={c}>Dentro de: {c.replace(/ > /g, ' › ')}</option>)}
+              </select>
+              <input className={input} placeholder="Nombre de la categoría (ej: Mochilas)" value={nombreCat} onChange={(e) => setNombreCat(val(e))} />
+              <div className="flex gap-2">
+                <button type="button" className={btnSec} onClick={() => {
+                  const n = nombreCat.trim().replace(/\s*>\s*/g, ' ');
+                  if (!n) return;
+                  const nombre = n.charAt(0).toUpperCase() + n.slice(1);
+                  setF({ ...f, categoria: padre ? `${padre} > ${nombre}` : nombre });
+                  setNuevaCat(false); setNombreCat(''); setPadre('');
+                }}>Usar esta categoría</button>
+                <button type="button" className="text-xs text-gray-500" onClick={() => setNuevaCat(false)}>Cancelar</button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <label className="block text-sm">Descripción<textarea className={`${input} mt-1`} rows={4} value={f.descripcion || ''} onChange={(e) => setF({ ...f, descripcion: val(e) })} /></label>
 

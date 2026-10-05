@@ -35,6 +35,15 @@ export async function PUT(req: Request) {
   const b: any = await req.json().catch(() => ({}));
   const productId = String(b.productId || '').slice(0, 40);
   if (!productId) return bad('Falta el producto.');
+  // Productos propios: se guardan en su propia tabla
+  if (productId.startsWith('pp')) {
+    const data: any = {};
+    if (typeof b.destacado === 'boolean') data.destacado = b.destacado;
+    if (typeof b.oculto === 'boolean') data.activo = !b.oculto;
+    const r = await prisma.tiendaProductoPropio.updateMany({ where: { id: productId.slice(2), tiendaId: ctx.tienda.id }, data });
+    if (!r.count) return bad('Producto no encontrado.', 404);
+    return NextResponse.json({ ok: true });
+  }
   const existe = await prisma.catalogoCache.findUnique({ where: { productId }, select: { id: true } });
   if (!existe) return bad('Producto no encontrado.', 404);
   const data: any = { destacado: bool(b.destacado), oculto: bool(b.oculto) };

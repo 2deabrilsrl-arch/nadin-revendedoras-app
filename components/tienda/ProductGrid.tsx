@@ -5,6 +5,7 @@ import { formatPrecio, productPath } from '@/lib/tienda';
 /** Pide a la CDN de Tiendanube una versión más liviana de la imagen. */
 export function tnImg(src: string, size = 480): string {
   if (!src) return '';
+  if (size >= 1024) return src; // la original de TN ya es 1024
   return src.replace(/-(\d+)-(\d+)\.(jpg|jpeg|png|webp)(\?.*)?$/i, `-${size}-0.$3`);
 }
 
