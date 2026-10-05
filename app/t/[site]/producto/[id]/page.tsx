@@ -8,6 +8,7 @@ import {
 import AddToCart from '@/components/tienda/AddToCart';
 import Gallery from '@/components/tienda/Gallery';
 import ProductGrid, { TituloSeccion, precioTransferencia } from '@/components/tienda/ProductGrid';
+import { normalizarDiseno } from '@/lib/tienda-diseno';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,7 @@ export default async function ProductoPage({ params }: Props) {
   const tieneCat = catNombres[0] && catNombres[0] !== 'Sin categoría';
   const catHref = `/categoria/${producto.categorySlugs.join('/')}`;
   const pagos = await getPagosPublicos(tienda.id);
+  const detalle = normalizarDiseno(tienda.diseno).detalle;
 
   const relacionados = (await getCatalogoTienda(tienda))
     .filter((p) => p.id !== producto.id && p.disponible && p.category === producto.category)
@@ -111,16 +113,28 @@ export default async function ProductoPage({ params }: Props) {
             nombre={producto.nombre}
             imagen={producto.image}
             descTransfer={pagos.descTransfer}
+            cuotas={detalle.cuotas.activo ? detalle.cuotas : null}
             variantes={producto.variantes.map((v) => ({
               id: v.id,
               talle: v.talle,
               color: v.color,
               stock: Math.min(v.stock, 20), // no exponemos el stock exacto de Nadin
               precio: v.precio,
+              precioAntes: v.precioAntes ?? null,
             }))}
           />
 
           <div className="mt-8 divide-y divide-gray-100 border-y border-gray-100 text-sm">
+            {detalle.guiaTalles.activo && !producto.propio && (
+              <details className="group py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-[0.14em]">📏 Guía de talles<span className="transition group-open:rotate-45">+</span></summary>
+                {detalle.guiaTalles.imagen && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={detalle.guiaTalles.imagen} alt="Guía de talles" loading="lazy" className="mt-3 w-full rounded" />
+                )}
+                {detalle.guiaTalles.texto && <p className="mt-3 whitespace-pre-line text-gray-600">{detalle.guiaTalles.texto}</p>}
+              </details>
+            )}
             {producto.descripcionHtml && (
               <details className="group py-4" open>
                 <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-[0.14em]">Descripción<span className="transition group-open:rotate-45">+</span></summary>

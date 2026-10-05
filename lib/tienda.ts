@@ -19,6 +19,7 @@ export interface VarianteTienda {
   stock: number;
   mayorista: number;
   precio: number;
+  precioAntes?: number | null; // precio tachado si está en oferta
 }
 
 export interface ProductoTienda {
@@ -37,6 +38,8 @@ export interface ProductoTienda {
   rank: number;
   variantes: VarianteTienda[];
   propio?: boolean; // cargado por la revendedora (no es de Nadin)
+  enOferta?: boolean;
+  descuentoPct?: number; // mayor % de descuento entre sus variantes
 }
 
 /** Los productos propios usan ids con prefijo para no chocar con los de Tiendanube */
@@ -53,7 +56,7 @@ interface ProductoBase {
   image: string;
   images: string[];
   rank: number;
-  variantes: { id: string; sku: string; talle: string; color: string; stock: number; mayorista: number }[];
+  variantes: { id: string; sku: string; talle: string; color: string; stock: number; mayorista: number; mayoristaLista: number }[];
 }
 
 // ---------------------------------------------------------------------
@@ -218,7 +221,9 @@ async function getCatalogoBase(): Promise<ProductoBase[]> {
           talle: v.talle || '',
           color: v.color || '',
           stock: Number(v.stock) || 0,
-          mayorista: Number(v.price) || 0,
+          // Si Nadin la tiene en oferta en Tiendanube, el costo es el promocional
+          mayorista: Number(v.promoPrice) > 0 && Number(v.promoPrice) < Number(v.price) ? Number(v.promoPrice) : Number(v.price) || 0,
+          mayoristaLista: Number(v.price) || 0,
         })),
       });
     } catch {
@@ -228,6 +233,13 @@ async function getCatalogoBase(): Promise<ProductoBase[]> {
   // Si la sync está en medio (tabla vacía), no pisamos un cache bueno
   if (items.length > 0 || !catalogCache) catalogCache = { at: Date.now(), items };
   return catalogCache.items;
+}
+
+/** ¿Está en oferta? (alguna variante con precio tachado) */
+function oferta(variantes: VarianteTienda[]) {
+  let pct = 0;
+  for (const v of variantes) if (v.precioAntes && v.precioAntes > v.precio) pct = Math.max(pct, Math.round((1 - v.precio / v.precioAntes) * 100));
+  return { enOferta: pct > 0, descuentoPct: pct };
 }
 
 /** Catálogo con precios, ocultos y destacados de esta tienda. */
@@ -246,10 +258,11 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
     if (o?.oculto) continue;
     const variantes: VarianteTienda[] = p.variantes
       .filter((v) => v.mayorista > 0)
-      .map((v) => ({
-        ...v,
-        precio: o?.precioPropio && o.precioPropio > v.mayorista ? o.precioPropio : calcularPrecioVenta(v.mayorista, margen),
-      }));
+      .map(({ mayoristaLista, ...v }) => {
+        const precio = o?.precioPropio && o.precioPropio > v.mayorista ? o.precioPropio : calcularPrecioVenta(v.mayorista, margen);
+        const antes = mayoristaLista > v.mayorista ? calcularPrecioVenta(mayoristaLista, margen) : null;
+        return { ...v, precio, precioAntes: antes && antes > precio ? antes : null };
+      });
     if (variantes.length === 0) continue;
     const conStock = variantes.filter((v) => v.stock > 0);
     const totalStock = conStock.reduce((a, v) => a + v.stock, 0);
@@ -268,6 +281,7 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
       destacado: !!o?.destacado,
       rank: p.rank,
       variantes,
+      ...oferta(variantes),
     });
   }
   // Productos propios de la revendedora (mochilas, accesorios, lo que sea)
@@ -282,6 +296,7 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
         stock: Math.max(0, v.stock),
         mayorista: 0,
         precio: v.precio,
+        precioAntes: v.precioAntes && v.precioAntes > v.precio ? v.precioAntes : null,
       }));
     if (!variantes.length) continue;
     const imgs = (Array.isArray(pp.imagenes) ? (pp.imagenes as any[]) : []).map(String).filter(Boolean);
@@ -304,6 +319,7 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
       rank: 99999,
       variantes,
       propio: true,
+      ...oferta(variantes),
     });
   }
 

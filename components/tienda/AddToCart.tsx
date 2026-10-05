@@ -9,6 +9,7 @@ interface Variante {
   color: string;
   stock: number;
   precio: number;
+  precioAntes?: number | null;
 }
 
 export default function AddToCart({
@@ -17,12 +18,14 @@ export default function AddToCart({
   imagen,
   variantes,
   descTransfer = 0,
+  cuotas = null,
 }: {
   productId: string;
   nombre: string;
   imagen: string;
   variantes: Variante[];
   descTransfer?: number;
+  cuotas?: { cantidad: number; sinInteres: boolean } | null;
 }) {
   const { add, prefix } = useTiendaCart();
   const colores = useMemo(() => Array.from(new Set(variantes.map((v) => v.color).filter(Boolean))), [variantes]);
@@ -34,6 +37,7 @@ export default function AddToCart({
 
   const seleccionada = variantes.find((v) => v.id === variantId) || (talles.length === 1 ? talles[0] : undefined);
   const precio = seleccionada?.precio ?? Math.min(...variantes.map((v) => v.precio));
+  const antes = (seleccionada ?? variantes.find((v) => v.precio === precio))?.precioAntes || null;
   const sinStock = seleccionada ? seleccionada.stock <= 0 : false;
   const maxQty = seleccionada ? Math.max(1, Math.min(seleccionada.stock, 20)) : 20;
 
@@ -46,7 +50,20 @@ export default function AddToCart({
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-2xl font-semibold text-gray-900">{formatPrecio(precio)}</p>
+        <p className="text-2xl font-semibold text-gray-900">
+          {formatPrecio(precio)}
+          {antes && antes > precio ? (
+            <>
+              <span className="ml-3 text-base font-normal text-gray-400 line-through">{formatPrecio(antes)}</span>
+              <span className="t-badge ml-2 align-middle text-white" style={{ background: 'var(--t-primary)' }}>{Math.round((1 - precio / antes) * 100)}% OFF</span>
+            </>
+          ) : null}
+        </p>
+        {cuotas && cuotas.cantidad > 1 && (
+          <p className="mt-1 text-sm text-gray-600">
+            <strong>{cuotas.cantidad} cuotas{cuotas.sinInteres ? ' sin interés' : ''}</strong> de {formatPrecio(Math.ceil(precio / cuotas.cantidad))}
+          </p>
+        )}
         {descTransfer > 0 && (
           <p className="mt-1 text-sm text-gray-500">
             <span className="font-semibold" style={{ color: 'var(--t-primary)' }}>{formatPrecio(Math.round(precio * (1 - descTransfer / 100)))}</span> pagando con transferencia

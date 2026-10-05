@@ -24,8 +24,8 @@ export type Seccion =
   | { id: string; tipo: 'video'; visible: boolean; titulo: string; url: string }
   | { id: string; tipo: 'redes'; visible: boolean; titulo: string; texto: string };
 
-export type FuenteProductos = 'destacados' | 'mas_vendidos' | 'nuevos' | 'categoria' | 'todos' | 'elegidos';
-export const FUENTES_PRODUCTOS: FuenteProductos[] = ['destacados', 'mas_vendidos', 'nuevos', 'categoria', 'todos', 'elegidos'];
+export type FuenteProductos = 'destacados' | 'mas_vendidos' | 'nuevos' | 'ofertas' | 'categoria' | 'todos' | 'elegidos';
+export const FUENTES_PRODUCTOS: FuenteProductos[] = ['destacados', 'mas_vendidos', 'nuevos', 'ofertas', 'categoria', 'todos', 'elegidos'];
 export type TipoSeccion = Seccion['tipo'];
 
 export interface Anuncio {
@@ -42,11 +42,17 @@ export interface Listado {
   segundaFoto: boolean; // al pasar el mouse muestra la 2da foto
 }
 
+export interface Detalle {
+  cuotas: { activo: boolean; cantidad: number; sinInteres: boolean };
+  guiaTalles: { activo: boolean; imagen: string; texto: string };
+}
+
 export interface Diseno {
   plantilla: Plantilla;
   header: 'auto' | 'centrado' | 'izquierda';
   anuncio: Anuncio;
   listado: Listado;
+  detalle: Detalle;
   secciones: Seccion[];
 }
 
@@ -128,7 +134,7 @@ export const PREARMADAS: Prearmada[] = [
     id: 'fucsia', nombre: 'Fucsia urbana', detalle: 'Audaz, con bloques de color y ofertas con reloj.',
     plantilla: 'urbana', colorPrimario: '#db2777', colorSecundario: '#0f172a', fuente: 'moderna', header: 'izquierda',
     anuncio: ['¡OFERTAS DE LA SEMANA!', 'Envíos a todo el país', 'Pagá con transferencia y ahorrá'],
-    secciones: () => [sec.carrusel(), sec.contador(), sec.productos('Lo más vendido', 'mas_vendidos', 'slider', 10), sec.categorias('tarjetas', 4), sec.todos(), sec.redes()],
+    secciones: () => [sec.carrusel(), sec.contador(), sec.productos('Ofertas', 'ofertas', 'slider', 10), sec.productos('Lo más vendido', 'mas_vendidos', 'slider', 10), sec.categorias('tarjetas', 4), sec.todos(), sec.redes()],
   },
   {
     id: 'lila', nombre: 'Lila suave', detalle: 'Delicada y moderna, con categorías en círculos.',
@@ -192,12 +198,14 @@ const BENEFICIOS_DEFAULT: Beneficio[] = [
 
 export const ANUNCIO_VACIO: Anuncio = { activo: false, texto: '', mensajes: [], link: '', desliza: false };
 export const LISTADO_DEFAULT: Listado = { colMobile: 2, colDesktop: 4, segundaFoto: true };
+export const DETALLE_DEFAULT: Detalle = { cuotas: { activo: false, cantidad: 3, sinInteres: true }, guiaTalles: { activo: false, imagen: '', texto: '' } };
 
 export const DISENO_DEFAULT: Diseno = {
   plantilla: 'esencial',
   header: 'auto',
   anuncio: ANUNCIO_VACIO,
   listado: LISTADO_DEFAULT,
+  detalle: DETALLE_DEFAULT,
   secciones: [
     { id: 'carrusel', tipo: 'carrusel', visible: true, slides: [] },
     { id: 'beneficios', tipo: 'beneficios', visible: true, items: BENEFICIOS_DEFAULT },
@@ -332,7 +340,7 @@ function desdeV2(d: any): Diseno {
   }
   if (d.categoriasDestacadas === false) (secciones.find((s) => s.tipo === 'categorias') as any).visible = false;
   if (d.masVendidos === false) (secciones.find((s) => s.id === 'masvendidos') as any).visible = false;
-  return { plantilla: mapa[d.estilo] || 'esencial', header: 'auto', anuncio: ANUNCIO_VACIO, listado: LISTADO_DEFAULT, secciones };
+  return { plantilla: mapa[d.estilo] || 'esencial', header: 'auto', anuncio: ANUNCIO_VACIO, listado: LISTADO_DEFAULT, detalle: DETALLE_DEFAULT, secciones };
 }
 
 export function normalizarDiseno(raw: any): Diseno {
@@ -351,6 +359,9 @@ export function normalizarDiseno(raw: any): Diseno {
   const mensajes = (Array.isArray(anuncioRaw.mensajes) ? anuncioRaw.mensajes : [anuncioRaw.texto])
     .map((m: any) => txt(m, 120)).filter(Boolean).slice(0, 3);
   const listadoRaw = (d.listado && typeof d.listado === 'object') ? d.listado : {};
+  const det = (d.detalle && typeof d.detalle === 'object') ? d.detalle : {};
+  const cuo = (det.cuotas && typeof det.cuotas === 'object') ? det.cuotas : {};
+  const gt = (det.guiaTalles && typeof det.guiaTalles === 'object') ? det.guiaTalles : {};
   return {
     plantilla: oneOf(base.plantilla, PLANTILLAS.map((p) => p.id), 'esencial'),
     header: oneOf(d.header, ['auto', 'centrado', 'izquierda'] as const, 'auto'),
@@ -365,6 +376,10 @@ export function normalizarDiseno(raw: any): Diseno {
       colMobile: Number(listadoRaw.colMobile) === 1 ? 1 : 2,
       colDesktop: ([3, 4, 5].includes(Number(listadoRaw.colDesktop)) ? Number(listadoRaw.colDesktop) : 4) as 3 | 4 | 5,
       segundaFoto: listadoRaw.segundaFoto !== false,
+    },
+    detalle: {
+      cuotas: { activo: !!cuo.activo, cantidad: int(cuo.cantidad, 2, 18, 3), sinInteres: cuo.sinInteres !== false },
+      guiaTalles: { activo: !!gt.activo && !!(httpsUrl(gt.imagen) || txt(gt.texto, 2000)), imagen: httpsUrl(gt.imagen), texto: txt(gt.texto, 2000) },
     },
     secciones: Array.isArray(d.secciones) ? secciones : secciones.length ? secciones : JSON.parse(JSON.stringify(DISENO_DEFAULT.secciones)),
   };

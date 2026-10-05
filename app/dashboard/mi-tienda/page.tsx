@@ -771,7 +771,7 @@ function Cupones({ onToast }: { onToast: (s: string) => void }) {
 // Mis productos: lo que la revendedora vende por su cuenta (no es de Nadin)
 // ---------------------------------------------------------------------
 
-const PRODUCTO_VACIO = { nombre: '', categoria: '', descripcion: '', imagenes: [] as string[], activo: true, destacado: false, variantes: [{ talle: '', color: '', precio: '', stock: '', sku: '' }] as any[] };
+const PRODUCTO_VACIO = { nombre: '', categoria: '', descripcion: '', imagenes: [] as string[], activo: true, destacado: false, variantes: [{ talle: '', color: '', precio: '', precioAntes: '', stock: '', sku: '' }] as any[] };
 
 function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: string }) {
   const [lista, setLista] = useState<any[] | null>(null);
@@ -811,7 +811,7 @@ function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: s
                 </div>
                 <button type="button" className={btnSec} onClick={() => setEditando({
                   ...p,
-                  variantes: p.variantes.map((v: any) => ({ ...v, precio: String(v.precio), stock: String(v.stock), sku: v.sku || '' })),
+                  variantes: p.variantes.map((v: any) => ({ ...v, precio: String(v.precio), precioAntes: v.precioAntes ? String(v.precioAntes) : '', stock: String(v.stock), sku: v.sku || '' })),
                 })}>Editar</button>
               </li>
             );
@@ -859,7 +859,7 @@ function EditorProductoPropio({ inicial, slug, onToast, onCerrar }: { inicial: a
     if (!f.categoria) return onToast('Elegí una categoría.');
     setSaving(true);
     try {
-      const body = { ...f, variantes: f.variantes.map((v: any) => ({ ...v, precio: Number(v.precio), stock: Number(v.stock) })) };
+      const body = { ...f, variantes: f.variantes.map((v: any) => ({ ...v, precio: Number(v.precio), precioAntes: v.precioAntes ? Number(v.precioAntes) : null, stock: Number(v.stock) })) };
       await api('/propios', f.id ? 'PUT' : 'POST', body);
       onToast('Producto guardado');
       onCerrar(true);
@@ -940,17 +940,18 @@ function EditorProductoPropio({ inicial, slug, onToast, onCerrar }: { inicial: a
         <p className="mb-2 text-xs text-gray-500">Si no tiene talles ni colores, dejá esos campos vacíos y cargá una sola fila.</p>
         <div className="space-y-2">
           {f.variantes.map((v: any, k: number) => (
-            <div key={v.id || k} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_110px_90px_1fr_auto]">
+            <div key={v.id || k} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_100px_100px_80px_1fr_auto]">
               <input className={input} placeholder="Talle / tamaño" value={v.talle} onChange={(e) => setVar(k, 'talle', val(e))} />
               <input className={input} placeholder="Color / modelo" value={v.color} onChange={(e) => setVar(k, 'color', val(e))} />
               <input className={input} placeholder="Precio $" inputMode="numeric" value={v.precio} onChange={(e) => setVar(k, 'precio', val(e).replace(/[^0-9]/g, ''))} />
+              <input className={input} placeholder="Antes $ (oferta)" title="Precio tachado (opcional)" inputMode="numeric" value={v.precioAntes || ''} onChange={(e) => setVar(k, 'precioAntes', val(e).replace(/[^0-9]/g, ''))} />
               <input className={input} placeholder="Stock" inputMode="numeric" value={v.stock} onChange={(e) => setVar(k, 'stock', val(e).replace(/[^0-9]/g, ''))} />
               <input className={input} placeholder="Código (opcional)" value={v.sku || ''} onChange={(e) => setVar(k, 'sku', val(e))} />
               <button type="button" className="text-xs text-red-600" disabled={f.variantes.length === 1} onClick={() => setF((x: any) => ({ ...x, variantes: x.variantes.filter((_: any, j: number) => j !== k) }))}>Quitar</button>
             </div>
           ))}
         </div>
-        <button type="button" className={`${btnSec} mt-2`} onClick={() => setF((x: any) => ({ ...x, variantes: [...x.variantes, { talle: '', color: '', precio: x.variantes[x.variantes.length - 1]?.precio || '', stock: '', sku: '' }] }))}>+ Variante</button>
+        <button type="button" className={`${btnSec} mt-2`} onClick={() => setF((x: any) => ({ ...x, variantes: [...x.variantes, { talle: '', color: '', precio: x.variantes[x.variantes.length - 1]?.precio || '', precioAntes: '', stock: '', sku: '' }] }))}>+ Variante</button>
       </div>
 
       <div className="flex flex-wrap gap-4 text-sm">

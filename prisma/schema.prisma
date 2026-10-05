@@ -597,6 +597,7 @@ model TiendaVariantePropia {
   talle       String  @default("")  // opción 1 (talle, tamaño, modelo…)
   color       String  @default("")  // opción 2
   precio      Float
+  precioAntes Float?  // precio tachado (oferta)
   stock       Int     @default(0)
   sku         String?
 

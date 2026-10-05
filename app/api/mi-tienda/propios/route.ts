@@ -22,6 +22,7 @@ function limpiar(b: any) {
       talle: txt(v.talle, 40),
       color: txt(v.color, 40),
       precio: Math.round(Number(v.precio) || 0),
+      precioAntes: Number(v.precioAntes) > Number(v.precio) ? Math.round(Number(v.precioAntes)) : null,
       stock: Math.max(0, Math.min(99999, Math.floor(Number(v.stock) || 0))),
       sku: txt(v.sku, 60) || null,
     }))

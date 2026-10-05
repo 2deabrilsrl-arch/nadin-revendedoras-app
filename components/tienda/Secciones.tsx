@@ -133,6 +133,7 @@ function Bloque({ s, ctx, primera, paginar }: { s: Seccion; ctx: Ctx; primera: b
       }
       if (s.fuente === 'mas_vendidos') lista = [...productos].sort((a, b) => a.rank - b.rank);
       // Nuevos: los ids de Tiendanube crecen con el tiempo (los propios van primero)
+      if (s.fuente === 'ofertas') lista = productos.filter((p) => p.enOferta).sort((a, b) => (b.descuentoPct || 0) - (a.descuentoPct || 0));
       if (s.fuente === 'nuevos') lista = [...productos].sort((a, b) => (Number(b.id) || Infinity) - (Number(a.id) || Infinity));
       if (s.fuente === 'categoria' && s.categoria) {
         const path = s.categoria.split('/').filter(Boolean);

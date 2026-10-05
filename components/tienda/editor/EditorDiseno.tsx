@@ -37,7 +37,7 @@ const PALETAS = [
   ['#8b5cf6', '#2e1065'], ['#0d9488', '#134e4a'], ['#f97316', '#431407'], ['#2563eb', '#0f172a'],
 ];
 
-type Panel = 'menu' | 'plantillas' | 'colores' | 'letra' | 'encabezado' | 'inicio' | 'listado';
+type Panel = 'menu' | 'plantillas' | 'colores' | 'letra' | 'encabezado' | 'inicio' | 'listado' | 'detalle';
 
 export function MiniPlantilla({ id }: { id: string }) {
   // Vista en miniatura de cada plantilla
@@ -309,7 +309,7 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
     switch (s.tipo) {
       case 'carrusel': return `${s.slides.length} imagen${s.slides.length === 1 ? '' : 'es'}`;
       case 'beneficios': return s.items.map((b: any) => b.titulo).join(' · ');
-      case 'productos': return `${s.titulo || 'Sin título'} · ${({ destacados: 'mis destacados', mas_vendidos: 'más vendidos', nuevos: 'nuevos ingresos', categoria: 'de una categoría', todos: 'todos', elegidos: `${(s.productos || []).length} elegidos` } as any)[s.fuente]}`;
+      case 'productos': return `${s.titulo || 'Sin título'} · ${({ destacados: 'mis destacados', mas_vendidos: 'más vendidos', nuevos: 'nuevos ingresos', ofertas: 'en oferta', categoria: 'de una categoría', todos: 'todos', elegidos: `${(s.productos || []).length} elegidos` } as any)[s.fuente]}`;
       case 'banners': return `${s.items.length} banner${s.items.length === 1 ? '' : 's'}`;
       case 'contador': return s.hasta ? `Termina ${new Date(s.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}` : 'Sin fecha';
       default: return s.titulo || '';
@@ -401,6 +401,7 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
               <option value="destacados">Mis destacados</option>
               <option value="mas_vendidos">Más vendidos</option>
               <option value="nuevos">Nuevos ingresos</option>
+              <option value="ofertas">En oferta</option>
               <option value="categoria">De una categoría</option>
               <option value="todos">Todos (con páginas)</option>
               <option value="elegidos">Elegidos por mí (a mano)</option>
@@ -555,6 +556,7 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
             <Item id="encabezado" icono="⬆️" titulo="Encabezado" detalle="Barra de anuncios y logo" />
             <Item id="inicio" icono="🏠" titulo="Página de inicio" detalle={`${d.secciones.filter((s: any) => s.visible).length} secciones visibles`} />
             <Item id="listado" icono="▦" titulo="Listado de productos" detalle="Productos por fila y fotos" />
+            <Item id="detalle" icono="👙" titulo="Detalle de producto" detalle="Cuotas y guía de talles" />
             <div className="mt-4 border-t border-gray-100 px-5 pt-4 text-xs text-gray-500">
               <p>El logo, el nombre y tus redes se cambian en <strong>Mi Tienda → Marca y datos</strong>.</p>
               {estado !== 'publicado' && <button type="button" className="mt-3 text-red-600 underline" onClick={descartar}>Descartar cambios sin publicar</button>}
@@ -700,6 +702,45 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
                 </div>
               </div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!l.segundaFoto} onChange={(e) => setL({ segundaFoto: chk(e) })} /> Mostrar la segunda foto al pasar el mouse</label>
+            </div>
+          </div>
+        );
+      }
+
+      case 'detalle': {
+        const dt = d.detalle;
+        const setC = (c: any) => setD({ ...d, detalle: { ...dt, cuotas: { ...dt.cuotas, ...c } } });
+        const setG = (c: any) => setD({ ...d, detalle: { ...dt, guiaTalles: { ...dt.guiaTalles, ...c } } });
+        return (
+          <div>
+            <Volver titulo="Detalle de producto" />
+            <div className="space-y-6 p-5">
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={!!dt.cuotas.activo} onChange={(e) => setC({ activo: chk(e) })} /> Mostrar cuotas debajo del precio</label>
+                {dt.cuotas.activo && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <select className={input} value={dt.cuotas.cantidad} onChange={(e) => setC({ cantidad: Number(val(e)) })}>
+                      {[2, 3, 6, 9, 12].map((n) => <option key={n} value={n}>{n} cuotas</option>)}
+                    </select>
+                    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!dt.cuotas.sinInteres} onChange={(e) => setC({ sinInteres: chk(e) })} /> Sin interés</label>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">Ej: “3 cuotas sin interés de $5.000”. Solo informativo: activalo si tu medio de pago las ofrece.</p>
+              </div>
+              <div className="space-y-3 border-t border-gray-100 pt-5">
+                <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={!!dt.guiaTalles.activo} onChange={(e) => setG({ activo: chk(e) })} /> Mostrar guía de talles</label>
+                {dt.guiaTalles.activo && (
+                  <>
+                    <div className="flex items-center gap-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {dt.guiaTalles.imagen && <img src={dt.guiaTalles.imagen} alt="" className="h-16 w-16 rounded object-cover" />}
+                      <ImgInput label={dt.guiaTalles.imagen ? 'Cambiar imagen' : '+ Imagen de la tabla de talles'} k="guia" onUrl={(u) => setG({ imagen: u })} />
+                    </div>
+                    <textarea className={input} rows={4} placeholder="Texto opcional (ej: S = 85-90 cm de busto…)" value={dt.guiaTalles.texto} onChange={(e) => setG({ texto: val(e) })} />
+                  </>
+                )}
+                <p className="text-xs text-gray-500">Aparece en los productos de Nadin como “📏 Guía de talles”.</p>
+              </div>
             </div>
           </div>
         );

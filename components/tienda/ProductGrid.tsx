@@ -36,6 +36,7 @@ export default function ProductGrid({
     <ul className={ulClass}>
       {productos.map((p, i) => {
         const varios = p.variantes.length > 1 && new Set(p.variantes.map((v) => v.precio)).size > 1;
+        const antes = p.variantes.find((v) => v.precio === p.precioDesde && v.precioAntes)?.precioAntes;
         return (
           <li key={p.id}>
             <a href={`${prefix}${productPath(p)}`} className="t-card group block">
@@ -54,13 +55,15 @@ export default function ProductGrid({
                   <img src={tnImg(p.images[1])} alt="" loading="lazy" className="t-foto2 absolute inset-0 hidden h-full w-full object-cover opacity-0 transition duration-500 group-hover:opacity-100 [@media(hover:hover)]:block" />
                 )}
                 {!p.disponible && <span className="t-badge absolute left-2 top-2 bg-gray-900/85 text-white">Sin stock</span>}
-                {p.disponible && p.ultimasUnidades && <span className="t-badge absolute left-2 top-2 bg-white text-gray-900">Últimas unidades</span>}
+                {p.disponible && p.ultimasUnidades && !p.enOferta && <span className="t-badge absolute left-2 top-2 bg-white text-gray-900">Últimas unidades</span>}
+                {p.disponible && p.enOferta && !!p.descuentoPct && <span className="t-badge absolute left-2 top-2 text-white" style={{ background: 'var(--t-primary)' }}>{p.descuentoPct}% OFF</span>}
               </div>
               <div className="t-card-body mt-3 space-y-1 px-0.5">
                 <h3 className="line-clamp-2 text-[13px] leading-snug text-gray-700 sm:text-sm">{p.nombre}</h3>
                 <p className="text-[15px] font-semibold text-gray-900">
                   {varios ? <span className="font-normal text-gray-500">Desde </span> : null}
                   {formatPrecio(p.precioDesde)}
+                  {antes ? <span className="ml-2 text-xs font-normal text-gray-400 line-through">{formatPrecio(antes)}</span> : null}
                 </p>
                 {descTransfer > 0 && (
                   <p className="text-xs text-gray-500">

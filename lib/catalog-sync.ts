@@ -218,6 +218,8 @@ export async function formatProductsWithFullCategories(products: any[]) {
           id: variant.id,
           sku: variant.sku || '',
           price: parseFloat(variant.price) || 0,
+          // Precio promocional de Tiendanube (oferta). 0 = sin oferta
+          promoPrice: parseFloat(variant.promotional_price) || 0,
           stock: variant.stock || 0,
           talle: variant.values?.[1]?.es || '',
           color: variant.values?.[0]?.es || ''
