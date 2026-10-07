@@ -1,7 +1,8 @@
 'use client';
 
 // Panel "Mi Tienda Web" de la revendedora
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { reducirImagen } from '@/components/tienda/reducirImagen';
 import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
 import Link from 'next/link';
@@ -31,9 +32,20 @@ const btnSec = 'rounded-lg border border-gray-300 px-3 py-1.5 text-sm';
 
 const TABS: Tab[] = ['inicio', 'pedidos', 'portada', 'productos', 'paginas', 'clientes', 'estadisticas', 'diseno', 'pagos', 'envios', 'cupones'];
 
-export default function MiTiendaPage({ searchParams }: { searchParams?: { tab?: string; mp?: string } }) {
+// La página se genera estática en producción, así que la sección (?tab=) se lee
+// en el navegador con useSearchParams (dentro de Suspense), no con la prop searchParams.
+export default function MiTiendaPage() {
+  return (
+    <Suspense fallback={<p className="p-6 text-gray-500">Cargando tu tienda…</p>}>
+      <MiTienda />
+    </Suspense>
+  );
+}
+
+function MiTienda() {
   // La sección viene del menú lateral (?tab=); por defecto, Inicio
-  const tab: Tab = TABS.includes(searchParams?.tab as Tab) ? (searchParams!.tab as Tab) : 'inicio';
+  const pedida = useSearchParams()?.get('tab') as Tab | null;
+  const tab: Tab = pedida && TABS.includes(pedida) ? pedida : 'inicio';
   const [info, setInfo] = useState<any>(null);
   const [error, setError] = useState('');
   const [sinSesion, setSinSesion] = useState(false);
