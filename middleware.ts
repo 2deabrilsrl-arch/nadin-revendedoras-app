@@ -8,6 +8,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
+// App de revendedoras: el inicio es Mi Tienda y estas secciones viejas ya no se muestran
+// (los datos se conservan; para volver a mostrarlas, sacarlas de esta lista y del menú).
+const RUTAS_OCULTAS = ['/dashboard/logros', '/dashboard/ranking', '/dashboard/best-sellers', '/dashboard/analytics', '/dashboard/catalogos-digitales', '/dashboard/historial'];
+
 const RESERVED_SUBDOMAINS = new Set(['www', 'app', 'api', 'admin', 'mail', 'tiendas']);
 
 function appHosts(): string[] {
@@ -63,7 +67,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ---------- App de revendedoras (lógica previa) ----------
+  // ---------- App de revendedoras ----------
+  if (pathname === '/dashboard' || pathname === '/dashboard/' || RUTAS_OCULTAS.some((r) => pathname === r || pathname.startsWith(`${r}/`))) {
+    return NextResponse.redirect(new URL('/dashboard/mi-tienda', request.url));
+  }
+
+  // ---------- Roles (lógica previa) ----------
   if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
     const token = await getToken({ req: request as any });
     if (token) {

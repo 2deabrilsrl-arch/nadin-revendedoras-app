@@ -13,7 +13,33 @@ export async function GET() {
   const ctx = await getUserAndTienda();
   if (!ctx) return noAuth();
   const { tienda, user } = ctx;
+  const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
+  const hace7 = new Date(Date.now() - 7 * 864e5);
+  const [cobros, entregas, destacados, propios, pendientes, ventasMes, visitas7] = await Promise.all([
+    prisma.tiendaMetodoPago.count({ where: { tiendaId: tienda.id, activo: true } }),
+    prisma.tiendaEnvio.count({ where: { tiendaId: tienda.id, activo: true } }),
+    prisma.tiendaProducto.count({ where: { tiendaId: tienda.id, destacado: true } }),
+    prisma.tiendaProductoPropio.count({ where: { tiendaId: tienda.id } }),
+    prisma.ordenTienda.count({ where: { tiendaId: tienda.id, estado: { in: ['pendiente_pago', 'pagada'] } } }),
+    prisma.ordenTienda.aggregate({ where: { tiendaId: tienda.id, pagadaAt: { gte: inicioMes }, estado: { not: 'cancelada' } }, _sum: { total: true }, _count: true }),
+    prisma.tiendaStatDia.aggregate({ where: { tiendaId: tienda.id, fecha: { gte: hace7 } }, _sum: { visitas: true } }),
+  ]);
   return NextResponse.json({
+    // Lista "Empezá acá" y resumen de la pantalla de Inicio
+    progreso: {
+      marca: !!(tienda.nombre && tienda.logoUrl && tienda.whatsapp),
+      diseno: tienda.diseno != null,
+      productos: destacados + propios > 0,
+      cobros: cobros > 0,
+      entregas: entregas > 0,
+      publicada: !!tienda.activa,
+    },
+    resumen: {
+      pendientes,
+      ventasMes: ventasMes._sum.total || 0,
+      pedidosMes: ventasMes._count || 0,
+      visitas7: visitas7._sum.visitas || 0,
+    },
     tienda: { ...tienda, diseno: normalizarDiseno(tienda.diseno), disenoBorrador: borradorLimpio(tienda.disenoBorrador) },
     url: getTiendaBaseUrl(tienda),
     urlApp: `/t/${tienda.slug}`,

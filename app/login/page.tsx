@@ -31,7 +31,7 @@ export default function LoginPage() {
         if (data.user.rol === 'vendedora') {
           (globalThis as any).window.location.href = '/admin/dashboard';
         } else {
-          (globalThis as any).window.location.href = '/dashboard';
+          (globalThis as any).window.location.href = '/dashboard/mi-tienda';
         }
       } else {
         setError(data.error || 'Email o contraseña incorrectos');

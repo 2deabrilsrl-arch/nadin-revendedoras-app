@@ -1,0 +1,244 @@
+{
+  "inicio": {
+    "titulo": "Primeros pasos con Mi Tienda",
+    "para": "Tu tienda online propia, con los productos de Nadin y los tuyos. Tus clientas compran solas y vos ganás tu margen.",
+    "pasos": [
+      "Andá a Configuración → Marca, datos y dominio. Poné el nombre de tu tienda, tu logo y tu WhatsApp. Tocá Guardar cambios.",
+      "Andá a Mi tienda → Diseño y tocá Editar diseño. Elegí una plantilla y tus colores. Tocá Publicar cambios.",
+      "Andá a Configuración → Cobros. Agregá al menos una forma de cobro (Transferencia, Mercado Pago, Link de pago o Efectivo).",
+      "Andá a Configuración → Entregas. Agregá cómo entregás (envío a domicilio, correo o retiro).",
+      "Volvé a Marca, datos y dominio y tocá Publicar tienda.",
+      "Desde Inicio tocá Copiar link o Compartir por WhatsApp y mandalo a tus clientas, a tus estados y a tu Instagram."
+    ],
+    "consejos": [
+      "La lista Empezá acá de la pantalla de Inicio te marca qué te falta.",
+      "Los productos de Nadin ya aparecen solos en tu tienda, con stock actualizado y tu ganancia sumada.",
+      "En cada sección tenés el botón ¿Cómo funciona? con los pasos de esa pantalla."
+    ]
+  },
+  "pedidos": {
+    "titulo": "Pedidos web",
+    "para": "Acá llegan las compras que te hacen en tu tienda. También te llega un mail y una notificación con cada pedido.",
+    "pasos": [
+      "Cada pedido nuevo aparece arriba con su estado: Esperando pago, Pagado · falta enviar a Nadin, En Nadin, Listo para entregar o Entregado.",
+      "Si la clienta pagó por transferencia o efectivo, revisá que te llegó la plata y tocá Ya me pagó.",
+      "Si pagó con Mercado Pago, el pedido se marca pagado solo.",
+      "Con el pedido pagado, elegí cómo le pagás a Nadin y cómo te lo manda, y tocá Enviar a Nadin. Nadin arma el pedido y genera el remito. Si algo no tiene stock, te avisamos qué faltó para que se lo devuelvas a tu clienta.",
+      "Los productos tuyos (marcados como Tuyo) no se mandan a Nadin: preparalos vos.",
+      "Cuando lo tenés, tocá Listo para entregar. Cuando lo entregás, tocá Entregado."
+    ],
+    "consejos": [
+      "Con el botón de WhatsApp le escribís a la clienta sin agendarla.",
+      "En Marca, datos y dominio podés activar que los pedidos pagados se envíen solos a Nadin.",
+      "Abajo de los pedidos están los Carritos abandonados: personas que cargaron productos y no terminaron. Escribiles, muchas compran."
+    ]
+  },
+  "clientes": {
+    "titulo": "Clientes",
+    "para": "La lista de quienes te compraron y de quienes dejaron su email o WhatsApp en el aviso de bienvenida de tu tienda.",
+    "pasos": [
+      "Buscá por nombre, teléfono o email.",
+      "Filtrá entre Compraron y Dejaron sus datos.",
+      "Tocá WhatsApp para escribirle a una clienta.",
+      "Tocá Exportar Excel para bajar la lista completa.",
+      "Si una clienta te pide que borres sus datos, tocá Borrar datos al lado de su nombre."
+    ],
+    "consejos": [
+      "Mandá tus novedades y ofertas a las que dejaron sus datos: ya mostraron interés.",
+      "Las que compraron más de una vez son tus mejores clientas: cuidalas."
+    ]
+  },
+  "estadisticas": {
+    "titulo": "Estadísticas",
+    "para": "Cuánta gente entra a tu tienda, cuántos compran y qué productos miran y venden más.",
+    "pasos": [
+      "Elegí el período: Últimos 7, 30 o 90 días.",
+      "Mirá visitas, pedidos, ventas y conversión (de cada 100 visitas, cuántas compran).",
+      "Revisá los productos más vistos y más vendidos."
+    ],
+    "consejos": [
+      "Si un producto se mira mucho pero no se vende, probá destacarlo con una promo.",
+      "Si tenés pocas visitas, compartí el link de tu tienda más seguido en tus estados e Instagram."
+    ]
+  },
+  "diseno": {
+    "titulo": "Diseño de tu tienda",
+    "para": "Cómo se ve tu tienda: plantilla, colores, letra, encabezado, carrusel de fotos y secciones de la página de inicio.",
+    "pasos": [
+      "Tocá Editar diseño. Se abre el editor: a la izquierda el menú y a la derecha la vista previa.",
+      "En Plantillas elegí un estilo para empezar.",
+      "En Colores y Letra elegí los tuyos.",
+      "En Inicio agregá, ordená o sacá secciones (carrusel, destacados, ofertas, categorías, etc.).",
+      "También podés tocar cualquier parte de la vista previa y se abre su edición.",
+      "Para el carrusel subí una foto para compu (1920×730) y otra para celular (1080×1350).",
+      "Los cambios se guardan solos como borrador. Cuando te guste, tocá Publicar cambios. Hasta ahí tus clientas siguen viendo lo anterior."
+    ],
+    "consejos": [
+      "Mirá la vista de celular: la mayoría de tus clientas compra desde el teléfono.",
+      "Pocas secciones y buenas fotos venden más que una página larga."
+    ]
+  },
+  "productos": {
+    "titulo": "Productos",
+    "para": "Qué se vende en tu tienda: los productos de Nadin (ya cargados, con stock al día) y los tuyos.",
+    "pasos": [
+      "En Productos de Nadin buscá por nombre, marca o código.",
+      "Tocá ☆ Destacar para que aparezca en la sección Destacados, u Ocultar para que no se venda en tu tienda.",
+      "En Mis productos tocá + Nuevo producto para cargar algo tuyo: nombre, categoría, fotos (hasta 8) y variantes con talle, color, precio y stock.",
+      "Elegí la categoría de la lista. Si no existe, elegí + Crear una categoría nueva.",
+      "Si querés mostrarlo en oferta, completá Antes $ (oferta): aparece tachado.",
+      "Tocá Guardar."
+    ],
+    "consejos": [
+      "El precio de los productos de Nadin es tu costo más tu % de ganancia (se cambia en Marca, datos y dominio).",
+      "Cuando Nadin pone algo en oferta, tu costo baja y tu tienda lo muestra en oferta sola.",
+      "Los productos tuyos se venden gratis por ahora. Más adelante podría cobrarse una comisión chica (alrededor de 0,5%) sobre esas ventas."
+    ]
+  },
+  "paginas": {
+    "titulo": "Páginas",
+    "para": "Páginas de información de tu tienda: Cómo comprar, Cambios, Envíos, Preguntas frecuentes y las que quieras.",
+    "pasos": [
+      "En Crear con texto sugerido elegí una página (Cómo comprar, Cambios, Envíos, Preguntas). O tocá + Página en blanco.",
+      "Tocá Editar y cambiá el texto con tus datos. Tocá Guardar.",
+      "Las páginas aparecen siempre al pie de tu tienda.",
+      "Para sumarlas al menú de arriba: Diseño → Editar diseño → Menú."
+    ],
+    "consejos": [
+      "Una página clara de Cambios y Envíos evita muchas preguntas por WhatsApp."
+    ]
+  },
+  "promos": {
+    "titulo": "Promos y cupones",
+    "para": "Promociones automáticas (3x2, 2x1, % de descuento) y cupones de descuento para tus clientas.",
+    "pasos": [
+      "En Promociones automáticas tocá + Nueva promoción.",
+      "Elegí el tipo: Llevá X, pagá Y (3x2, 2x1…) o % de descuento.",
+      "Elegí a qué se aplica: En toda la tienda, En una categoría o En productos elegidos.",
+      "Si querés, poné Desde y Hasta. Tocá Crear promoción: se aplica sola en el carrito.",
+      "En Cupones de descuento → Nuevo cupón escribí el CÓDIGO (ej. BIENVENIDA10), elegí % de descuento, $ de descuento o Envío gratis, y tocá Crear cupón."
+    ],
+    "consejos": [
+      "El descuento sale de tu ganancia: calculá antes cuánto podés regalar.",
+      "Usá el cupón en el aviso de bienvenida para conseguir emails y WhatsApp de clientas nuevas."
+    ]
+  },
+  "catalogo": {
+    "titulo": "Comprar a Nadin",
+    "para": "Para hacerle tu pedido a Nadin (para vos, para stock o para una clienta que te pidió por fuera de la tienda).",
+    "pasos": [
+      "Elegí cómo buscar: Ver Todo, Por Marca o Por Categoría.",
+      "Entrá al producto, elegí talle y color, la cantidad y agregalo al carrito.",
+      "Con el carrito (botón flotante) revisá y confirmá el pedido.",
+      "El pedido queda en Mis pedidos a Nadin. Cuando tengas todo, consolidalo para que Nadin lo arme."
+    ],
+    "consejos": [
+      "Los pedidos que entran por tu tienda web no hace falta cargarlos acá: se mandan con Enviar a Nadin desde Pedidos web."
+    ]
+  },
+  "mis-pedidos": {
+    "titulo": "Mis pedidos a Nadin",
+    "para": "Todos los pedidos que le hiciste a Nadin, cargados por vos o enviados desde tu tienda web.",
+    "pasos": [
+      "Mirá el estado de cada pedido.",
+      "Mientras no esté consolidado, podés cancelarlo.",
+      "Cuando quieras que Nadin lo arme y lo mande, andá a Consolidar envío."
+    ],
+    "consejos": []
+  },
+  "consolidar": {
+    "titulo": "Consolidar envío",
+    "para": "Juntar tus pedidos en un solo envío para que Nadin los arme y te los mande (o los retires).",
+    "pasos": [
+      "Tildá los pedidos que querés juntar.",
+      "La app revisa el stock. Si algo no hay, te muestra cuáles y podés sacarlos.",
+      "Elegí cómo le pagás a Nadin y si retirás o te lo envían (y por qué transporte).",
+      "Confirmá. Nadin recibe el pedido, genera el remito y te avisa por el Chat con Nadin."
+    ],
+    "consejos": [
+      "Consolidar varios pedidos juntos te ahorra envíos."
+    ]
+  },
+  "chat": {
+    "titulo": "Chat con Nadin",
+    "para": "Hablar con Nadin sobre un envío consolidado: dudas, cambios, pagos.",
+    "pasos": [
+      "Elegí la consolidación.",
+      "Escribí tu mensaje y envialo. Te avisamos cuando te respondan."
+    ],
+    "consejos": []
+  },
+  "cobros": {
+    "titulo": "Cobros",
+    "para": "Cómo te pagan tus clientas. La plata va directo a vos.",
+    "pasos": [
+      "Tocá + Transferencia y cargá alias o CBU/CVU, titular y banco. Podés poner un % de descuento por pagar así.",
+      "Tocá + Mercado Pago y después Conectar mi Mercado Pago. Ingresá con tu cuenta. Las clientas pagan con tarjeta o dinero en cuenta y el pedido se marca pagado solo.",
+      "Tocá + Efectivo si cobrás al entregar o en el retiro.",
+      "Tocá + Link de pago si usás otro medio (Nave, MODO, Ualá Bis) y pegá tu link.",
+      "En cada uno podés escribir instrucciones (ej. Mandá el comprobante por WhatsApp). Tocá Guardar."
+    ],
+    "consejos": [
+      "Tenés que tener al menos un cobro activo para publicar la tienda.",
+      "Si a tu clienta le falta algo por falta de stock, devolvele esa parte por el mismo medio."
+    ]
+  },
+  "entregas": {
+    "titulo": "Entregas",
+    "para": "Cómo le llega el pedido a tu clienta y cuánto le cobrás.",
+    "pasos": [
+      "En Agregar forma de entrega elegí el tipo: Envío a domicilio (moto, cadete, propio), Correo / transporte o Retiro en un punto.",
+      "Poné el precio (0 = gratis) y, si querés, Gratis desde un monto.",
+      "Escribí un detalle (ej. Llega en 24/48 hs) y tocá Agregar.",
+      "Tus clientas eligen una al comprar."
+    ],
+    "consejos": [
+      "Ofrecer retiro sin cargo suele aumentar las ventas en tu zona."
+    ]
+  },
+  "marca": {
+    "titulo": "Marca, datos y dominio",
+    "para": "Nombre, logo, contacto, tu % de ganancia, publicar la tienda y conectar tu propio dominio.",
+    "pasos": [
+      "Completá el nombre, la frase corta, el logo y la dirección de tu tienda.",
+      "En Precios poné tu % de ganancia sobre el costo de Nadin.",
+      "Completá WhatsApp, email, ciudad y redes: aparecen en tu tienda.",
+      "Tocá Guardar cambios y, cuando esté todo listo, Publicar tienda (necesitás al menos un cobro activo).",
+      "Dominio propio: si compraste uno (ej. www.tumarca.com.ar), escribilo y tocá Conectar. Te mostramos qué datos cargar donde lo compraste. Cuando quede apuntando bien, se activa solo y te avisamos."
+    ],
+    "consejos": [
+      "Si no tenés dominio, tu tienda funciona igual con la dirección de Nadin.",
+      "Los .com.ar se compran en nic.ar con clave fiscal."
+    ]
+  },
+  "perfil": {
+    "titulo": "Mi perfil",
+    "para": "Tus datos personales y fiscales. Con ellos Nadin te carga como cliente para remitos y facturas.",
+    "pasos": [
+      "Completá nombre, teléfono y dirección.",
+      "Elegí tu situación fiscal. Si sos monotributista o responsable inscripta, cargá tu CUIT y razón social.",
+      "Tocá Guardar."
+    ],
+    "consejos": []
+  },
+  "notificaciones": {
+    "titulo": "Notificaciones",
+    "para": "Avisos de pedidos nuevos, pagos, faltantes de stock, respuestas de Nadin y tu dominio.",
+    "pasos": [
+      "Tocá una notificación para ver el detalle.",
+      "La campanita de arriba te muestra cuántas tenés sin leer."
+    ],
+    "consejos": []
+  },
+  "ayuda": {
+    "titulo": "Guías y tutoriales",
+    "para": "Todas las guías de la app en un solo lugar, para leer acá o descargar en PDF.",
+    "pasos": [
+      "Elegí la guía de la sección que quieras.",
+      "Tocá Descargar PDF para guardarla o mandarla por WhatsApp."
+    ],
+    "consejos": [
+      "¿Seguís con dudas? Escribinos por WhatsApp a Nadin."
+    ]
+  }
+}

@@ -4,9 +4,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { reducirImagen } from '@/components/tienda/reducirImagen';
 import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
-import { ShoppingBag, Users, BarChart3, Palette, Package, FileText, Tag, CreditCard, Truck, Store, Menu, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { CheckCircle2, Circle } from 'lucide-react';
 
-type Tab = 'pedidos' | 'portada' | 'productos' | 'paginas' | 'clientes' | 'estadisticas' | 'diseno' | 'pagos' | 'envios' | 'cupones';
+type Tab = 'inicio' | 'pedidos' | 'portada' | 'productos' | 'paginas' | 'clientes' | 'estadisticas' | 'diseno' | 'pagos' | 'envios' | 'cupones';
 
 const fmt = (n: number) => `$${Math.round(n || 0).toLocaleString('es-AR')}`;
 const val = (e: any) => (e.target as any).value;
@@ -28,9 +29,11 @@ const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outlin
 const btn = 'rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50';
 const btnSec = 'rounded-lg border border-gray-300 px-3 py-1.5 text-sm';
 
-export default function MiTiendaPage() {
-  const [tab, setTab] = useState<Tab>('pedidos');
-  const [menuAbierto, setMenuAbierto] = useState(false);
+const TABS: Tab[] = ['inicio', 'pedidos', 'portada', 'productos', 'paginas', 'clientes', 'estadisticas', 'diseno', 'pagos', 'envios', 'cupones'];
+
+export default function MiTiendaPage({ searchParams }: { searchParams?: { tab?: string; mp?: string } }) {
+  // La sección viene del menú lateral (?tab=); por defecto, Inicio
+  const tab: Tab = TABS.includes(searchParams?.tab as Tab) ? (searchParams!.tab as Tab) : 'inicio';
   const [info, setInfo] = useState<any>(null);
   const [error, setError] = useState('');
   const [sinSesion, setSinSesion] = useState(false);
@@ -47,8 +50,6 @@ export default function MiTiendaPage() {
 
   useEffect(() => {
     const q = new URLSearchParams((globalThis as any).location?.search || '');
-    const t = q.get('tab') as Tab | null;
-    if (t) setTab(t);
     const mp = q.get('mp');
     if (mp === 'ok') setToast('¡Mercado Pago conectado!');
     else if (mp) setToast('No se pudo conectar Mercado Pago. Probá de nuevo.');
@@ -81,119 +82,9 @@ export default function MiTiendaPage() {
   if (!info) return <p className="p-6 text-gray-500">Cargando tu tienda…</p>;
 
   const t = info.tienda;
-  // Menú lateral agrupado como en Tiendanube
-  const grupos: { titulo: string; items: { id: Tab; label: string; icon: any }[] }[] = [
-    { titulo: 'Ventas', items: [
-      { id: 'pedidos', label: 'Pedidos web', icon: ShoppingBag },
-      { id: 'clientes', label: 'Clientes', icon: Users },
-      { id: 'estadisticas', label: 'Estadísticas', icon: BarChart3 },
-    ] },
-    { titulo: 'Mi tienda', items: [
-      { id: 'portada', label: 'Diseño', icon: Palette },
-      { id: 'productos', label: 'Productos', icon: Package },
-      { id: 'paginas', label: 'Páginas', icon: FileText },
-    ] },
-    { titulo: 'Marketing', items: [
-      { id: 'cupones', label: 'Promos y cupones', icon: Tag },
-    ] },
-    { titulo: 'Configuración', items: [
-      { id: 'pagos', label: 'Cobros', icon: CreditCard },
-      { id: 'envios', label: 'Entregas', icon: Truck },
-      { id: 'diseno', label: 'Marca y datos', icon: Store },
-    ] },
-  ];
-  const actual = grupos.flatMap((g) => g.items).find((x) => x.id === tab);
-  const elegir = (id: Tab) => {
-    setTab(id);
-    setMenuAbierto(false);
-    const g: any = globalThis as any;
-    try {
-      const u = new URL(g.location.href);
-      u.searchParams.set('tab', id);
-      u.searchParams.delete('mp');
-      g.history.replaceState(null, '', u.toString());
-    } catch { /* nada */ }
-    g.scrollTo?.({ top: 0, behavior: 'smooth' });
-  };
-  const listaMenu = (
-    <nav className="space-y-4" aria-label="Secciones de Mi tienda">
-      {grupos.map((g) => (
-        <div key={g.titulo}>
-          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{g.titulo}</p>
-          <ul className="space-y-0.5">
-            {g.items.map((x) => {
-              const Icono = x.icon;
-              const activo = tab === x.id;
-              return (
-                <li key={x.id}>
-                  <button
-                    onClick={() => elegir(x.id)}
-                    aria-current={activo ? 'page' : undefined}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition ${activo ? 'bg-pink-50 text-pink-700' : 'text-gray-700 hover:bg-gray-100'}`}
-                  >
-                    <Icono className={`h-4 w-4 shrink-0 ${activo ? 'text-pink-600' : 'text-gray-400'}`} />
-                    {x.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-    </nav>
-  );
-
   return (
-    <div className="mx-auto min-h-screen max-w-6xl bg-gray-50/60 p-4 pb-24">
-      <div className="mb-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 p-5 text-white">
-        <p className="text-sm opacity-90">Mi tienda web</p>
-        <h1 className="text-2xl font-bold">{t.nombre}</h1>
-        <p className="mt-1 break-all text-sm opacity-90">{info.url}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${t.activa ? 'bg-green-500' : 'bg-white/25'}`}>
-            {t.activa ? 'Publicada' : 'Borrador (solo vos la ves)'}
-          </span>
-          <a href={info.urlApp} target="_blank" className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-pink-700">Ver mi tienda</a>
-          <button
-            className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold"
-            onClick={() => {
-              (globalThis as any).navigator?.clipboard?.writeText(info.url);
-              setToast('Link copiado');
-            }}
-          >
-            Copiar link
-          </button>
-          <a
-            className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold"
-            target="_blank"
-            href={`https://wa.me/?text=${encodeURIComponent(`¡Mirá mi tienda online! ${info.url}`)}`}
-          >
-            Compartir por WhatsApp
-          </a>
-        </div>
-      </div>
-
-      {/* Celular: botón que despliega todas las secciones hacia abajo */}
-      <div className="mb-4 md:hidden">
-        <button
-          onClick={() => setMenuAbierto(!menuAbierto)}
-          aria-expanded={menuAbierto}
-          className="flex w-full items-center gap-3 rounded-xl bg-white px-4 py-3 text-left text-sm font-semibold shadow-sm ring-1 ring-black/5"
-        >
-          <Menu className="h-4 w-4 text-gray-500" />
-          <span className="flex-1">{actual?.label || 'Secciones'}</span>
-          <ChevronDown className={`h-4 w-4 text-gray-400 transition ${menuAbierto ? 'rotate-180' : ''}`} />
-        </button>
-        {menuAbierto && <div className="mt-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-black/5">{listaMenu}</div>}
-      </div>
-
-      <div className="md:grid md:grid-cols-[210px_minmax(0,1fr)] md:gap-6">
-        {/* Compu: barra lateral izquierda fija */}
-        <aside className="hidden md:block">
-          <div className="sticky top-24 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">{listaMenu}</div>
-        </aside>
-
-        <div className="min-w-0">
+    <div className="mx-auto max-w-5xl pb-24">
+      {tab === 'inicio' && <Inicio info={info} onToast={setToast} />}
 
       {tab === 'pedidos' && (
         <div className="space-y-8">
@@ -210,14 +101,117 @@ export default function MiTiendaPage() {
       {tab === 'pagos' && <Pagos onToast={setToast} />}
       {tab === 'envios' && <Envios onToast={setToast} />}
       {tab === 'cupones' && <Cupones onToast={setToast} />}
-        </div>
-      </div>
 
       {toast && (
         <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm text-white shadow-lg" role="status">
           {toast}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Inicio: resumen + lista "Empezá acá"
+// ---------------------------------------------------------------------
+
+const PASOS_INICIO: { k: string; titulo: string; texto: string; tab: string }[] = [
+  { k: 'marca', titulo: 'Poné tu nombre, logo y WhatsApp', texto: 'Así tus clientas reconocen tu tienda y te pueden escribir.', tab: 'diseno' },
+  { k: 'diseno', titulo: 'Elegí el diseño', texto: 'Plantilla, colores, fotos del carrusel y secciones.', tab: 'portada' },
+  { k: 'productos', titulo: 'Destacá productos o cargá los tuyos', texto: 'Los de Nadin ya están cargados. Elegí cuáles mostrar primero.', tab: 'productos' },
+  { k: 'cobros', titulo: 'Activá cómo te pagan', texto: 'Transferencia, Mercado Pago, link de pago o efectivo.', tab: 'pagos' },
+  { k: 'entregas', titulo: 'Activá cómo entregás', texto: 'Envío a domicilio, correo o retiro.', tab: 'envios' },
+  { k: 'publicada', titulo: 'Publicá tu tienda', texto: 'En Marca, datos y dominio → Publicar tienda.', tab: 'diseno' },
+];
+
+function Inicio({ info, onToast }: { info: any; onToast: (s: string) => void }) {
+  const t = info.tienda;
+  const prog = info.progreso || {};
+  const res = info.resumen || {};
+  const hechos = PASOS_INICIO.filter((p) => prog[p.k]).length;
+  const completo = hechos === PASOS_INICIO.length;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 p-5 text-white">
+        <p className="text-sm opacity-90">Mi tienda web</p>
+        <h2 className="text-2xl font-bold">{t.nombre}</h2>
+        <p className="mt-1 break-all text-sm opacity-90">{info.url}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${t.activa ? 'bg-green-500' : 'bg-white/25'}`}>
+            {t.activa ? 'Publicada' : 'Borrador (solo vos la ves)'}
+          </span>
+          <a href={info.urlApp} target="_blank" className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-pink-700">Ver mi tienda</a>
+          <button
+            className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold"
+            onClick={() => { (globalThis as any).navigator?.clipboard?.writeText(info.url); onToast('Link copiado'); }}
+          >
+            Copiar link
+          </button>
+          <a className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold" target="_blank"
+            href={`https://wa.me/?text=${encodeURIComponent(`¡Mirá mi tienda online! ${info.url}`)}`}>
+            Compartir por WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Link href="/dashboard/mi-tienda?tab=pedidos" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-pink-200">
+          <p className="text-xs text-gray-500">Pedidos para atender</p>
+          <p className={`text-2xl font-bold ${res.pendientes ? 'text-pink-600' : ''}`}>{res.pendientes || 0}</p>
+          <p className="text-xs text-gray-400">Esperando pago o para enviar a Nadin</p>
+        </Link>
+        <Link href="/dashboard/mi-tienda?tab=estadisticas" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-pink-200">
+          <p className="text-xs text-gray-500">Ventas de este mes</p>
+          <p className="text-2xl font-bold">{fmt(res.ventasMes)}</p>
+          <p className="text-xs text-gray-400">{res.pedidosMes || 0} pedido{res.pedidosMes === 1 ? '' : 's'} pagado{res.pedidosMes === 1 ? '' : 's'}</p>
+        </Link>
+        <Link href="/dashboard/mi-tienda?tab=estadisticas" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-pink-200">
+          <p className="text-xs text-gray-500">Visitas (últimos 7 días)</p>
+          <p className="text-2xl font-bold">{res.visitas7 || 0}</p>
+          <p className="text-xs text-gray-400">Compartí tu link para tener más</p>
+        </Link>
+      </div>
+
+      {!completo && (
+        <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-semibold">Empezá acá</h2>
+            <span className="text-xs text-gray-500">{hechos} de {PASOS_INICIO.length} listos</span>
+          </div>
+          <div className="mb-4 h-2 overflow-hidden rounded-full bg-gray-100">
+            <div className="h-full rounded-full bg-pink-500 transition-all" style={{ width: `${(hechos / PASOS_INICIO.length) * 100}%` }} />
+          </div>
+          <ol className="space-y-2">
+            {PASOS_INICIO.map((p, i) => {
+              const ok = !!prog[p.k];
+              return (
+                <li key={p.k}>
+                  <Link href={`/dashboard/mi-tienda?tab=${p.tab}`} className={`flex items-start gap-3 rounded-xl p-3 transition ${ok ? 'bg-green-50/60' : 'bg-gray-50 hover:bg-pink-50'}`}>
+                    {ok ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600" /> : <Circle className="mt-0.5 h-5 w-5 shrink-0 text-gray-300" />}
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-sm font-medium ${ok ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{i + 1}. {p.titulo}</span>
+                      {!ok && <span className="block text-xs text-gray-500">{p.texto}</span>}
+                    </span>
+                    {!ok && <span className="shrink-0 text-xs font-semibold text-pink-700">Hacerlo →</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link href="/dashboard/catalogo" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-pink-200">
+          <p className="font-semibold">🛒 Comprar a Nadin</p>
+          <p className="text-xs text-gray-500">Hacé tu pedido para stock o para una clienta que te pidió por fuera de la tienda.</p>
+        </Link>
+        <Link href="/dashboard/ayuda" className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 hover:ring-pink-200">
+          <p className="font-semibold">📘 Guías y tutoriales</p>
+          <p className="text-xs text-gray-500">Paso a paso de cada sección, para leer o descargar en PDF.</p>
+        </Link>
+      </div>
     </div>
   );
 }
