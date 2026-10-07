@@ -1,9 +1,10 @@
 // Cron cada hora: recordatorio por email a quienes dejaron el carrito hace más de 2 horas
 // + activa los dominios propios que ya quedaron apuntando bien
+// + renueva los permisos de Mercado Pago que están por vencer
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTiendaBaseUrl, formatPrecio } from '@/lib/tienda';
-import { emailOrden, escapeHtml } from '@/lib/tienda-checkout';
+import { emailOrden, escapeHtml, renovarTokensMPPorVencer } from '@/lib/tienda-checkout';
 import { revisarDominiosPendientes } from '@/lib/dominios';
 
 export const dynamic = 'force-dynamic';
@@ -34,5 +35,6 @@ export async function GET(req: Request) {
     enviados++;
   }
   const dominios = await revisarDominiosPendientes().catch(() => 0);
-  return NextResponse.json({ ok: true, enviados, dominios });
+  const mpRenovados = await renovarTokensMPPorVencer().catch(() => 0);
+  return NextResponse.json({ ok: true, enviados, dominios, mpRenovados });
 }

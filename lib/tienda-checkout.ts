@@ -162,7 +162,64 @@ interface MpConfig {
 export async function getMpConfig(tiendaId: string): Promise<MpConfig | null> {
   const m = await prisma.tiendaMetodoPago.findFirst({ where: { tiendaId, tipo: 'mercadopago' } });
   const cfg = (m?.config || null) as MpConfig | null;
-  return cfg?.accessToken ? cfg : null;
+  if (!m || !cfg?.accessToken) return null;
+  // El permiso de MP dura 180 días: si vence en menos de 15, se renueva solo
+  const vence = cfg.expiresAt ? new Date(cfg.expiresAt).getTime() : 0;
+  if (cfg.refreshToken && vence && vence - Date.now() < 15 * 864e5) {
+    const nuevo = await renovarTokenMP(m.id, cfg);
+    if (nuevo) return nuevo;
+  }
+  return cfg;
+}
+
+/** Renueva el token de Mercado Pago de la revendedora con el refresh_token. */
+export async function renovarTokenMP(metodoId: string, cfg: MpConfig): Promise<MpConfig | null> {
+  if (!cfg.refreshToken || !process.env.MP_CLIENT_ID || !process.env.MP_CLIENT_SECRET) return null;
+  try {
+    const r = await fetch('https://api.mercadopago.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: process.env.MP_CLIENT_ID,
+        client_secret: process.env.MP_CLIENT_SECRET,
+        grant_type: 'refresh_token',
+        refresh_token: cfg.refreshToken,
+      }),
+    });
+    if (!r.ok) {
+      console.error('MP refresh', r.status, await r.text().catch(() => ''));
+      return null;
+    }
+    const t: any = await r.json();
+    const nuevo: MpConfig = {
+      ...cfg,
+      accessToken: t.access_token,
+      publicKey: t.public_key || cfg.publicKey,
+      refreshToken: t.refresh_token || cfg.refreshToken,
+      userId: t.user_id || cfg.userId,
+      expiresAt: new Date(Date.now() + (Number(t.expires_in) || 0) * 1000).toISOString(),
+    };
+    await prisma.tiendaMetodoPago.update({ where: { id: metodoId }, data: { config: nuevo as any } });
+    return nuevo;
+  } catch (e) {
+    console.error('MP refresh falló', e);
+    return null;
+  }
+}
+
+/** Para el cron: renueva los tokens de MP que vencen en menos de 15 días (aunque no haya ventas). */
+export async function renovarTokensMPPorVencer(max = 30) {
+  if (!process.env.MP_CLIENT_ID || !process.env.MP_CLIENT_SECRET) return 0;
+  const metodos = await prisma.tiendaMetodoPago.findMany({ where: { tipo: 'mercadopago' }, select: { id: true, config: true } });
+  let n = 0;
+  for (const m of metodos) {
+    if (n >= max) break;
+    const cfg = (m.config || {}) as MpConfig;
+    const vence = cfg.expiresAt ? new Date(cfg.expiresAt).getTime() : 0;
+    if (!cfg.refreshToken || !vence || vence - Date.now() > 15 * 864e5) continue;
+    if (await renovarTokenMP(m.id, cfg)) n++;
+  }
+  return n;
 }
 
 function appUrl() {
