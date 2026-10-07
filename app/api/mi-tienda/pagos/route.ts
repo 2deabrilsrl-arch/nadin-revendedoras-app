@@ -9,7 +9,9 @@ const TIPOS = ['transferencia', 'mercadopago', 'link', 'efectivo'];
 function publico(m: any) {
   const cfg = (m.config || {}) as Record<string, any>;
   const { accessToken, refreshToken, ...resto } = cfg;
-  return { ...m, config: m.tipo === 'mercadopago' ? { conectado: !!accessToken, cuenta: resto.nickname || resto.userId || null } : cfg };
+  // vencido: el permiso de MP caducó y no se pudo renovar solo (ej. la revendedora lo revocó en MP)
+  const vencido = !!(accessToken && resto.expiresAt && new Date(resto.expiresAt).getTime() < Date.now());
+  return { ...m, config: m.tipo === 'mercadopago' ? { conectado: !!accessToken && !vencido, vencido, cuenta: resto.nickname || resto.userId || null } : cfg };
 }
 
 async function validarConfig(tipo: string, raw: any): Promise<{ config?: any; error?: string }> {

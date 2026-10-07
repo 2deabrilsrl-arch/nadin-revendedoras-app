@@ -27,7 +27,12 @@ export async function GET(_req: Request, { params }: { params: { site: string } 
     nombre: tienda.nombre,
     // Mercado Pago solo aparece si está conectado; nunca devolvemos el config
     pagos: pagos
-      .filter((p) => p.tipo !== 'mercadopago' || !!(p.config as any)?.accessToken)
+      .filter((p) => {
+        if (p.tipo !== 'mercadopago') return true;
+        const c = (p.config || {}) as any;
+        // Si el permiso de MP venció y no se renovó, no se ofrece (el cobro fallaría)
+        return !!c.accessToken && !(c.expiresAt && new Date(c.expiresAt).getTime() < Date.now());
+      })
       .map(({ config, ...p }) => p),
     envios,
     hayCupones: hayCupones > 0,

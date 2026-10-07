@@ -674,7 +674,12 @@ function Pagos({ onToast }: { onToast: (s: string) => void }) {
         <PagoCard key={p.id} p={p} onSave={(c: any) => guardar(p, c)} onDelete={() => borrar(p)}>
           {p.tipo === 'mercadopago' && (
             <div className="space-y-2 text-sm">
-              {p.config?.conectado ? (
+              {p.config?.vencido ? (
+                <div className="space-y-2 rounded-lg bg-red-50 p-3 text-red-800">
+                  <p><strong>Tu conexión con Mercado Pago venció.</strong> Mientras tanto tus clientas no ven Mercado Pago al pagar. Volvé a conectarla:</p>
+                  {mpOAuth && <a href="/api/mi-tienda/mercadopago/connect" className={`${btn} inline-block`}>Volver a conectar Mercado Pago</a>}
+                </div>
+              ) : p.config?.conectado ? (
                 <p className="text-green-700">Cuenta conectada {p.config.cuenta ? `(${p.config.cuenta})` : ''}. Los pagos se marcan solos.</p>
               ) : mpOAuth ? (
                 <a href="/api/mi-tienda/mercadopago/connect" className={`${btn} inline-block`}>Conectar mi Mercado Pago</a>
