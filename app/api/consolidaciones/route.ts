@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendConsolidacionEmail } from '@/lib/email';
+import { dragonfishActivo } from '@/lib/consolidacion';
 
 // GET: Obtener consolidaciones de usuario
 export async function GET(req: NextRequest) {
@@ -122,7 +123,9 @@ export async function POST(req: NextRequest) {
         tipoEnvio: tipoEnvio || 'pendiente',
         transporteNombre: transporteNombre || null,
         estado: 'enviado',
-        enviadoAt: new Date()
+        enviadoAt: new Date(),
+        // Si está activo el puente con Dragonfish, queda en cola para generar el remito
+        ...(dragonfishActivo() ? { dfEstado: 'pendiente' } : {}),
       }
     });
 
