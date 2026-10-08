@@ -71,7 +71,7 @@ export default function AddToCart({
         )}
       </div>
 
-      {colores.length > 1 && (
+      {colores.length > 0 && (
         <fieldset>
           <legend className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Color: <span className="font-normal normal-case tracking-normal text-gray-600">{color}</span></legend>
           <div className="flex flex-wrap gap-2">
