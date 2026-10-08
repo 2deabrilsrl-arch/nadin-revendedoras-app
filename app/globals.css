@@ -5,3 +5,13 @@
 body {
   font-family: 'Open Sans', system-ui, sans-serif;
 }
+
+/* iPhone: Safari agranda la pantalla al tocar un campo con letra menor a 16px y no vuelve sola.
+   En celular todos los campos usan 16px (tiendas y app de revendedoras). */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
