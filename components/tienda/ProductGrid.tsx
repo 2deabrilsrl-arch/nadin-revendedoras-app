@@ -1,6 +1,7 @@
 // Grilla de productos de la tienda (server component).
 import type { ProductoTienda } from '@/lib/tienda';
 import { formatPrecio, productPath } from '@/lib/tienda';
+import QuickAdd from './QuickAdd';
 
 /** Pide a la CDN de Tiendanube una versión más liviana de la imagen. */
 export function tnImg(src: string, size = 480): string {
@@ -38,7 +39,7 @@ export default function ProductGrid({
         const varios = p.variantes.length > 1 && new Set(p.variantes.map((v) => v.precio)).size > 1;
         const antes = p.variantes.find((v) => v.precio === p.precioDesde && v.precioAntes)?.precioAntes;
         return (
-          <li key={p.id}>
+          <li key={p.id} className="relative">
             <a href={`${prefix}${productPath(p)}`} className="t-card group block">
               <div className="t-card-media relative aspect-[3/4] overflow-hidden rounded-[var(--t-radius)] bg-gray-50">
                 {p.image && (
@@ -73,6 +74,14 @@ export default function ProductGrid({
                 )}
               </div>
             </a>
+            {p.disponible && (
+              <div className="pointer-events-none absolute inset-x-0 top-0 aspect-[3/4] t-quick-wrap">
+                <span className="pointer-events-auto">
+                  <QuickAdd productId={p.id} nombre={p.nombre} imagen={p.image}
+                    variantes={p.variantes.map((v) => ({ id: v.id, talle: v.talle, color: v.color, stock: Math.min(v.stock, 20), precio: v.precio }))} />
+                </span>
+              </div>
+            )}
           </li>
         );
       })}

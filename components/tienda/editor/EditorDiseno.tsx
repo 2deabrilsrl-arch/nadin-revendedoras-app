@@ -41,17 +41,19 @@ type Panel = 'menu' | 'plantillas' | 'colores' | 'letra' | 'encabezado' | 'inici
 
 export function MiniPlantilla({ id }: { id: string }) {
   // Vista en miniatura de cada plantilla
-  const header = id === 'urbana' || id === 'aurora' ? 'justify-start' : 'justify-center';
+  const header = id === 'urbana' || id === 'aurora' || id === 'catalogo' ? 'justify-start' : 'justify-center';
   const bg = id === 'atelier' ? 'bg-pink-50' : id === 'aurora' ? 'bg-orange-50/60' : 'bg-white';
+  const oscuro = id === 'noche';
+  const cols = id === 'catalogo' ? 6 : 4;
   const hero = id === 'urbana' ? 'bg-gray-900' : 'bg-gray-200';
   const r = id === 'atelier' ? 'rounded-lg' : id === 'aurora' ? 'rounded' : 'rounded-none';
   const titulo = id === 'urbana' ? 'font-black uppercase' : id === 'atelier' || id === 'aurora' ? 'font-serif italic' : 'uppercase tracking-[0.2em]';
   return (
     <span className={`block overflow-hidden rounded-lg ring-1 ring-black/5 ${bg}`} aria-hidden="true">
-      <span className={`flex ${header} border-b border-black/5 px-2 py-1.5`}><span className="h-1.5 w-10 rounded bg-gray-700" /></span>
+      <span className={`flex ${header} border-b border-black/5 px-2 py-1.5 ${oscuro ? 'bg-gray-950' : ''}`}><span className={`h-1.5 w-10 rounded ${oscuro ? 'bg-pink-500' : 'bg-gray-700'}`} /></span>
       <span className={`m-1.5 flex h-10 items-center justify-center ${r} ${hero}`}><span className={`text-[7px] ${titulo} ${id === 'urbana' ? 'text-white' : 'text-gray-600'}`}>Colección</span></span>
-      <span className="grid grid-cols-4 gap-1 px-1.5 pb-2">
-        {[0, 1, 2, 3].map((k) => (
+      <span className={`grid gap-1 px-1.5 pb-2 ${cols === 6 ? 'grid-cols-6' : 'grid-cols-4'}`}>
+        {Array.from({ length: cols }, (_, k) => k).map((k) => (
           <span key={k} className={`${id === 'atelier' || id === 'aurora' ? 'bg-white p-0.5 ring-1 ring-black/5' : ''} ${r}`}>
             <span className={`block h-6 ${r} ${id === 'urbana' ? 'bg-pink-100' : 'bg-gray-200'}`} />
           </span>
@@ -279,6 +281,7 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
       ...x,
       plantilla: p.plantilla,
       header: p.header,
+      listado: p.listado ? { ...x.listado, ...p.listado } : x.listado,
       anuncio: { ...x.anuncio, activo: true, mensajes: p.anuncio, texto: p.anuncio[0] || '', desliza: p.anuncio.length > 1 },
       secciones,
     }));
@@ -313,6 +316,8 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
       case 'beneficios': return s.items.map((b: any) => b.titulo).join(' · ');
       case 'productos': return `${s.titulo || 'Sin título'} · ${({ destacados: 'mis destacados', mas_vendidos: 'más vendidos', nuevos: 'nuevos ingresos', ofertas: 'en oferta', categoria: 'de una categoría', todos: 'todos', elegidos: `${(s.productos || []).length} elegidos` } as any)[s.fuente]}`;
       case 'banners': return `${s.items.length} banner${s.items.length === 1 ? '' : 's'}`;
+      case 'opiniones': return `${s.items.length} opinión${s.items.length === 1 ? '' : 'es'}`;
+      case 'confianza': return 'Medios de pago, cuotas y envíos';
       case 'contador': return s.hasta ? `Termina ${new Date(s.hasta).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}` : 'Sin fecha';
       default: return s.titulo || '';
     }
@@ -389,6 +394,7 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
             <select className={input} value={s.formato} onChange={(e) => upd(s.id, { formato: val(e) })}>
               <option value="tarjetas">Tarjetas con foto</option>
               <option value="circulos">Círculos</option>
+              <option value="grandes">Banners grandes con texto</option>
             </select>
             <select className={input} value={s.cantidad} onChange={(e) => upd(s.id, { cantidad: Number(val(e)) })}>
               {[3, 4, 6, 8].map((n) => <option key={n} value={n}>Mostrar {n}</option>)}
@@ -483,6 +489,34 @@ export default function EditorDiseno({ info, onSalir }: { info: any; onSalir: ()
           <div className="grid gap-2 sm:grid-cols-2">
             <input className={input} placeholder="Título" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
             <input className={input} placeholder="Link de YouTube" value={s.url} onChange={(e) => upd(s.id, { url: val(e) })} />
+          </div>
+        );
+      case 'opiniones':
+        return (
+          <div className="space-y-3">
+            <input className={input} placeholder="Título" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
+            <p className="text-xs text-gray-500">Copiá mensajes reales de tus clientas (con su permiso). Hasta 6.</p>
+            {s.items.map((o: any, k: number) => (
+              <div key={k} className="space-y-2 rounded-xl bg-gray-50 p-3">
+                <div className="grid gap-2 sm:grid-cols-[1fr_120px_auto]">
+                  <input className={input} placeholder="Nombre" value={o.nombre} onChange={(e) => upd(s.id, { items: s.items.map((x: any, j: number) => (j === k ? { ...x, nombre: val(e) } : x)) })} />
+                  <select className={input} value={o.estrellas} onChange={(e) => upd(s.id, { items: s.items.map((x: any, j: number) => (j === k ? { ...x, estrellas: Number(val(e)) } : x)) })}>
+                    {[5, 4, 3].map((n) => <option key={n} value={n}>{'★'.repeat(n)}</option>)}
+                  </select>
+                  <button type="button" className="text-xs text-red-600" onClick={() => upd(s.id, { items: s.items.filter((_: any, j: number) => j !== k) })}>Quitar</button>
+                </div>
+                <textarea className={input} rows={2} placeholder="Qué dijo" value={o.texto} onChange={(e) => upd(s.id, { items: s.items.map((x: any, j: number) => (j === k ? { ...x, texto: val(e) } : x)) })} />
+              </div>
+            ))}
+            {s.items.length < 6 && <button type="button" className={btnSec} onClick={() => upd(s.id, { items: [...s.items, { nombre: '', texto: '', estrellas: 5 }] })}>+ Opinión</button>}
+          </div>
+        );
+      case 'confianza':
+        return (
+          <div className="space-y-2">
+            <input className={input} placeholder="Título" value={s.titulo} onChange={(e) => upd(s.id, { titulo: val(e) })} />
+            <input className={input} placeholder="Cuotas (opcional), ej: 3 cuotas sin interés con tarjeta" value={s.cuotas} onChange={(e) => upd(s.id, { cuotas: val(e) })} />
+            <p className="text-xs text-gray-500">Muestra solos tus medios de cobro activos, tus formas de entrega y el sello de compra segura.</p>
           </div>
         );
       case 'redes':

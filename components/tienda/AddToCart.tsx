@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTiendaCart, formatPrecio } from './TiendaCart';
 
 interface Variante {
@@ -40,6 +40,27 @@ export default function AddToCart({
   const antes = (seleccionada ?? variantes.find((v) => v.precio === precio))?.precioAntes || null;
   const sinStock = seleccionada ? seleccionada.stock <= 0 : false;
   const maxQty = seleccionada ? Math.max(1, Math.min(seleccionada.stock, 20)) : 20;
+
+  // Celular: cuando el botón principal sale de la pantalla, aparece una barra fija abajo
+  const zonaBoton = useRef<any>(null);
+  const zonaTalles = useRef<any>(null);
+  const [barra, setBarra] = useState(false);
+  useEffect(() => {
+    const el = zonaBoton.current;
+    const g: any = globalThis as any;
+    if (!el || !g.IntersectionObserver) return;
+    const obs = new g.IntersectionObserver(([e]: any) => {
+      // Solo si el botón quedó arriba (ya lo pasó) o abajo, y es pantalla chica
+      setBarra(!e.isIntersecting && g.innerWidth < 1024);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  useEffect(() => {
+    const raiz: any = (globalThis as any).document?.documentElement;
+    raiz?.style.setProperty('--t-barra', barra ? '76px' : '0px');
+    return () => raiz?.style.setProperty('--t-barra', '0px');
+  }, [barra]);
 
   function agregar() {
     if (!seleccionada || seleccionada.stock <= 0) return;
@@ -89,7 +110,7 @@ export default function AddToCart({
       )}
 
       {talles.some((v) => v.talle) && (
-        <fieldset>
+        <fieldset ref={zonaTalles}>
           <legend className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Talle</legend>
           <div className="flex flex-wrap gap-2">
             {talles.map((v) => (
@@ -104,7 +125,7 @@ export default function AddToCart({
 
       {seleccionada && !sinStock && seleccionada.stock <= 3 && <p className="text-sm text-amber-700">¡Últimas unidades!</p>}
 
-      <div className="flex items-stretch gap-3">
+      <div ref={zonaBoton} className="flex items-stretch gap-3">
         <div className="flex items-center rounded-[var(--t-btn-radius)] border border-gray-200">
           <button type="button" className="px-3 py-2 text-lg text-gray-600" onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Restar">−</button>
           <span className="w-8 text-center text-sm" aria-live="polite">{qty}</span>
@@ -114,6 +135,23 @@ export default function AddToCart({
           {!seleccionada ? 'Elegí un talle' : sinStock ? 'Sin stock' : 'Agregar al carrito'}
         </button>
       </div>
+
+      {barra && (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-black/10 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs text-gray-500">{nombre}</p>
+            <p className="text-base font-semibold text-gray-900">{formatPrecio(precio)}{seleccionada?.talle ? <span className="ml-2 text-xs font-normal text-gray-500">Talle {seleccionada.talle}</span> : null}</p>
+          </div>
+          <button type="button" className="t-btn shrink-0 !px-5"
+            onClick={() => {
+              if (!seleccionada) { zonaTalles.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+              agregar();
+            }}
+            disabled={!!seleccionada && sinStock}>
+            {!seleccionada ? 'Elegir talle' : sinStock ? 'Sin stock' : agregado ? '¡Agregado!' : 'Agregar'}
+          </button>
+        </div>
+      )}
 
       {agregado && (
         <div className="flex items-center justify-between gap-3 rounded-[var(--t-radius)] bg-gray-50 p-3 text-sm" role="status">

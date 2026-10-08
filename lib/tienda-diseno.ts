@@ -4,17 +4,18 @@
 //  - la home se arma con SECCIONES reordenables que la revendedora agrega/quita
 // Se valida siempre al leer y al guardar: nunca confiamos en el JSON tal cual.
 
-export type Plantilla = 'esencial' | 'atelier' | 'urbana' | 'aurora';
+export type Plantilla = 'esencial' | 'atelier' | 'urbana' | 'aurora' | 'noche' | 'catalogo';
 export type IconoBeneficio = 'envio' | 'pago' | 'cambio' | 'whatsapp' | 'seguro' | 'regalo';
 
 export interface Slide { imagen: string; imagenMobile?: string; titulo?: string; texto?: string; boton?: string; link?: string }
 export interface Beneficio { icono: IconoBeneficio; titulo: string; texto: string }
 export interface BannerItem { imagen: string; titulo?: string; link?: string }
+export interface Opinion { nombre: string; texto: string; estrellas: number }
 
 export type Seccion =
   | { id: string; tipo: 'carrusel'; visible: boolean; slides: Slide[] }
   | { id: string; tipo: 'beneficios'; visible: boolean; items: Beneficio[] }
-  | { id: string; tipo: 'categorias'; visible: boolean; titulo: string; formato: 'tarjetas' | 'circulos'; cantidad: number }
+  | { id: string; tipo: 'categorias'; visible: boolean; titulo: string; formato: 'tarjetas' | 'circulos' | 'grandes'; cantidad: number }
   | { id: string; tipo: 'productos'; visible: boolean; titulo: string; fuente: FuenteProductos; categoria: string; formato: 'grilla' | 'slider'; cantidad: number; productos?: string[] }
   | { id: string; tipo: 'contador'; visible: boolean; titulo: string; texto: string; hasta: string; boton: string; link: string; imagen: string }
   | { id: string; tipo: 'producto_principal'; visible: boolean; titulo: string; productoId: string }
@@ -22,7 +23,9 @@ export type Seccion =
   | { id: string; tipo: 'imagen_texto'; visible: boolean; imagen: string; titulo: string; texto: string; boton: string; link: string; lado: 'izq' | 'der' }
   | { id: string; tipo: 'texto'; visible: boolean; titulo: string; texto: string }
   | { id: string; tipo: 'video'; visible: boolean; titulo: string; url: string }
-  | { id: string; tipo: 'redes'; visible: boolean; titulo: string; texto: string };
+  | { id: string; tipo: 'redes'; visible: boolean; titulo: string; texto: string }
+  | { id: string; tipo: 'opiniones'; visible: boolean; titulo: string; items: Opinion[] }
+  | { id: string; tipo: 'confianza'; visible: boolean; titulo: string; cuotas: string };
 
 export type FuenteProductos = 'destacados' | 'mas_vendidos' | 'nuevos' | 'ofertas' | 'categoria' | 'todos' | 'elegidos';
 export const FUENTES_PRODUCTOS: FuenteProductos[] = ['destacados', 'mas_vendidos', 'nuevos', 'ofertas', 'categoria', 'todos', 'elegidos'];
@@ -92,6 +95,8 @@ export const PLANTILLAS: PlantillaDef[] = [
   { id: 'atelier', nombre: 'Atelier', detalle: 'Boutique y romántica. Tipografía con serif, fondo suave y bordes redondeados.', header: 'centrado', tarjeta: 'enmarcada', fuenteTitulos: 'elegante' },
   { id: 'urbana', nombre: 'Urbana', detalle: 'Audaz y moderna. Logo a la izquierda, títulos grandes, bloques de color.', header: 'izquierda', tarjeta: 'fondo', fuenteTitulos: 'moderna' },
   { id: 'aurora', nombre: 'Aurora', detalle: 'Cálida y clásica. Serif suave, tarjetas con marco fino, ideal para lencería fina.', header: 'izquierda', tarjeta: 'enmarcada', fuenteTitulos: 'clasica' },
+  { id: 'noche', nombre: 'Noche', detalle: 'Encabezado y pie negros con acentos de color. Elegante y llamativa.', header: 'centrado', tarjeta: 'limpia', fuenteTitulos: 'moderna' },
+  { id: 'catalogo', nombre: 'Catálogo', detalle: 'Compacta: más productos por pantalla, fotos cuadradas, ideal para mucho surtido.', header: 'izquierda', tarjeta: 'limpia', fuenteTitulos: 'moderna' },
 ];
 
 export function getPlantilla(id: string | undefined | null): PlantillaDef {
@@ -113,6 +118,7 @@ export interface Prearmada {
   fuente: 'moderna' | 'elegante' | 'clasica';
   header: 'centrado' | 'izquierda';
   anuncio: string[];
+  listado?: Partial<Listado>;
   secciones: () => Seccion[];
 }
 
@@ -127,6 +133,9 @@ const sec = {
   redes: (): Seccion => ({ id: nuevoId(), tipo: 'redes', visible: true, titulo: 'Seguinos', texto: 'Novedades, ingresos y promos todas las semanas.' }),
   contador: (): Seccion => seccionNueva('contador'),
   banners: (): Seccion => ({ id: nuevoId(), tipo: 'banners', visible: true, items: [] }),
+  opiniones: (): Seccion => seccionNueva('opiniones'),
+  confianza: (): Seccion => seccionNueva('confianza'),
+  categoriasGrandes: (): Seccion => ({ id: nuevoId(), tipo: 'categorias', visible: true, titulo: '', formato: 'grandes', cantidad: 4 }),
 };
 
 export const PREARMADAS: Prearmada[] = [
@@ -166,6 +175,26 @@ export const PREARMADAS: Prearmada[] = [
     anuncio: ['3 cuotas sin interés', 'Envíos a todo el país'],
     secciones: () => [sec.carrusel(), sec.beneficios(), sec.productos('Más vendidos', 'mas_vendidos', 'grilla', 8), sec.categorias('tarjetas', 4), sec.todos()],
   },
+  {
+    id: 'neon', nombre: 'Noche neón', detalle: 'Negro con rosa neón: moderna, nocturna y con mucha presencia.',
+    plantilla: 'noche', colorPrimario: '#ff2d95', colorSecundario: '#0b0b0f', fuente: 'moderna', header: 'centrado',
+    anuncio: ['Envíos a todo el país', 'Comprá seguro', 'Nuevos ingresos todas las semanas'],
+    secciones: () => [sec.carrusel(), sec.categoriasGrandes(), sec.productos('Nuevos ingresos', 'nuevos', 'slider', 10), sec.productos('Lo más vendido', 'mas_vendidos', 'grilla', 8), sec.opiniones(), sec.confianza(), sec.todos()],
+  },
+  {
+    id: 'minimal', nombre: 'Minimal', detalle: 'Rápida y despojada: logo a la izquierda, mucho blanco y foco en las fotos.',
+    plantilla: 'esencial', colorPrimario: '#1f2937', colorSecundario: '#111827', fuente: 'moderna', header: 'izquierda',
+    anuncio: ['Envío gratis en compras grandes'],
+    listado: { colDesktop: 3, segundaFoto: true },
+    secciones: () => [sec.carrusel(), sec.categoriasGrandes(), sec.productos('Destacados', 'destacados', 'grilla', 6), sec.confianza(), sec.todos()],
+  },
+  {
+    id: 'surtido', nombre: 'Catálogo surtido', detalle: 'Compacta, muchos productos por pantalla. Ideal para mostrar todo el surtido.',
+    plantilla: 'catalogo', colorPrimario: '#e11d74', colorSecundario: '#111827', fuente: 'moderna', header: 'izquierda',
+    anuncio: ['Precios por mayor y menor', 'Envíos a todo el país'],
+    listado: { colDesktop: 5, colMobile: 2, segundaFoto: false },
+    secciones: () => [sec.carrusel(), sec.categorias('circulos', 8), sec.productos('Ofertas', 'ofertas', 'slider', 12), sec.todos(), sec.opiniones(), sec.confianza()],
+  },
 ];
 
 // ---------------------------------------------------------------------
@@ -184,6 +213,8 @@ export const SECCIONES_INFO: { tipo: TipoSeccion; nombre: string; detalle: strin
   { tipo: 'texto', nombre: 'Texto', detalle: 'Sobre vos, tu historia, tu local', emoji: '✍️' },
   { tipo: 'video', nombre: 'Video', detalle: 'Un video de YouTube', emoji: '🎬' },
   { tipo: 'redes', nombre: 'Redes y WhatsApp', detalle: 'Invitá a seguirte o escribirte', emoji: '💬' },
+  { tipo: 'opiniones', nombre: 'Opiniones de clientas', detalle: 'Lo que dicen las que ya te compraron', emoji: '💗' },
+  { tipo: 'confianza', nombre: 'Compra segura', detalle: 'Medios de pago, cuotas y envíos', emoji: '🔒' },
 ];
 
 export const ICONOS: IconoBeneficio[] = ['envio', 'pago', 'cambio', 'whatsapp', 'seguro', 'regalo'];
@@ -205,6 +236,12 @@ export function seccionNueva(tipo: TipoSeccion): Seccion {
     case 'redes': return { id, tipo, visible: true, titulo: 'Seguinos', texto: 'Novedades, ingresos y promos todas las semanas.' };
     case 'contador': return { id, tipo, visible: true, titulo: 'Ofertas por tiempo limitado', texto: '', hasta: new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 16), boton: 'Ver ofertas', link: '', imagen: '' };
     case 'producto_principal': return { id, tipo, visible: true, titulo: '', productoId: '' };
+    case 'opiniones': return { id, tipo, visible: true, titulo: 'Lo que dicen nuestras clientas', items: [
+      { nombre: 'Carla', texto: 'Me llegó rapidísimo y la calidad es hermosa. ¡Voy a volver a comprar!', estrellas: 5 },
+      { nombre: 'Romina', texto: 'Excelente atención por WhatsApp, me ayudaron a elegir el talle.', estrellas: 5 },
+      { nombre: 'Lucía', texto: 'Todo tal cual las fotos. Súper recomendable.', estrellas: 5 },
+    ] };
+    case 'confianza': return { id, tipo, visible: true, titulo: 'Comprá con confianza', cuotas: '' };
   }
 }
 
@@ -292,7 +329,7 @@ function normSeccion(raw: any): Seccion | null {
           .slice(0, 4),
       };
     case 'categorias':
-      return { ...base, tipo: 'categorias', titulo: txt(raw.titulo, 60), formato: oneOf(raw.formato, ['tarjetas', 'circulos'] as const, 'tarjetas'), cantidad: int(raw.cantidad, 2, 12, 4) };
+      return { ...base, tipo: 'categorias', titulo: txt(raw.titulo, 60), formato: oneOf(raw.formato, ['tarjetas', 'circulos', 'grandes'] as const, 'tarjetas'), cantidad: int(raw.cantidad, 2, 12, 4) };
     case 'productos':
       return {
         ...base, tipo: 'productos', titulo: txt(raw.titulo, 60),
@@ -336,6 +373,16 @@ function normSeccion(raw: any): Seccion | null {
         boton: txt(raw.boton, 30), link: link(raw.link), imagen: httpsUrl(raw.imagen),
       };
     }
+    case 'opiniones':
+      return {
+        ...base, tipo: 'opiniones', titulo: txt(raw.titulo, 80),
+        items: (Array.isArray(raw.items) ? raw.items : [])
+          .map((o: any) => ({ nombre: txt(o?.nombre, 40), texto: txt(o?.texto, 300), estrellas: int(o?.estrellas, 1, 5, 5) }))
+          .filter((o: Opinion) => o.texto)
+          .slice(0, 6),
+      };
+    case 'confianza':
+      return { ...base, tipo: 'confianza', titulo: txt(raw.titulo, 80), cuotas: txt(raw.cuotas, 80) };
     case 'producto_principal':
       return { ...base, tipo: 'producto_principal', titulo: txt(raw.titulo, 80), productoId: String(raw.productoId || '').replace(/[^\w-]/g, '').slice(0, 40) };
     default:

@@ -16,7 +16,11 @@ interface Ctx {
   categorias: CategoriaNodo[];
   descTransfer: number;
   page: number;
+  pagosTipos?: string[];
+  envios?: { nombre: string; precio: number; gratisDesde: number | null }[];
 }
+
+const NOMBRES_PAGO: Record<string, string> = { transferencia: 'Transferencia', mercadopago: 'Mercado Pago', link: 'Tarjetas de crédito y débito', efectivo: 'Efectivo' };
 
 export default function Secciones({ secciones, ctx }: { secciones: Seccion[]; ctx: Ctx }) {
   const visibles = secciones.filter((s) => s.visible);
@@ -94,7 +98,22 @@ function Bloque({ s, ctx, primera, paginar }: { s: Seccion; ctx: Ctx; primera: b
       return (
         <Contenedor className="pt-14">
           {s.titulo && <TituloSeccion>{s.titulo}</TituloSeccion>}
-          {s.formato === 'circulos' ? (
+          {s.formato === 'grandes' ? (
+            <ul className={`grid gap-3 sm:gap-5 ${tiles.length % 2 === 1 && tiles.length > 1 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+              {tiles.map((c) => (
+                <li key={c.href}>
+                  <a href={c.href} className="group relative block overflow-hidden rounded-[var(--t-radius)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={tnImg(c.imagen, 1024)} alt={c.nombre} loading="lazy" className="aspect-[16/10] w-full object-cover transition duration-700 group-hover:scale-105" />
+                    <span className="absolute inset-0 flex flex-col items-start justify-end bg-gradient-to-t from-black/60 via-black/10 to-transparent p-6 text-white sm:p-8">
+                      <span className="t-title text-2xl font-semibold !text-white sm:text-3xl">{c.nombre}</span>
+                      <span className="mt-3 border-b border-white/80 pb-0.5 text-xs font-semibold uppercase tracking-[0.18em]">Ver más</span>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : s.formato === 'circulos' ? (
             <ul className="-mx-4 flex gap-5 overflow-x-auto px-4 pb-2 sm:justify-center">
               {tiles.map((c) => (
                 <li key={c.href} className="w-24 shrink-0 text-center sm:w-32">
@@ -274,6 +293,52 @@ function Bloque({ s, ctx, primera, paginar }: { s: Seccion; ctx: Ctx; primera: b
               allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
+          </div>
+        </Contenedor>
+      );
+    }
+
+    case 'opiniones': {
+      if (!s.items.length) return null;
+      return (
+        <Contenedor className="pt-16">
+          {s.titulo && <TituloSeccion>{s.titulo}</TituloSeccion>}
+          <ul className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+            {s.items.map((o, k) => (
+              <li key={k} className="w-[80%] shrink-0 snap-start rounded-[var(--t-radius)] bg-[var(--t-tint)] p-6 sm:w-auto">
+                <p className="text-lg tracking-widest" style={{ color: 'var(--t-primary)' }} aria-label={`${o.estrellas} de 5 estrellas`}>{'★'.repeat(o.estrellas)}<span className="text-gray-300">{'★'.repeat(5 - o.estrellas)}</span></p>
+                <p className="mt-3 text-sm leading-relaxed text-gray-700">“{o.texto}”</p>
+                {o.nombre && <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">{o.nombre}</p>}
+              </li>
+            ))}
+          </ul>
+        </Contenedor>
+      );
+    }
+
+    case 'confianza': {
+      const tipos = ctx.pagosTipos || [];
+      const envios = ctx.envios || [];
+      const gratis = envios.map((e) => e.gratisDesde).filter((x): x is number => x != null && x > 0);
+      const items = [
+        { icono: 'seguro' as const, titulo: 'Compra segura', texto: 'Tus datos están protegidos' },
+        tipos.length ? { icono: 'pago' as const, titulo: 'Medios de pago', texto: tipos.map((t) => NOMBRES_PAGO[t] || t).join(' · ') } : null,
+        s.cuotas ? { icono: 'pago' as const, titulo: 'Cuotas', texto: s.cuotas } : null,
+        envios.length ? { icono: 'envio' as const, titulo: gratis.length ? `Envío gratis desde ${formatPrecio(Math.min(...gratis))}` : 'Envíos', texto: envios.map((e) => e.nombre).slice(0, 3).join(' · ') } : null,
+      ].filter(Boolean) as { icono: 'seguro' | 'pago' | 'envio'; titulo: string; texto: string }[];
+      return (
+        <Contenedor className="pt-16">
+          <div className="rounded-[var(--t-radius)] border border-black/5 px-6 py-8">
+            {s.titulo && <p className="t-h mb-6 text-center">{s.titulo}</p>}
+            <ul className={`grid gap-6 text-center ${['', 'sm:grid-cols-1', 'sm:grid-cols-2', 'sm:grid-cols-3', 'sm:grid-cols-4'][Math.min(items.length, 4)]}`}>
+              {items.map((b, k) => (
+                <li key={k} className="flex flex-col items-center gap-2">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--t-tint)]" style={{ color: 'var(--t-primary)' }}><Icon name={b.icono} size={20} /></span>
+                  <span className="text-sm font-semibold text-gray-900">{b.titulo}</span>
+                  <span className="max-w-[16rem] text-xs text-gray-500">{b.texto}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </Contenedor>
       );

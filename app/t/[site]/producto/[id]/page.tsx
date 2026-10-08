@@ -127,6 +127,15 @@ export default async function ProductoPage({ params }: Props) {
             }))}
           />
 
+          {/* Confianza: compra segura + medios de pago */}
+          <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-600">
+            <li className="flex items-center gap-1.5"><span aria-hidden="true">🔒</span> Compra segura</li>
+            {pagos.tipos.length > 0 && (
+              <li className="flex items-center gap-1.5"><span aria-hidden="true">💳</span> {pagos.tipos.map((t: string) => ({ transferencia: 'Transferencia', mercadopago: 'Mercado Pago', link: 'Tarjetas', efectivo: 'Efectivo' } as Record<string, string>)[t] || t).join(' · ')}</li>
+            )}
+            <li className="flex items-center gap-1.5"><span aria-hidden="true">↩️</span> Cambios sin uso y con etiqueta</li>
+          </ul>
+
           <div className="mt-8 divide-y divide-gray-100 border-y border-gray-100 text-sm">
             {detalle.guiaTalles.activo && !producto.propio && (
               <details className="group py-4">

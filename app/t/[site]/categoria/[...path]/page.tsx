@@ -6,10 +6,12 @@ import {
   getLinkPrefix, getTiendaBaseUrl, getPagosPublicos, PAGE_SIZE,
 } from '@/lib/tienda';
 import ProductGrid, { Paginacion } from '@/components/tienda/ProductGrid';
+import FiltrosTienda from '@/components/tienda/FiltrosTienda';
+import { aplicarFiltros, qsFiltros } from '@/lib/tienda-filtros';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: { site: string; path: string[] }; searchParams: { page?: string } };
+type Props = { params: { site: string; path: string[] }; searchParams: { page?: string; talle?: string; color?: string; max?: string; orden?: string } };
 
 async function load(params: Props['params']) {
   const tienda = await getTiendaBySite(params.site);
@@ -44,7 +46,9 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
   const prefix = getLinkPrefix(tienda.slug);
   const base = getTiendaBaseUrl(tienda);
   const pagos = await getPagosPublicos(tienda.id);
-  const lista = filtrarPorCategoria(productos, cat.path).filter((p) => p.disponible);
+  const todosCat = filtrarPorCategoria(productos, cat.path).filter((p) => p.disponible);
+  const { lista, activos, opciones } = aplicarFiltros(todosCat, searchParams);
+  const urlCat = `${prefix}/categoria/${cat.path.join('/')}`;
   const page = Math.max(1, parseInt(searchParams.page || '1', 10) || 1);
   const pagina = lista.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -76,7 +80,7 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
         ))}
       </nav>
       <h1 className="t-h mb-2 text-center !text-2xl">{cat.nombre}</h1>
-      <p className="mb-8 text-center text-sm text-gray-500">{lista.length} productos</p>
+      <p className="mb-6 text-center text-sm text-gray-500">{lista.length} productos</p>
 
       {cat.hijos.length > 0 && (
         <ul className="-mx-4 mb-10 flex justify-start gap-2 overflow-x-auto whitespace-nowrap px-4 sm:justify-center">
@@ -90,8 +94,9 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
         </ul>
       )}
 
+      <FiltrosTienda action={urlCat} opciones={opciones} activos={activos} total={lista.length} />
       <ProductGrid productos={pagina} prefix={prefix} descTransfer={pagos.descTransfer} />
-      <Paginacion page={page} total={lista.length} pageSize={PAGE_SIZE} baseHref={`${prefix}/categoria/${cat.path.join('/')}`} />
+      <Paginacion page={page} total={lista.length} pageSize={PAGE_SIZE} baseHref={`${urlCat}${qsFiltros(activos)}`} />
     </div>
   );
 }

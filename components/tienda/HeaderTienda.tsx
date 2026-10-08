@@ -13,7 +13,7 @@ export default function HeaderTienda({ nombre, logoUrl, home, buscarHref, catego
   const [buscando, setBuscando] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-black/5 bg-white" data-sec="__encabezado" data-sec-nombre="Encabezado">
+    <header className="t-header sticky top-0 z-30 border-b border-black/5 bg-white" data-sec="__encabezado" data-sec-nombre="Encabezado">
       {variante === 'izquierda' ? (
         <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 lg:py-4">
           <button type="button" className="rounded-full p-2 lg:hidden" onClick={() => setAbierto(true)} aria-label="Abrir menú">

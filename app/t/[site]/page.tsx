@@ -1,3 +1,4 @@
+import { prisma } from '@/lib/prisma';
 // Home de la tienda: se arma con las secciones que eligió la revendedora
 import { notFound } from 'next/navigation';
 import {
@@ -21,7 +22,11 @@ export default async function TiendaHome({ params, searchParams }: { params: { s
   if (!tienda) notFound();
   const prefix = getLinkPrefix(tienda.slug);
   const diseno = normalizarDiseno(tienda.diseno);
-  const [productos, pagos] = await Promise.all([getCatalogoTienda(tienda), getPagosPublicos(tienda.id)]);
+  const [productos, pagos, envios] = await Promise.all([
+    getCatalogoTienda(tienda),
+    getPagosPublicos(tienda.id),
+    prisma.tiendaEnvio.findMany({ where: { tiendaId: tienda.id, activo: true }, orderBy: { orden: 'asc' }, select: { nombre: true, precio: true, gratisDesde: true } }),
+  ]);
   const disponibles = productos.filter((p) => p.disponible);
   const categorias = buildCategorias(productos);
   const page = Math.max(1, parseInt(searchParams.page || '1', 10) || 1);
@@ -55,7 +60,7 @@ export default async function TiendaHome({ params, searchParams }: { params: { s
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <Secciones
         secciones={secciones}
-        ctx={{ tienda, prefix, productos: disponibles, categorias, descTransfer: pagos.descTransfer, page }}
+        ctx={{ tienda, prefix, productos: disponibles, categorias, descTransfer: pagos.descTransfer, page, pagosTipos: pagos.tipos, envios }}
       />
     </>
   );

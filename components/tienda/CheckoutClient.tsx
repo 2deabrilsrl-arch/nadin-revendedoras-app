@@ -125,6 +125,7 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
         {/* Productos */}
         <section>
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Tu pedido</h2>
+          <BarraEnvioGratis envios={config?.envios || []} subtotal={cot?.subtotal ?? items.reduce((a, i) => a + i.precio * i.qty, 0)} />
           <ul className="divide-y rounded-[var(--t-radius)] border">
             {items.map((i) => (
               <li key={i.variantId} className="flex gap-3 p-3">
@@ -252,5 +253,26 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
         </button>
       </aside>
     </form>
+  );
+}
+
+/** "Te faltan $X para el envío gratis": usa el menor "gratis desde" de las formas de entrega */
+function BarraEnvioGratis({ envios, subtotal }: { envios: Envio[]; subtotal: number }) {
+  const umbrales = envios.map((e) => e.gratisDesde).filter((x): x is number => x != null && x > 0);
+  if (!umbrales.length) return null;
+  const meta = Math.min(...umbrales);
+  const falta = Math.max(0, meta - subtotal);
+  const pct = Math.min(100, Math.round((subtotal / meta) * 100));
+  return (
+    <div className="mb-4 rounded-[var(--t-radius)] bg-gray-50 p-3 text-sm">
+      <p className="mb-2">
+        {falta > 0
+          ? <>Te faltan <strong>{formatPrecio(falta)}</strong> para tener <strong>envío gratis</strong>.</>
+          : <strong style={{ color: 'var(--t-primary)' }}>¡Tenés envío gratis!</strong>}
+      </p>
+      <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'var(--t-primary)' }} />
+      </div>
+    </div>
   );
 }

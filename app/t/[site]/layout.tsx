@@ -99,6 +99,30 @@ const ESTILOS_CSS = `
 .tienda[data-plantilla=aurora]{--t-radius:8px;--t-btn-radius:6px;--t-bg:#fffaf7}
 .tienda[data-plantilla=aurora] .t-h{font-size:1.6rem;font-weight:500;font-style:italic;letter-spacing:0;text-transform:none}
 .tienda[data-plantilla=aurora] .t-benefits{background:transparent;border-top:1px solid rgba(0,0,0,.05)}
+/* Plantilla Noche: encabezado y pie negros, acentos del color principal */
+.tienda[data-plantilla=noche]{--t-radius:4px;--t-btn-radius:999px}
+.tienda[data-plantilla=noche] .t-header{background:#0b0b0f;border-color:#1f1f25;color:#fff}
+.tienda[data-plantilla=noche] .t-header nav>ul>li>a,.tienda[data-plantilla=noche] .t-header .t-title{color:#fff}
+.tienda[data-plantilla=noche] .t-header .bg-white{color:#1f2937}
+.tienda[data-plantilla=noche] .t-header .bg-white .t-title{color:var(--t-secondary)}
+.tienda[data-plantilla=noche] .t-header nav{border-color:#1f1f25}
+.tienda[data-plantilla=noche] .t-footer{background:#0b0b0f;border-color:#1f1f25;color:#d4d4d8}
+.tienda[data-plantilla=noche] .t-footer .t-h,.tienda[data-plantilla=noche] .t-footer .t-title{color:#fff}
+.tienda[data-plantilla=noche] .t-footer .text-gray-600,.tienda[data-plantilla=noche] .t-footer .text-gray-400{color:#a1a1aa}
+.tienda[data-plantilla=noche] .t-footer .border-gray-200,.tienda[data-plantilla=noche] .t-footer .border-black\\/5{border-color:#27272a}
+.tienda[data-plantilla=noche] .t-benefits{background:#0b0b0f;color:#fff}
+.tienda[data-plantilla=noche] .t-hero-band,.tienda[data-plantilla=noche] .t-cta-band{background:#0b0b0f;color:#fff}
+.tienda[data-plantilla=noche] .t-hero-band .t-title,.tienda[data-plantilla=noche] .t-cta-band .t-title{color:#fff}
+.tienda[data-plantilla=noche] .t-h{letter-spacing:.2em}
+/* Compra rápida: el botón va sobre la foto */
+.tienda[data-tarjeta=enmarcada] .t-quick-wrap{left:.5rem;right:.5rem;top:.5rem}
+.tienda[data-plantilla=catalogo] .t-quick-wrap{aspect-ratio:1/1}
+/* Plantilla Catálogo: compacta, fotos cuadradas, más productos por pantalla */
+.tienda[data-plantilla=catalogo]{--t-radius:6px;--t-btn-radius:6px}
+.tienda[data-plantilla=catalogo] .t-card-media{aspect-ratio:1/1}
+.tienda[data-plantilla=catalogo] .t-grid{column-gap:.6rem;row-gap:1.25rem}
+.tienda[data-plantilla=catalogo] .t-card-body h3{font-size:12px}
+.tienda[data-plantilla=catalogo] .t-h{font-size:.85rem}
 `;
 
 export default async function TiendaLayout({ children, params }: { children: React.ReactNode; params: { site: string } }) {
@@ -199,7 +223,7 @@ export default async function TiendaLayout({ children, params }: { children: Rea
 
         <main>{children}</main>
 
-        <footer className="mt-20 border-t border-black/5 bg-white">
+        <footer className="t-footer mt-20 border-t border-black/5 bg-white">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="t-title text-lg">{tienda.nombre}</p>
@@ -248,7 +272,7 @@ export default async function TiendaLayout({ children, params }: { children: Rea
 
         {wa && (
           <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener" aria-label="Escribinos por WhatsApp"
-            className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-lg">
+            className="fixed right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-lg transition-[bottom]" style={{ bottom: 'calc(1.25rem + var(--t-barra, 0px))' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.3 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.8-2.8-1.2-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.6-.1l.9-1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.2 1.4Z" /></svg>
           </a>
         )}
