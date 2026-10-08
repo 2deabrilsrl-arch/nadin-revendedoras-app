@@ -270,7 +270,7 @@ export async function crearPreferenciaMP(
 /** Consulta un pago en MP con el token de la revendedora y, si está aprobado, marca la orden como pagada. */
 export async function verificarPagoMP(ordenId: string, paymentId: string): Promise<boolean> {
   const orden = await prisma.ordenTienda.findUnique({ where: { id: ordenId } });
-  if (!orden || orden.estado !== 'pendiente_pago') return false;
+  if (!orden || orden.pagadaAt || orden.estado === 'cancelada') return false;
   const cfg = await getMpConfig(orden.tiendaId);
   if (!cfg?.accessToken) return false;
   const res = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`, {
@@ -292,9 +292,12 @@ export async function verificarPagoMP(ordenId: string, paymentId: string): Promi
 // ---------------------------------------------------------------------
 
 export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
+  // Puede estar esperando pago o ya enviada a Nadin sin cobrar (ej. efectivo al retirar)
+  const actual = await prisma.ordenTienda.findUnique({ where: { id: ordenId }, select: { estado: true, pagadaAt: true } });
+  if (!actual || actual.pagadaAt || actual.estado === 'cancelada') return;
   const upd = await prisma.ordenTienda.updateMany({
-    where: { id: ordenId, estado: 'pendiente_pago' },
-    data: { estado: 'pagada', pagadaAt: new Date(), ...(mpPaymentId ? { mpPaymentId } : {}) },
+    where: { id: ordenId, pagadaAt: null },
+    data: { pagadaAt: new Date(), ...(actual.estado === 'pendiente_pago' ? { estado: 'pagada' } : {}), ...(mpPaymentId ? { mpPaymentId } : {}) },
   });
   if (upd.count === 0) return; // ya estaba pagada (webhook repetido)
 
@@ -309,6 +312,8 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
   if (!orden) return;
   const hayNadin = await prisma.ordenTiendaItem.count({ where: { ordenId, propio: false } });
   if (mpPaymentId) await emailRevendedoraOrden(ordenId, 'pagada'); // si lo marcó ella a mano, no hace falta avisarle
+
+  if (orden.pedidoId) return; // ya estaba en Nadin (se mandó antes de cobrar): solo faltaba registrar el pago
 
   if (orden.tienda.envioAutoNadin && hayNadin > 0) {
     try {
@@ -409,7 +414,8 @@ export async function enviarANadinPedido(ordenId: string, userId: string) {
     const orden = await tx.ordenTienda.findUnique({ where: { id: ordenId }, include: { items: true, tienda: true } });
     if (!orden || orden.tienda.userId !== userId) throw new Error('Orden no encontrada');
     if (orden.pedidoId) return { pedidoId: orden.pedidoId, yaEnviada: true };
-    if (orden.estado !== 'pagada') throw new Error('Solo se pueden enviar a Nadin pedidos pagados');
+    // Se puede mandar aunque todavía no esté cobrado (ej. efectivo al retirar): la revendedora lo decide
+    if (!['pagada', 'pendiente_pago'].includes(orden.estado)) throw new Error('Este pedido no se puede enviar a Nadin.');
     // Solo viajan a Nadin sus productos; los propios los entrega la revendedora
     const itemsNadin = orden.items.filter((i) => !i.propio);
     if (!itemsNadin.length) throw new Error('Este pedido tiene solo productos tuyos: no hay nada para enviar a Nadin.');

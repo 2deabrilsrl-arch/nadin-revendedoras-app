@@ -291,13 +291,14 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
   const toggle = (id: string) => setSel((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const seleccionadas = ordenes.filter((o) => sel.includes(o.id));
   const costoSel = seleccionadas.reduce((acc, o) => acc + (o.totalMayorista || 0), 0);
+  const sinCobrar = seleccionadas.filter((o) => !o.pagadaAt).length;
 
   return (
     <div className="space-y-3">
       {paraEnviar.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-100">
           <p className="flex-1">
-            <strong>{paraEnviar.length} pedido{paraEnviar.length === 1 ? '' : 's'} para enviar a Nadin.</strong> Tildá los que quieras mandar juntos y tocá <strong>Enviar a Nadin</strong>: van en un solo envío.
+            <strong>{paraEnviar.length} pedido{paraEnviar.length === 1 ? '' : 's'} para enviar a Nadin.</strong> Tildá los que quieras mandar juntos y tocá <strong>Enviar a Nadin</strong>: van en un solo envío. Si te pagan al retirar, podés mandarlo igual.
           </p>
           <button type="button" className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200"
             onClick={() => setSel(sel.length === paraEnviar.length ? [] : paraEnviar.map((o) => o.id))}>
@@ -324,6 +325,9 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                     <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${est.color}`}>
                       {o.paraEnviar && o.estado === 'enviada_nadin' ? 'Falta enviar a Nadin' : est.label}
                     </span>
+                    {!o.pagadaAt && !['pendiente_pago', 'cancelada'].includes(o.estado) && (
+                      <span className="ml-1 mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Falta cobrar</span>
+                    )}
                     {o.arrepentimiento && <span className="ml-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Pidió arrepentimiento</span>}
                   </div>
                   <div className="shrink-0 text-right">
@@ -361,7 +365,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                     <p>Costo Nadin: {fmt(o.totalMayorista)}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {o.estado === 'pendiente_pago' && (
+                    {!o.pagadaAt && o.estado !== 'cancelada' && (
                       <button className={btnSec} disabled={!!busy} onClick={() => accion(o.id, 'marcar_pagada', '¿Confirmás que ya recibiste el pago?')}>Ya me pagó</button>
                     )}
                     {['pagada', 'enviada_nadin'].includes(o.estado) && (
@@ -382,7 +386,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
       </ul>
 
       {sel.length > 0 && (
-        <EnviarNadin tienda={tienda} busy={busy === 'enviar'} cantidad={sel.length} costo={costoSel} onEnviar={enviarSeleccionados} onCancelar={() => setSel([])} />
+        <EnviarNadin tienda={tienda} busy={busy === 'enviar'} cantidad={sel.length} costo={costoSel} sinCobrar={sinCobrar} onEnviar={enviarSeleccionados} onCancelar={() => setSel([])} />
       )}
     </div>
   );
@@ -395,8 +399,8 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
 const PAGOS_NADIN: Record<string, string> = { transferencia: 'Transferencia', mercadopago: 'Mercado Pago', efectivo: 'Efectivo', tarjeta: 'Tarjeta' };
 const ENTREGAS_NADIN: Record<string, string> = { retiro: 'Retiro en el local', envio: 'Envío por transporte' };
 
-function EnviarNadin({ tienda, busy, cantidad, costo, onEnviar, onCancelar }: {
-  tienda: any; busy: boolean; cantidad: number; costo: number;
+function EnviarNadin({ tienda, busy, cantidad, costo, sinCobrar = 0, onEnviar, onCancelar }: {
+  tienda: any; busy: boolean; cantidad: number; costo: number; sinCobrar?: number;
   onEnviar: (x: { formaPago: string; tipoEnvio: string; transporteNombre: string | null }) => void; onCancelar: () => void;
 }) {
   const guardado = !!(tienda.nadinFormaPago && tienda.nadinTipoEnvio);
@@ -440,6 +444,11 @@ function EnviarNadin({ tienda, busy, cantidad, costo, onEnviar, onCancelar }: {
           )}
           <p className="text-xs text-gray-500 sm:col-span-2">Lo recordamos para la próxima.</p>
         </div>
+      )}
+      {sinCobrar > 0 && (
+        <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+          {sinCobrar === 1 ? '1 pedido todavía no te lo pagaron' : `${sinCobrar} pedidos todavía no te los pagaron`} (ej. efectivo al retirar). Se mandan igual; cuando cobres, abrí el pedido y tocá <strong>Ya me pagó</strong>.
+        </p>
       )}
       <button className={`${btn} mt-3 w-full`} disabled={busy || !listo}
         onClick={() => onEnviar({ formaPago, tipoEnvio, transporteNombre: tipoEnvio === 'envio' ? transporte : null })}>

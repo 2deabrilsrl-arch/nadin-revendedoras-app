@@ -23,7 +23,7 @@
       "Cada pedido nuevo aparece arriba con su estado: Esperando pago, Pagado · falta enviar a Nadin, En Nadin, Listo para entregar o Entregado.",
       "Si la clienta pagó por transferencia o efectivo, revisá que te llegó la plata, abrí el pedido y tocá Ya me pagó.",
       "Si pagó con Mercado Pago, el pedido se marca pagado solo.",
-      "Los pedidos pagados tienen una casilla. Tildá uno o varios (o tocá Seleccionar todos).",
+      "Los pedidos para enviar a Nadin tienen una casilla. Tildá uno o varios (o tocá Seleccionar todos). Si la clienta te paga al retirar (efectivo), podés mandarlo igual: queda marcado Falta cobrar hasta que toques Ya me pagó.",
       "Abajo aparece el panel para enviar: elegí cómo le pagás a Nadin y cómo lo recibís, y tocá Enviar a Nadin. Todos los tildados van juntos en un solo envío. Si algo no tiene stock, te avisamos qué faltó para que se lo devuelvas a tu clienta.",
       "Los productos tuyos (marcados como Tuyo) no se mandan a Nadin: preparalos vos.",
       "Cuando lo tenés, tocá Listo para entregar. Cuando lo entregás, tocá Entregado."

@@ -17,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     switch (accion) {
       case 'marcar_pagada':
-        if (orden.estado !== 'pendiente_pago') return bad('El pedido no está pendiente de pago.');
+        if (orden.pagadaAt || orden.estado === 'cancelada') return bad('El pedido ya figura como pagado.');
         await marcarPagada(orden.id);
         break;
       case 'enviar_nadin':

@@ -56,11 +56,11 @@ function Celular() {
 
 export default function TuTiendaPage() {
   return (
-    <main className="min-h-screen bg-white text-gray-900">
+    <main className="min-h-screen scroll-smooth bg-white text-gray-900">
       <section className="relative overflow-hidden bg-gradient-to-br from-pink-600 via-fuchsia-600 to-rose-600 text-white">
         <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10" />
         <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-white/10" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 py-14 md:grid-cols-2 md:py-20">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 py-12 md:grid-cols-2 md:py-14">
           <div className="space-y-5 text-center md:text-left">
             <p className="inline-block rounded-full bg-white/15 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em]">Nadin Lencería · Revendedoras</p>
             <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl">Tu propia tienda online, <span className="text-pink-100 underline decoration-white/40 underline-offset-8">gratis</span></h1>
@@ -73,9 +73,14 @@ export default function TuTiendaPage() {
           </div>
           <Celular />
         </div>
+        {/* Invita a bajar: hay más información abajo */}
+        <a href="#beneficios" className="relative mx-auto -mt-4 flex w-max flex-col items-center gap-1 pb-6 text-sm font-semibold text-white/90 hover:text-white md:-mt-8">
+          Conocé cómo funciona
+          <svg className="animate-bounce" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </a>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 py-14">
+      <section id="beneficios" className="mx-auto max-w-6xl scroll-mt-4 px-5 py-14">
         <h2 className="text-center text-2xl font-bold sm:text-3xl">Todo lo que necesitás para vender online</h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {BENEFICIOS.map((b) => (

@@ -22,9 +22,9 @@ export async function GET(req: Request) {
   const conEstado = ordenes.map((o) => ({
     ...o,
     paraEnviar:
-      (o.estado === 'pagada' && !o.pedidoId && o.items.some((i) => !i.propio)) ||
+      (['pagada', 'pendiente_pago'].includes(o.estado) && !o.pedidoId && o.items.some((i) => !i.propio)) ||
       (o.estado === 'enviada_nadin' && !!o.pedidoId && estadoPedido.get(o.pedidoId) === 'pendiente'),
   }));
-  const pendientesEnvio = conEstado.filter((o) => o.paraEnviar).length;
+  const pendientesEnvio = conEstado.filter((o) => o.paraEnviar && o.estado !== 'pendiente_pago').length;
   return NextResponse.json({ ordenes: conEstado, pendientesEnvio });
 }
