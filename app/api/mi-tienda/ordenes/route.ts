@@ -15,6 +15,16 @@ export async function GET(req: Request) {
     take: 100,
     include: { items: true },
   });
-  const pendientesEnvio = ordenes.filter((o) => o.estado === 'pagada').length;
-  return NextResponse.json({ ordenes, pendientesEnvio });
+  // Pedidos que se mandaron a Nadin "sin consolidar": todavía se pueden juntar y enviar
+  const pedidoIds = ordenes.map((o) => o.pedidoId).filter(Boolean) as string[];
+  const pedidos = pedidoIds.length ? await prisma.pedido.findMany({ where: { id: { in: pedidoIds } }, select: { id: true, estado: true } }) : [];
+  const estadoPedido = new Map(pedidos.map((p) => [p.id, p.estado]));
+  const conEstado = ordenes.map((o) => ({
+    ...o,
+    paraEnviar:
+      (o.estado === 'pagada' && !o.pedidoId && o.items.some((i) => !i.propio)) ||
+      (o.estado === 'enviada_nadin' && !!o.pedidoId && estadoPedido.get(o.pedidoId) === 'pendiente'),
+  }));
+  const pendientesEnvio = conEstado.filter((o) => o.paraEnviar).length;
+  return NextResponse.json({ ordenes: conEstado, pendientesEnvio });
 }

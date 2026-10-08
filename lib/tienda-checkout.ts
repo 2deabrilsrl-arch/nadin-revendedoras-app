@@ -374,7 +374,37 @@ export async function enviarANadin(ordenId: string, userId: string, opciones: Op
   return { ...res, consolidado: true };
 }
 
-async function enviarANadinPedido(ordenId: string, userId: string) {
+/**
+ * Envía varios pedidos web a Nadin juntos, en una sola consolidación (un solo remito/armado).
+ * Acepta pedidos pagados que todavía no fueron a Nadin y pedidos que se enviaron "sin consolidar".
+ */
+export async function enviarVariasANadin(ordenIds: string[], userId: string, opciones: OpcionesEnvioNadin) {
+  const formaPago = String(opciones.formaPago || '').toLowerCase();
+  const tipoEnvio = String(opciones.tipoEnvio || '').toLowerCase();
+  const transporteNombre = (opciones.transporteNombre || '').trim().slice(0, 80) || null;
+  if (!(FORMAS_PAGO_NADIN as readonly string[]).includes(formaPago)) throw new Error('Elegí cómo le pagás a Nadin.');
+  if (!(TIPOS_ENVIO_NADIN as readonly string[]).includes(tipoEnvio)) throw new Error('Elegí cómo recibís el pedido.');
+  if (tipoEnvio === 'envio' && !transporteNombre) throw new Error('Indicá el transporte.');
+  const ids = Array.from(new Set(ordenIds)).slice(0, 100);
+  if (!ids.length) throw new Error('Elegí al menos un pedido.');
+
+  const pedidoIds: string[] = [];
+  for (const id of ids) {
+    const res = await enviarANadinPedido(id, userId);
+    pedidoIds.push(res.pedidoId);
+  }
+  // Solo los que todavía no están en una consolidación
+  const libres = await prisma.pedido.findMany({ where: { id: { in: pedidoIds }, userId, estado: 'pendiente' }, select: { id: true } });
+  if (!libres.length) throw new Error('Esos pedidos ya fueron enviados a Nadin.');
+  const r = await crearConsolidacion({ userId, pedidoIds: libres.map((p) => p.id), formaPago, tipoEnvio, transporteNombre });
+  await prisma.tienda.updateMany({
+    where: { userId },
+    data: { nadinFormaPago: formaPago, nadinTipoEnvio: tipoEnvio, nadinTransporte: transporteNombre },
+  });
+  return { consolidacionId: r.consolidacion.id, pedidos: libres.length };
+}
+
+export async function enviarANadinPedido(ordenId: string, userId: string) {
   return prisma.$transaction(async (tx) => {
     const orden = await tx.ordenTienda.findUnique({ where: { id: ordenId }, include: { items: true, tienda: true } });
     if (!orden || orden.tienda.userId !== userId) throw new Error('Orden no encontrada');

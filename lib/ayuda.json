@@ -21,9 +21,10 @@
     "para": "Acá llegan las compras que te hacen en tu tienda. También te llega un mail y una notificación con cada pedido.",
     "pasos": [
       "Cada pedido nuevo aparece arriba con su estado: Esperando pago, Pagado · falta enviar a Nadin, En Nadin, Listo para entregar o Entregado.",
-      "Si la clienta pagó por transferencia o efectivo, revisá que te llegó la plata y tocá Ya me pagó.",
+      "Si la clienta pagó por transferencia o efectivo, revisá que te llegó la plata, abrí el pedido y tocá Ya me pagó.",
       "Si pagó con Mercado Pago, el pedido se marca pagado solo.",
-      "Con el pedido pagado, elegí cómo le pagás a Nadin y cómo te lo manda, y tocá Enviar a Nadin. Nadin arma el pedido y genera el remito. Si algo no tiene stock, te avisamos qué faltó para que se lo devuelvas a tu clienta.",
+      "Los pedidos pagados tienen una casilla. Tildá uno o varios (o tocá Seleccionar todos).",
+      "Abajo aparece el panel para enviar: elegí cómo le pagás a Nadin y cómo lo recibís, y tocá Enviar a Nadin. Todos los tildados van juntos en un solo envío. Si algo no tiene stock, te avisamos qué faltó para que se lo devuelvas a tu clienta.",
       "Los productos tuyos (marcados como Tuyo) no se mandan a Nadin: preparalos vos.",
       "Cuando lo tenés, tocá Listo para entregar. Cuando lo entregás, tocá Entregado."
     ],

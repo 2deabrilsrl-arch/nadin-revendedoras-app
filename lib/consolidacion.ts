@@ -9,6 +9,11 @@ import { sendConsolidacionEmail } from '@/lib/email';
 export const FORMAS_PAGO_NADIN = ['efectivo', 'transferencia', 'mercadopago', 'tarjeta'] as const;
 export const TIPOS_ENVIO_NADIN = ['retiro', 'envio'] as const;
 
+/** Puente con Dragonfish activo (acepta 1 / true / si, con o sin espacios). */
+export function dragonfishActivo() {
+  return ['1', 'true', 'si', 'sí', 'yes'].includes(String(process.env.DRAGONFISH_ENABLED || '').trim().toLowerCase());
+}
+
 export async function crearConsolidacion(params: {
   userId: string;
   pedidoIds: string[];
@@ -51,7 +56,7 @@ export async function crearConsolidacion(params: {
       ganancia,
       estado: 'enviado',
       // Si está activo el puente con Dragonfish, queda en cola para generar el remito
-      ...(process.env.DRAGONFISH_ENABLED === '1' ? { dfEstado: 'pendiente' } : {}),
+      ...(dragonfishActivo() ? { dfEstado: 'pendiente' } : {}),
     },
   });
 

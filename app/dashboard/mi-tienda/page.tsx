@@ -245,20 +245,32 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
   const [ordenes, setOrdenes] = useState<any[] | null>(null);
   const [abierta, setAbierta] = useState<string | null>(null);
   const [busy, setBusy] = useState('');
+  const [sel, setSel] = useState<string[]>([]);
 
   const cargar = useCallback(() => api('/ordenes').then((d) => setOrdenes(d.ordenes)).catch(() => setOrdenes([])), []);
   useEffect(() => { cargar(); }, [cargar]);
 
-  async function accion(id: string, a: string, confirmar?: string, extra: any = {}) {
+  async function accion(id: string, a: string, confirmar?: string) {
     if (confirmar && !(globalThis as any).confirm(confirmar)) return;
     setBusy(id + a);
     try {
-      const d = await api(`/ordenes/${id}`, 'PATCH', { accion: a, ...extra });
-      setOrdenes((prev) => (prev || []).map((o) => (o.id === id ? d.orden : o)));
-      if (a === 'enviar_nadin' && extra.consolidar) {
-        onTienda({ nadinFormaPago: extra.formaPago, nadinTipoEnvio: extra.tipoEnvio, nadinTransporte: extra.transporteNombre || null });
-      }
-      onToast(a === 'enviar_nadin' ? (extra.consolidar ? '¡Listo! Nadin ya lo tiene para armar.' : 'Enviado. Consolidalo desde "Consolidar" cuando quieras.') : 'Actualizado');
+      await api(`/ordenes/${id}`, 'PATCH', { accion: a });
+      onToast(a === 'marcar_pagada' ? 'Marcado como pagado. Ya lo podés enviar a Nadin.' : 'Actualizado');
+      await cargar();
+    } catch (e: any) {
+      onToast(e.message);
+    }
+    setBusy('');
+  }
+
+  async function enviarSeleccionados(datos: { formaPago: string; tipoEnvio: string; transporteNombre: string | null }) {
+    setBusy('enviar');
+    try {
+      const r = await api('/ordenes/enviar-nadin', 'POST', { ids: sel, ...datos });
+      onTienda({ nadinFormaPago: datos.formaPago, nadinTipoEnvio: datos.tipoEnvio, nadinTransporte: datos.transporteNombre });
+      onToast(`¡Listo! ${r.pedidos === 1 ? 'El pedido ya está' : `Los ${r.pedidos} pedidos ya están`} en Nadin para armar.`);
+      setSel([]);
+      await cargar();
     } catch (e: any) {
       onToast(e.message);
     }
@@ -270,139 +282,169 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
     return (
       <div className="rounded-xl border border-dashed p-8 text-center text-gray-600">
         <p className="font-medium">Todavía no tenés pedidos web.</p>
-        <p className="mt-1 text-sm">Completá “Diseño y datos” y “Cobros”, publicá la tienda y compartí tu link.</p>
+        <p className="mt-1 text-sm">Completá “Marca, datos y dominio” y “Cobros”, publicá la tienda y compartí tu link.</p>
       </div>
     );
   }
 
+  const paraEnviar = ordenes.filter((o) => o.paraEnviar);
+  const toggle = (id: string) => setSel((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const seleccionadas = ordenes.filter((o) => sel.includes(o.id));
+  const costoSel = seleccionadas.reduce((acc, o) => acc + (o.totalMayorista || 0), 0);
+
   return (
-    <ul className="space-y-3">
-      {ordenes.map((o) => {
-        const est = ESTADOS[o.estado] || { label: o.estado, color: 'bg-gray-100' };
-        const ganancia = o.total - o.envioCosto - o.totalMayorista;
-        return (
-          <li key={o.id} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
-            <button className="flex w-full items-start justify-between gap-3 text-left" onClick={() => setAbierta(abierta === o.id ? null : o.id)}>
-              <div>
-                <p className="font-semibold">#{o.numero} · {o.clienteNombre}</p>
-                <p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString('es-AR')} · {o.metodoPagoNombre}</p>
-                <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${est.color}`}>{est.label}</span>
-                {o.arrepentimiento && <span className="ml-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Pidió arrepentimiento</span>}
-              </div>
-              <div className="text-right">
-                <p className="font-bold">{fmt(o.total)}</p>
-                <p className="text-xs text-green-700">Ganás {fmt(ganancia)}</p>
-              </div>
-            </button>
+    <div className="space-y-3">
+      {paraEnviar.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-100">
+          <p className="flex-1">
+            <strong>{paraEnviar.length} pedido{paraEnviar.length === 1 ? '' : 's'} para enviar a Nadin.</strong> Tildá los que quieras mandar juntos y tocá <strong>Enviar a Nadin</strong>: van en un solo envío.
+          </p>
+          <button type="button" className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200"
+            onClick={() => setSel(sel.length === paraEnviar.length ? [] : paraEnviar.map((o) => o.id))}>
+            {sel.length === paraEnviar.length ? 'Quitar selección' : 'Seleccionar todos'}
+          </button>
+        </div>
+      )}
 
-            {o.estado === 'pagada' && o.items.some((i: any) => !i.propio) && (
-              <EnviarNadin tienda={tienda} busy={!!busy} onEnviar={(extra: any) => accion(o.id, 'enviar_nadin', undefined, extra)} />
-            )}
-            {o.estado === 'pagada' && o.items.some((i: any) => i.propio) && (
-              <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
-                {o.items.every((i: any) => i.propio)
-                  ? 'Este pedido tiene solo productos tuyos: lo preparás y entregás vos.'
-                  : 'Los productos tuyos (marcados “Tuyo”) no van a Nadin: los preparás vos.'}
-              </p>
-            )}
-
-            {abierta === o.id && (
-              <div className="mt-3 space-y-3 border-t pt-3 text-sm">
-                <ul className="space-y-1">
-                  {o.items.map((i: any) => (
-                    <li key={i.id} className="flex justify-between gap-2">
-                      <span>{i.qty} × {i.nombre} {i.talle && `· ${i.talle}`} {i.color && `· ${i.color}`}{i.propio && <span className="ml-1 rounded bg-blue-100 px-1.5 text-[10px] font-semibold text-blue-800">Tuyo</span>}</span>
-                      <span>{fmt(i.precio * i.qty)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="grid gap-1 text-gray-700">
-                  <p>Tel: <a className="text-pink-700 underline" href={`https://wa.me/${String(o.clienteTelefono).replace(/\D/g, '')}`} target="_blank">{o.clienteTelefono}</a>{o.clienteEmail && ` · ${o.clienteEmail}`}</p>
-                  <p>Entrega: {o.envioNombre}{o.envioCosto ? ` (${fmt(o.envioCosto)})` : ''}</p>
-                  {o.direccion?.calle && <p>Dirección: {o.direccion.calle} {o.direccion.numero} {o.direccion.piso}, {o.direccion.localidad} {o.direccion.cp} {o.direccion.provincia}</p>}
-                  {o.cuponCodigo && <p>Cupón: {o.cuponCodigo}</p>}
-                  {o.descuento > 0 && <p>Descuentos: −{fmt(o.descuento)}</p>}
-                  {o.nota && <p>Nota: {o.nota}</p>}
-                  <p>Costo Nadin: {fmt(o.totalMayorista)}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {o.estado === 'pendiente_pago' && (
-                    <button className={btnSec} disabled={!!busy} onClick={() => accion(o.id, 'marcar_pagada', '¿Confirmás que ya recibiste el pago?')}>Ya me pagó</button>
-                  )}
-                  {['pagada', 'enviada_nadin'].includes(o.estado) && (
-                    <button className={btnSec} disabled={!!busy} onClick={() => accion(o.id, 'marcar_lista')}>Listo para entregar</button>
-                  )}
-                  {['pagada', 'enviada_nadin', 'lista'].includes(o.estado) && (
-                    <button className={btnSec} disabled={!!busy} onClick={() => accion(o.id, 'marcar_entregada')}>Entregado</button>
-                  )}
-                  {!o.pedidoId && !['cancelada', 'entregada'].includes(o.estado) && (
-                    <button className={`${btnSec} text-red-700`} disabled={!!busy} onClick={() => accion(o.id, 'cancelar', '¿Cancelar este pedido? Si ya te pagó, tenés que devolverle la plata.')}>Cancelar</button>
-                  )}
-                </div>
+      <ul className="space-y-3">
+        {ordenes.map((o) => {
+          const est = ESTADOS[o.estado] || { label: o.estado, color: 'bg-gray-100' };
+          const ganancia = o.total - o.envioCosto - o.totalMayorista;
+          const marcada = sel.includes(o.id);
+          return (
+            <li key={o.id} className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ${marcada ? 'ring-2 ring-pink-400' : 'ring-black/5'}`}>
+              <div className="flex items-start gap-3">
+                {o.paraEnviar && (
+                  <input type="checkbox" checked={marcada} onChange={() => toggle(o.id)} className="mt-1 h-5 w-5 shrink-0 accent-pink-600" aria-label={`Enviar pedido #${o.numero} a Nadin`} />
+                )}
+                <button className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left" onClick={() => setAbierta(abierta === o.id ? null : o.id)}>
+                  <div className="min-w-0">
+                    <p className="font-semibold">#{o.numero} · {o.clienteNombre}</p>
+                    <p className="text-xs text-gray-500">{new Date(o.createdAt).toLocaleString('es-AR')} · {o.metodoPagoNombre}</p>
+                    <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${est.color}`}>
+                      {o.paraEnviar && o.estado === 'enviada_nadin' ? 'Falta enviar a Nadin' : est.label}
+                    </span>
+                    {o.arrepentimiento && <span className="ml-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Pidió arrepentimiento</span>}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-bold">{fmt(o.total)}</p>
+                    <p className="text-xs text-green-700">Ganás {fmt(ganancia)}</p>
+                  </div>
+                </button>
               </div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+
+              {o.estado === 'pagada' && o.items.some((i: any) => i.propio) && (
+                <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
+                  {o.items.every((i: any) => i.propio)
+                    ? 'Este pedido tiene solo productos tuyos: lo preparás y entregás vos.'
+                    : 'Los productos tuyos (marcados “Tuyo”) no van a Nadin: los preparás vos.'}
+                </p>
+              )}
+
+              {abierta === o.id && (
+                <div className="mt-3 space-y-3 border-t pt-3 text-sm">
+                  <ul className="space-y-1">
+                    {o.items.map((i: any) => (
+                      <li key={i.id} className="flex justify-between gap-2">
+                        <span>{i.qty} × {i.nombre} {i.talle && `· ${i.talle}`} {i.color && `· ${i.color}`}{i.propio && <span className="ml-1 rounded bg-blue-100 px-1.5 text-[10px] font-semibold text-blue-800">Tuyo</span>}</span>
+                        <span>{fmt(i.precio * i.qty)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="grid gap-1 text-gray-700">
+                    <p>Tel: <a className="text-pink-700 underline" href={`https://wa.me/${String(o.clienteTelefono).replace(/\D/g, '')}`} target="_blank">{o.clienteTelefono}</a>{o.clienteEmail && ` · ${o.clienteEmail}`}</p>
+                    <p>Entrega: {o.envioNombre}{o.envioCosto ? ` (${fmt(o.envioCosto)})` : ''}</p>
+                    {o.direccion?.calle && <p>Dirección: {o.direccion.calle} {o.direccion.numero} {o.direccion.piso}, {o.direccion.localidad} {o.direccion.cp} {o.direccion.provincia}</p>}
+                    {o.cuponCodigo && <p>Cupón: {o.cuponCodigo}</p>}
+                    {o.descuento > 0 && <p>Descuentos: −{fmt(o.descuento)}</p>}
+                    {o.nota && <p>Nota: {o.nota}</p>}
+                    <p>Costo Nadin: {fmt(o.totalMayorista)}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {o.estado === 'pendiente_pago' && (
+                      <button className={btnSec} disabled={!!busy} onClick={() => accion(o.id, 'marcar_pagada', '¿Confirmás que ya recibiste el pago?')}>Ya me pagó</button>
+                    )}
+                    {['pagada', 'enviada_nadin'].includes(o.estado) && (
+                      <button className={btnSec} disabled={!!busy} onClick={() => accion(o.id, 'marcar_lista')}>Listo para entregar</button>
+                    )}
+                    {['pagada', 'enviada_nadin', 'lista'].includes(o.estado) && (
+                      <button className={btnSec} disabled={!!busy} onClick={() => accion(o.id, 'marcar_entregada')}>Entregado</button>
+                    )}
+                    {!o.pedidoId && !['cancelada', 'entregada'].includes(o.estado) && (
+                      <button className={`${btnSec} text-red-700`} disabled={!!busy} onClick={() => accion(o.id, 'cancelar', '¿Cancelar este pedido? Si ya te pagó, tenés que devolverle la plata.')}>Cancelar</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {sel.length > 0 && (
+        <EnviarNadin tienda={tienda} busy={busy === 'enviar'} cantidad={sel.length} costo={costoSel} onEnviar={enviarSeleccionados} onCancelar={() => setSel([])} />
+      )}
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------
-// Enviar a Nadin = pedido + consolidación en un solo paso
+// Panel fijo abajo: enviar los pedidos elegidos a Nadin (una sola consolidación)
 // ---------------------------------------------------------------------
 
 const PAGOS_NADIN: Record<string, string> = { transferencia: 'Transferencia', mercadopago: 'Mercado Pago', efectivo: 'Efectivo', tarjeta: 'Tarjeta' };
 const ENTREGAS_NADIN: Record<string, string> = { retiro: 'Retiro en el local', envio: 'Envío por transporte' };
 
-function EnviarNadin({ tienda, busy, onEnviar }: { tienda: any; busy: boolean; onEnviar: (x: any) => void }) {
+function EnviarNadin({ tienda, busy, cantidad, costo, onEnviar, onCancelar }: {
+  tienda: any; busy: boolean; cantidad: number; costo: number;
+  onEnviar: (x: { formaPago: string; tipoEnvio: string; transporteNombre: string | null }) => void; onCancelar: () => void;
+}) {
   const guardado = !!(tienda.nadinFormaPago && tienda.nadinTipoEnvio);
   const [editar, setEditar] = useState(!guardado);
   const [formaPago, setFormaPago] = useState(tienda.nadinFormaPago || '');
   const [tipoEnvio, setTipoEnvio] = useState(tienda.nadinTipoEnvio || '');
   const [transporte, setTransporte] = useState(tienda.nadinTransporte || '');
-  const [despues, setDespues] = useState(false);
-  const listo = despues || (formaPago && tipoEnvio && (tipoEnvio !== 'envio' || transporte.trim()));
+  const listo = formaPago && tipoEnvio && (tipoEnvio !== 'envio' || transporte.trim());
 
   return (
-    <div className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm ring-1 ring-emerald-100">
-      <p className="font-semibold text-emerald-900">Pedido pago 🎉 ¿Lo mandamos a Nadin para asegurar el stock?</p>
-      {!despues && (!editar ? (
-        <p className="mt-1 text-emerald-800">
-          Le pagás con <strong>{PAGOS_NADIN[formaPago] || formaPago}</strong> · {ENTREGAS_NADIN[tipoEnvio] || tipoEnvio}{tipoEnvio === 'envio' && transporte ? ` (${transporte})` : ''}.{' '}
-          <button type="button" className="underline" onClick={() => setEditar(true)}>Cambiar</button>
+    <div className="sticky bottom-3 z-30 rounded-2xl bg-white p-4 text-sm shadow-2xl ring-2 ring-pink-400">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-semibold text-gray-900">
+          {cantidad} pedido{cantidad === 1 ? '' : 's'} seleccionado{cantidad === 1 ? '' : 's'} · Le pagás a Nadin {fmt(costo)}
+        </p>
+        <button type="button" className="text-xs text-gray-500 underline" onClick={onCancelar}>Cancelar</button>
+      </div>
+      {!editar ? (
+        <p className="mt-1 text-gray-700">
+          Pago a Nadin: <strong>{PAGOS_NADIN[formaPago] || formaPago}</strong> · {ENTREGAS_NADIN[tipoEnvio] || tipoEnvio}{tipoEnvio === 'envio' && transporte ? ` (${transporte})` : ''}.{' '}
+          <button type="button" className="text-pink-700 underline" onClick={() => setEditar(true)}>Cambiar</button>
         </p>
       ) : (
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <label className="text-xs text-emerald-900">¿Cómo le pagás a Nadin?
+          <label className="text-xs text-gray-700">¿Cómo le pagás a Nadin?
             <select className={`${input} mt-1 bg-white`} value={formaPago} onChange={(e) => setFormaPago(val(e))}>
               <option value="">Elegí…</option>
               {Object.entries(PAGOS_NADIN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
-          <label className="text-xs text-emerald-900">¿Cómo lo recibís?
+          <label className="text-xs text-gray-700">¿Cómo lo recibís?
             <select className={`${input} mt-1 bg-white`} value={tipoEnvio} onChange={(e) => setTipoEnvio(val(e))}>
               <option value="">Elegí…</option>
               {Object.entries(ENTREGAS_NADIN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
           {tipoEnvio === 'envio' && (
-            <label className="text-xs text-emerald-900 sm:col-span-2">Transporte
+            <label className="text-xs text-gray-700 sm:col-span-2">Transporte
               <input className={`${input} mt-1 bg-white`} value={transporte} onChange={(e) => setTransporte(val(e))} placeholder="Ej: Vía Cargo, Andreani…" />
             </label>
           )}
-          <p className="text-xs text-emerald-700 sm:col-span-2">Lo recordamos para la próxima: vas a enviarlo con un solo toque.</p>
+          <p className="text-xs text-gray-500 sm:col-span-2">Lo recordamos para la próxima.</p>
         </div>
-      ))}
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button className={btn} disabled={busy || !listo}
-          onClick={() => onEnviar(despues ? { consolidar: false } : { consolidar: true, formaPago, tipoEnvio, transporteNombre: tipoEnvio === 'envio' ? transporte : null })}>
-          {despues ? 'Enviar sin consolidar' : 'Enviar a Nadin'}
-        </button>
-        <label className="flex items-center gap-1.5 text-xs text-emerald-800">
-          <input type="checkbox" checked={despues} onChange={(e) => setDespues(chk(e))} /> Prefiero juntarlo con otros pedidos y consolidar después
-        </label>
-      </div>
+      )}
+      <button className={`${btn} mt-3 w-full`} disabled={busy || !listo}
+        onClick={() => onEnviar({ formaPago, tipoEnvio, transporteNombre: tipoEnvio === 'envio' ? transporte : null })}>
+        {busy ? 'Enviando…' : `Enviar ${cantidad === 1 ? 'pedido' : `${cantidad} pedidos`} a Nadin`}
+      </button>
     </div>
   );
 }
