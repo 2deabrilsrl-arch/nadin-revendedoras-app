@@ -54,7 +54,7 @@ export default function HeroCarousel({ slides }: { slides: Slide[] }) {
               <picture>
                 {s.imagenMobile && <source media="(max-width: 640px)" srcSet={s.imagenMobile} />}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={s.imagen} alt={s.titulo || ''} loading={k === 0 ? 'eager' : 'lazy'} className="aspect-[4/5] w-full object-cover sm:aspect-[21/8]" />
+                <img src={s.imagen} alt={s.titulo || 'Imagen principal'} loading={k === 0 ? 'eager' : 'lazy'} className={`w-full object-cover ${s.imagenMobile ? 'aspect-[4/5] sm:aspect-[21/8]' : 'aspect-[21/8]'}`} />
               </picture>
               {(s.titulo || s.texto || s.boton) && (
                 <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/45 via-black/10 to-transparent sm:items-center sm:bg-gradient-to-r sm:from-black/40 sm:via-black/10">

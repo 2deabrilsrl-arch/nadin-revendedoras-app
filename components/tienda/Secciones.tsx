@@ -55,7 +55,7 @@ function Bloque({ s, ctx, primera, paginar }: { s: Seccion; ctx: Ctx; primera: b
       const slides = s.slides.length
         ? s.slides.map((x) => ({ ...x, href: enlace(prefix, x.link) }))
         : tienda.bannerUrl
-          ? [{ imagen: tienda.bannerUrl, titulo: tienda.nombre, texto: tienda.eslogan || undefined, boton: 'Ver productos', href: '#productos' }]
+          ? [{ imagen: tienda.bannerUrl, titulo: undefined, texto: undefined, boton: undefined, href: '#productos' }] // la imagen de portada va sola, sin texto encima
           : [];
       if (slides.length) return <div className="t-sec-full">{primera && <h1 className="sr-only">{tienda.nombre}</h1>}<HeroCarousel slides={slides} /></div>;
       return (

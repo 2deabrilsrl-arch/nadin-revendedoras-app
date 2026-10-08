@@ -628,6 +628,7 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
           </div>
           <div className="text-sm">
             <p className="font-medium">Imagen de portada</p>
+            <p className="text-xs text-gray-500">Se muestra arriba de todo si no cargaste fotos en el carrusel (Diseño). Va sola, sin texto encima: si querés texto, ponelo en la imagen. Medida ideal: 1920 × 730.</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {f.bannerUrl && <img src={f.bannerUrl} alt="Portada" className="my-2 h-16 w-full rounded-lg object-cover" />}
             <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => subir('banner', (e.target as any).files?.[0])} />
