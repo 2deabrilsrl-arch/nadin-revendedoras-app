@@ -298,9 +298,24 @@ export async function verificarPagoMP(ordenId: string, paymentId: string): Promi
 // Ciclo de vida de la orden
 // ---------------------------------------------------------------------
 
+/**
+ * Descuenta el stock que maneja la revendedora (productos propios y su stock sobre productos de Nadin).
+ * Se hace una sola vez por pedido: al cobrarlo o al mandarlo a Nadin, lo que pase primero.
+ */
+async function descontarStockPropio(db: any, items: { propio: boolean; variantId: string; qty: number; qtyPropio: number; stockExtraId: string | null }[]) {
+  for (const it of items) {
+    if (it.propio && it.variantId.startsWith(PREFIJO_VARIANTE_PROPIA)) {
+      const id = it.variantId.slice(PREFIJO_VARIANTE_PROPIA.length);
+      await db.tiendaVariantePropia.updateMany({ where: { id }, data: { stock: { decrement: it.qty } } });
+    } else if (it.stockExtraId && it.qtyPropio > 0) {
+      await db.tiendaStockExtra.updateMany({ where: { id: it.stockExtraId }, data: { stock: { decrement: it.qtyPropio } } });
+    }
+  }
+}
+
 export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
   // Puede estar esperando pago o ya enviada a Nadin sin cobrar (ej. efectivo al retirar)
-  const actual = await prisma.ordenTienda.findUnique({ where: { id: ordenId }, select: { estado: true, pagadaAt: true } });
+  const actual = await prisma.ordenTienda.findUnique({ where: { id: ordenId }, select: { estado: true, pagadaAt: true, pedidoId: true } });
   if (!actual || actual.pagadaAt || actual.estado === 'cancelada') return;
   const upd = await prisma.ordenTienda.updateMany({
     where: { id: ordenId, pagadaAt: null },
@@ -308,18 +323,10 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
   });
   if (upd.count === 0) return; // ya estaba pagada (webhook repetido)
 
-  // Se descuenta el stock que maneja la revendedora
+  // Se descuenta el stock que maneja la revendedora, salvo que ya se haya descontado
+  // al mandarlo a Nadin antes de cobrar (ej. efectivo al retirar)
   const items = await prisma.ordenTiendaItem.findMany({ where: { ordenId } });
-  for (const it of items) {
-    if (it.propio && it.variantId.startsWith(PREFIJO_VARIANTE_PROPIA)) {
-      // Producto propio
-      const id = it.variantId.slice(PREFIJO_VARIANTE_PROPIA.length);
-      await prisma.tiendaVariantePropia.updateMany({ where: { id }, data: { stock: { decrement: it.qty } } }).catch(() => {});
-    } else if (it.stockExtraId && it.qtyPropio > 0) {
-      // Stock propio sobre un producto de Nadin
-      await prisma.tiendaStockExtra.updateMany({ where: { id: it.stockExtraId }, data: { stock: { decrement: it.qtyPropio } } }).catch(() => {});
-    }
-  }
+  if (!actual.pedidoId) await descontarStockPropio(prisma, items);
 
   const orden = await prisma.ordenTienda.findUnique({ where: { id: ordenId }, include: { tienda: true } });
   if (!orden) return;
@@ -477,6 +484,8 @@ export async function enviarANadinPedido(ordenId: string, userId: string) {
       where: { id: orden.id },
       data: { pedidoId: pedido.id, estado: 'enviada_nadin', enviadaNadinAt: new Date() },
     });
+    // Si todavía no se cobró, el stock propio se reserva ahora (si no, otra clienta podría comprar la misma unidad)
+    if (!orden.pagadaAt) await descontarStockPropio(tx, orden.items);
     return { pedidoId: pedido.id, yaEnviada: false };
   });
 }
