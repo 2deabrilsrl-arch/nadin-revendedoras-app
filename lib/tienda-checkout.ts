@@ -313,7 +313,7 @@ async function descontarStockPropio(db: any, items: { propio: boolean; variantId
   }
 }
 
-export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
+export async function marcarPagada(ordenId: string, mpPaymentId?: string, opciones: { silencioso?: boolean } = {}) {
   // Puede estar esperando pago o ya enviada a Nadin sin cobrar (ej. efectivo al retirar)
   const actual = await prisma.ordenTienda.findUnique({ where: { id: ordenId }, select: { estado: true, pagadaAt: true, pedidoId: true } });
   if (!actual || actual.pagadaAt || actual.estado === 'cancelada') return;
@@ -347,6 +347,8 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
       console.error('Envío automático a Nadin falló', e);
     }
   }
+
+  if (opciones.silencioso) return; // la cargó ella misma: no hace falta avisarle
 
   await enviarNotificacionGeneral({
     userId: orden.tienda.userId,

@@ -30,6 +30,15 @@ export async function GET(req: Request) {
     : mios
       ? catalogo.filter((p) => miStock.has(p.id)).slice(0, 200)
       : (q ? buscar(catalogo, q) : catalogo.filter((p) => p.destacado)).slice(0, 40);
+  // Venta manual: con talles/colores, precio y stock para elegir
+  if (new URL(req.url).searchParams.get('variantes') === '1') {
+    return NextResponse.json({
+      productos: (q ? buscar(catalogo, q) : catalogo.filter((p) => p.destacado || p.propio)).filter((p) => p.disponible).slice(0, 20).map((p) => ({
+        id: p.id, nombre: p.nombre, image: p.image, propio: !!p.propio,
+        variantes: p.variantes.filter((v) => v.stock > 0).map((v) => ({ id: v.id, talle: v.talle, color: v.color, precio: v.precio, stock: v.stock, stockPropio: v.stockPropio || 0 })),
+      })),
+    });
+  }
   return NextResponse.json({
     productos: lista.map((p) => ({ id: p.id, nombre: p.nombre, image: p.image, precio: p.precioDesde, destacado: p.destacado, disponible: p.disponible, propio: !!p.propio, miStock: miStock.get(p.id) || 0 })),
     ocultos: ocultos.length,

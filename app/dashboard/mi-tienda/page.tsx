@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { reducirImagen } from '@/components/tienda/reducirImagen';
 import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
 import ImportarProductos from '@/components/tienda/ImportarProductos';
+import VentaManual from '@/components/tienda/VentaManual';
 import Link from 'next/link';
 import { CheckCircle2, Circle } from 'lucide-react';
 
@@ -247,6 +248,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
   const [abierta, setAbierta] = useState<string | null>(null);
   const [busy, setBusy] = useState('');
   const [sel, setSel] = useState<string[]>([]);
+  const [nuevaVenta, setNuevaVenta] = useState(false);
 
   const cargar = useCallback(() => api('/ordenes').then((d) => setOrdenes(d.ordenes)).catch(() => setOrdenes([])), []);
   useEffect(() => { cargar(); }, [cargar]);
@@ -278,12 +280,18 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
     setBusy('');
   }
 
+  if (nuevaVenta) return <VentaManual onToast={onToast} onCerrar={(cambio) => { setNuevaVenta(false); if (cambio) cargar(); }} />;
   if (!ordenes) return <p className="text-gray-500">Cargando…</p>;
+  const botonVenta = (
+    <button type="button" className={btn} onClick={() => setNuevaVenta(true)}>+ Venta manual</button>
+  );
   if (!ordenes.length) {
     return (
       <div className="rounded-xl border border-dashed p-8 text-center text-gray-600">
-        <p className="font-medium">Todavía no tenés pedidos web.</p>
+        <p className="font-medium">Todavía no tenés pedidos.</p>
         <p className="mt-1 text-sm">Completá “Marca, datos y dominio” y “Cobros”, publicá la tienda y compartí tu link.</p>
+        <p className="mt-3 text-sm">¿Vendiste por WhatsApp o en persona? Cargala acá y se manda a Nadin igual.</p>
+        <div className="mt-3">{botonVenta}</div>
       </div>
     );
   }
@@ -296,6 +304,10 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-gray-600">Pedidos de tu tienda y ventas que cargaste a mano.</p>
+        {botonVenta}
+      </div>
       {paraEnviar.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-100">
           <p className="flex-1">
@@ -329,6 +341,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                     {!o.pagadaAt && !['pendiente_pago', 'cancelada'].includes(o.estado) && (
                       <span className="ml-1 mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Falta cobrar</span>
                     )}
+                    {o.origen === 'manual' && <span className="ml-1 mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Venta manual</span>}
                     {o.arrepentimiento && <span className="ml-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Pidió arrepentimiento</span>}
                   </div>
                   <div className="shrink-0 text-right">
@@ -358,7 +371,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                     ))}
                   </ul>
                   <div className="grid gap-1 text-gray-700">
-                    <p>Tel: <a className="text-pink-700 underline" href={`https://wa.me/${String(o.clienteTelefono).replace(/\D/g, '')}`} target="_blank">{o.clienteTelefono}</a>{o.clienteEmail && ` · ${o.clienteEmail}`}</p>
+                    {String(o.clienteTelefono).replace(/\D/g, '').length >= 6 && <p>Tel: <a className="text-pink-700 underline" href={`https://wa.me/${String(o.clienteTelefono).replace(/\D/g, '')}`} target="_blank">{o.clienteTelefono}</a>{o.clienteEmail && ` · ${o.clienteEmail}`}</p>}
                     <p>Entrega: {o.envioNombre}{o.envioCosto ? ` (${fmt(o.envioCosto)})` : ''}</p>
                     {o.direccion?.calle && <p>Dirección: {o.direccion.calle} {o.direccion.numero} {o.direccion.piso}, {o.direccion.localidad} {o.direccion.cp} {o.direccion.provincia}</p>}
                     {o.cuponCodigo && <p>Cupón: {o.cuponCodigo}</p>}

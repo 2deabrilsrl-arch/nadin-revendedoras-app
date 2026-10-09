@@ -550,6 +550,7 @@ model OrdenTienda {
   enviadaNadinAt  DateTime?
   canceladaAt     DateTime?
   arrepentimiento Boolean   @default(false)
+  origen          String    @default("web") // web | manual (venta cargada a mano por la revendedora)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

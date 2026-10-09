@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { X, Download, Smartphone } from 'lucide-react';
+import { esSamsungInternet, urlAbrirEnChrome } from '@/lib/instalar-pwa';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -12,6 +13,7 @@ export default function InstallPWA() {
   const [showBanner, setShowBanner] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [samsung, setSamsung] = useState(false);
 
   useEffect(() => {
     // Detectar si ya está instalada (modo standalone)
@@ -29,17 +31,21 @@ export default function InstallPWA() {
       return;
     }
 
+    // Navegador de Samsung: su instalación la bloquea Play Protect → sugerimos Chrome
+    const enSamsung = esSamsungInternet();
+    setSamsung(enSamsung);
+
     // Evento de Chrome/Edge para instalación
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      if (!enSamsung) setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowBanner(true);
     };
 
     const win = (globalThis as any).window; win?.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Para iOS, mostrar instrucciones después de 3 segundos
-    if (iOS && !standalone) {
+    // Para iOS y el navegador de Samsung, mostrar instrucciones después de 3 segundos
+    if ((iOS || enSamsung) && !standalone) {
       const timer = setTimeout(() => {
         setShowBanner(true);
       }, 3000);
@@ -108,6 +114,31 @@ export default function InstallPWA() {
                 <li>Tocá <strong>"Agregar"</strong></li>
               </ol>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Navegador de Samsung: instalar desde Chrome (el de Samsung genera un APK que Play Protect bloquea)
+  if (samsung) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-nadin-pink to-pink-500 text-white p-4 shadow-2xl animate-slide-up">
+        <div className="max-w-4xl mx-auto">
+          <button onClick={handleDismiss} className="absolute top-2 right-2 p-1 hover:bg-white/20 rounded-full transition-colors" aria-label="Cerrar">
+            <X size={20} />
+          </button>
+          <div className="flex items-center justify-between gap-4 pr-8">
+            <div className="flex items-center gap-3">
+              <Download size={32} className="flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-lg">Instalá la app desde Chrome</h3>
+                <p className="text-sm opacity-90">Desde este navegador el celular puede bloquearla. En Chrome se instala sin problemas.</p>
+              </div>
+            </div>
+            <a href={urlAbrirEnChrome()} className="bg-white text-nadin-pink px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors whitespace-nowrap">
+              Abrir en Chrome
+            </a>
           </div>
         </div>
       </div>
