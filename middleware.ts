@@ -113,6 +113,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // ---------- Dominio de las tiendas (mitiendanadin.com): la portada es la página de Tu Tienda ----------
+  const root = (process.env.TIENDAS_ROOT_DOMAIN || '').toLowerCase();
+  const host = (request.headers.get('host') || '').split(':')[0].toLowerCase();
+  if (root && (host === root || host === `www.${root}`) && pathname === '/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/tu-tienda';
+    return NextResponse.rewrite(url);
+  }
+
   // ---------- App de revendedoras ----------
   if (pathname === '/dashboard' || pathname === '/dashboard/' || RUTAS_OCULTAS.some((r) => pathname === r || pathname.startsWith(`${r}/`))) {
     return NextResponse.redirect(new URL('/dashboard/mi-tienda', request.url));
