@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserAndTienda, noAuth } from '@/lib/mi-tienda';
+import { vaANadin } from '@/lib/tienda-checkout';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   const conEstado = ordenes.map((o) => ({
     ...o,
     paraEnviar:
-      (['pagada', 'pendiente_pago'].includes(o.estado) && !o.pedidoId && o.items.some((i) => !i.propio)) ||
+      (['pagada', 'pendiente_pago'].includes(o.estado) && !o.pedidoId && o.items.some(vaANadin)) ||
       (o.estado === 'enviada_nadin' && !!o.pedidoId && estadoPedido.get(o.pedidoId) === 'pendiente'),
   }));
   const pendientesEnvio = conEstado.filter((o) => o.paraEnviar && o.estado !== 'pendiente_pago').length;

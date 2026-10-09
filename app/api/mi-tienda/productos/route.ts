@@ -12,20 +12,28 @@ export async function GET(req: Request) {
   const q = (new URL(req.url).searchParams.get('q') || '').slice(0, 80);
   const tienda = await getTiendaBySite(ctx.tienda.slug);
   if (!tienda) return bad('Tienda no encontrada', 404);
-  const [catalogo, overrides] = await Promise.all([
+  const [catalogo, overrides, extras] = await Promise.all([
     getCatalogoTienda(tienda),
     prisma.tiendaProducto.findMany({ where: { tiendaId: tienda.id } }),
+    prisma.tiendaStockExtra.findMany({ where: { tiendaId: tienda.id, stock: { gt: 0 } }, select: { productId: true, stock: true } }),
   ]);
+  // Stock propio cargado sobre productos de Nadin
+  const miStock = new Map<string, number>();
+  for (const e of extras) miStock.set(e.productId, (miStock.get(e.productId) || 0) + e.stock);
+  const mios = new URL(req.url).searchParams.get('mios') === '1';
   const ocultos = overrides.filter((o) => o.oculto).map((o) => o.productId);
   // ?ids=a,b,c → esos productos en ese orden (para el selector de "elegidos a mano")
   const ids = (new URL(req.url).searchParams.get('ids') || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 48);
   const porId = new Map(catalogo.map((p) => [p.id, p]));
   const lista = ids.length
     ? (ids.map((id) => porId.get(id)).filter(Boolean) as typeof catalogo)
-    : (q ? buscar(catalogo, q) : catalogo.filter((p) => p.destacado)).slice(0, 40);
+    : mios
+      ? catalogo.filter((p) => miStock.has(p.id)).slice(0, 200)
+      : (q ? buscar(catalogo, q) : catalogo.filter((p) => p.destacado)).slice(0, 40);
   return NextResponse.json({
-    productos: lista.map((p) => ({ id: p.id, nombre: p.nombre, image: p.image, precio: p.precioDesde, destacado: p.destacado, disponible: p.disponible })),
+    productos: lista.map((p) => ({ id: p.id, nombre: p.nombre, image: p.image, precio: p.precioDesde, destacado: p.destacado, disponible: p.disponible, propio: !!p.propio, miStock: miStock.get(p.id) || 0 })),
     ocultos: ocultos.length,
+    conMiStock: miStock.size,
   });
 }
 

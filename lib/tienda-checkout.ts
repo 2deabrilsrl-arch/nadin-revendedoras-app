@@ -4,7 +4,7 @@
 
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
-import { getCatalogoTienda, getTiendaBaseUrl, formatPrecio, PREFIJO_VARIANTE_PROPIA, type TiendaConUser } from '@/lib/tienda';
+import { getCatalogoTienda, getTiendaBaseUrl, formatPrecio, PREFIJO_VARIANTE_PROPIA, PREFIJO_VARIANTE_EXTRA, type TiendaConUser } from '@/lib/tienda';
 import { enviarNotificacionGeneral } from '@/lib/notifications';
 import { crearConsolidacion, FORMAS_PAGO_NADIN, TIPOS_ENVIO_NADIN } from '@/lib/consolidacion';
 import { getPromosActivas, aplicarPromos } from '@/lib/tienda-promos';
@@ -28,6 +28,8 @@ export interface LineaCalculada {
   precio: number;
   mayorista: number;
   propio: boolean;
+  qtyPropio: number;           // unidades que salen del stock de la revendedora
+  stockExtraId: string | null; // de qué stock propio salen
 }
 
 export interface Cotizacion {
@@ -88,12 +90,17 @@ export async function cotizar(
       qty,
       precio: v.precio,
       mayorista: v.mayorista,
-      propio: !!p.propio,
+      // Talle/color agregado por la revendedora: es todo de ella
+      propio: !!p.propio || v.id.startsWith(PREFIJO_VARIANTE_EXTRA),
+      // Primero se vende el stock propio; lo que falta lo pone Nadin
+      qtyPropio: Math.min(qty, Math.max(0, v.stockPropio || 0)),
+      stockExtraId: v.stockExtraId || null,
     });
   }
 
   const subtotal = lineas.reduce((a, l) => a + l.precio * l.qty, 0);
-  const totalMayorista = lineas.reduce((a, l) => a + l.mayorista * l.qty, 0);
+  // Costo Nadin: solo las unidades que arma Nadin
+  const totalMayorista = lineas.reduce((a, l) => a + (l.propio ? 0 : l.mayorista * (l.qty - l.qtyPropio)), 0);
 
   // Promociones automáticas (3x2, % off…)
   const promoRes = aplicarPromos(lineas, byId as any, await getPromosActivas(tienda.id));
@@ -301,16 +308,22 @@ export async function marcarPagada(ordenId: string, mpPaymentId?: string) {
   });
   if (upd.count === 0) return; // ya estaba pagada (webhook repetido)
 
-  // Productos propios: se descuenta el stock que maneja la revendedora
-  const propios = await prisma.ordenTiendaItem.findMany({ where: { ordenId, propio: true } });
-  for (const it of propios) {
-    const id = it.variantId.startsWith(PREFIJO_VARIANTE_PROPIA) ? it.variantId.slice(PREFIJO_VARIANTE_PROPIA.length) : it.variantId;
-    await prisma.tiendaVariantePropia.updateMany({ where: { id }, data: { stock: { decrement: it.qty } } }).catch(() => {});
+  // Se descuenta el stock que maneja la revendedora
+  const items = await prisma.ordenTiendaItem.findMany({ where: { ordenId } });
+  for (const it of items) {
+    if (it.propio && it.variantId.startsWith(PREFIJO_VARIANTE_PROPIA)) {
+      // Producto propio
+      const id = it.variantId.slice(PREFIJO_VARIANTE_PROPIA.length);
+      await prisma.tiendaVariantePropia.updateMany({ where: { id }, data: { stock: { decrement: it.qty } } }).catch(() => {});
+    } else if (it.stockExtraId && it.qtyPropio > 0) {
+      // Stock propio sobre un producto de Nadin
+      await prisma.tiendaStockExtra.updateMany({ where: { id: it.stockExtraId }, data: { stock: { decrement: it.qtyPropio } } }).catch(() => {});
+    }
   }
 
   const orden = await prisma.ordenTienda.findUnique({ where: { id: ordenId }, include: { tienda: true } });
   if (!orden) return;
-  const hayNadin = await prisma.ordenTiendaItem.count({ where: { ordenId, propio: false } });
+  const hayNadin = items.filter(vaANadin).length;
   if (mpPaymentId) await emailRevendedoraOrden(ordenId, 'pagada'); // si lo marcó ella a mano, no hace falta avisarle
 
   if (orden.pedidoId) return; // ya estaba en Nadin (se mandó antes de cobrar): solo faltaba registrar el pago
@@ -409,6 +422,12 @@ export async function enviarVariasANadin(ordenIds: string[], userId: string, opc
   return { consolidacionId: r.consolidacion.id, pedidos: libres.length };
 }
 
+/** Unidades de la línea que arma Nadin (descontando las que salen del stock propio) */
+export function unidadesNadin(i: { propio: boolean; qty: number; qtyPropio?: number | null }) {
+  return i.propio ? 0 : Math.max(0, i.qty - (i.qtyPropio || 0));
+}
+export const vaANadin = (i: { propio: boolean; qty: number; qtyPropio?: number | null }) => unidadesNadin(i) > 0;
+
 export async function enviarANadinPedido(ordenId: string, userId: string) {
   return prisma.$transaction(async (tx) => {
     const orden = await tx.ordenTienda.findUnique({ where: { id: ordenId }, include: { items: true, tienda: true } });
@@ -416,8 +435,8 @@ export async function enviarANadinPedido(ordenId: string, userId: string) {
     if (orden.pedidoId) return { pedidoId: orden.pedidoId, yaEnviada: true };
     // Se puede mandar aunque todavía no esté cobrado (ej. efectivo al retirar): la revendedora lo decide
     if (!['pagada', 'pendiente_pago'].includes(orden.estado)) throw new Error('Este pedido no se puede enviar a Nadin.');
-    // Solo viajan a Nadin sus productos; los propios los entrega la revendedora
-    const itemsNadin = orden.items.filter((i) => !i.propio);
+    // Solo viajan a Nadin sus productos; los propios (y lo que sale de su stock) los entrega la revendedora
+    const itemsNadin = orden.items.filter(vaANadin).map((i) => ({ ...i, qty: unidadesNadin(i) }));
     if (!itemsNadin.length) throw new Error('Este pedido tiene solo productos tuyos: no hay nada para enviar a Nadin.');
 
     const dir = (orden.direccion || {}) as Record<string, string>;
@@ -509,7 +528,7 @@ export async function emailRevendedoraOrden(ordenId: string, tipo: 'nueva' | 'pa
     const panel = `${appUrl()}/dashboard/mi-tienda?tab=pedidos`;
     const dir: any = o.direccion || null;
     const filas = o.items.map((i) =>
-      `<tr><td style="padding:4px 8px 4px 0">${escapeHtml(i.nombre)}${i.talle ? ` · ${escapeHtml(i.talle)}` : ''}${i.color ? ` · ${escapeHtml(i.color)}` : ''}${i.propio ? ' <em>(tuyo)</em>' : ''}</td><td style="padding:4px 8px">×${i.qty}</td><td style="padding:4px 0;text-align:right">${formatPrecio(i.precio * i.qty)}</td></tr>`
+      `<tr><td style="padding:4px 8px 4px 0">${escapeHtml(i.nombre)}${i.talle ? ` · ${escapeHtml(i.talle)}` : ''}${i.color ? ` · ${escapeHtml(i.color)}` : ''}${i.propio || i.qtyPropio >= i.qty ? ' <em>(de tu stock)</em>' : i.qtyPropio > 0 ? ` <em>(${i.qtyPropio} de tu stock)</em>` : ''}</td><td style="padding:4px 8px">×${i.qty}</td><td style="padding:4px 0;text-align:right">${formatPrecio(i.precio * i.qty)}</td></tr>`
     ).join('');
     const titulo = tipo === 'nueva' ? `🛍️ Nuevo pedido web #${o.numero}` : `💰 Pedido web #${o.numero} pagado`;
     const intro = tipo === 'nueva'

@@ -21,6 +21,8 @@ export interface VarianteTienda {
   mayorista: number;
   precio: number;
   precioAntes?: number | null; // precio tachado si está en oferta
+  stockPropio?: number;   // parte del stock que es de la revendedora (se vende primero)
+  stockExtraId?: string;  // TiendaStockExtra de donde sale ese stock
 }
 
 export interface ProductoTienda {
@@ -47,6 +49,14 @@ export interface ProductoTienda {
 /** Los productos propios usan ids con prefijo para no chocar con los de Tiendanube */
 export const PREFIJO_PROPIO = 'pp';
 export const PREFIJO_VARIANTE_PROPIA = 'pv';
+/** Talle/color nuevo que la revendedora agregó a un producto de Nadin */
+export const PREFIJO_VARIANTE_EXTRA = 'px';
+
+/** Clave talle|color normalizada (sin mayúsculas, acentos ni espacios de más) */
+export function claveVariante(talle: string, color: string): string {
+  const n = (x: string) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return `${n(talle)}|${n(color)}`;
+}
 export const esIdPropio = (id: string) => String(id || '').startsWith(PREFIJO_PROPIO);
 
 interface ProductoBase {
@@ -246,13 +256,17 @@ function oferta(variantes: VarianteTienda[]) {
 
 /** Catálogo con precios, ocultos y destacados de esta tienda. */
 export async function getCatalogoTienda(tienda: TiendaConUser): Promise<ProductoTienda[]> {
-  const [base, overrides, propios, promos] = await Promise.all([
+  const [base, overrides, propios, promos, extras] = await Promise.all([
     getCatalogoBase(),
     prisma.tiendaProducto.findMany({ where: { tiendaId: tienda.id } }),
     prisma.tiendaProductoPropio.findMany({ where: { tiendaId: tienda.id, activo: true }, include: { variantes: true } }),
     getPromosActivas(tienda.id).catch(() => []),
+    prisma.tiendaStockExtra.findMany({ where: { tiendaId: tienda.id, stock: { gt: 0 } } }).catch(() => []),
   ]);
   const ov = new Map(overrides.map((o) => [o.productId, o]));
+  // Stock propio sobre productos de Nadin, agrupado por producto
+  const extrasPorProducto = new Map<string, typeof extras>();
+  for (const e of extras) extrasPorProducto.set(e.productId, [...(extrasPorProducto.get(e.productId) || []), e]);
   const margen = margenEfectivo(tienda, tienda.user.margen);
 
   const out: ProductoTienda[] = [];
@@ -267,6 +281,18 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
         return { ...v, precio, precioAntes: antes && antes > precio ? antes : null };
       });
     if (variantes.length === 0) continue;
+    // Stock propio de la revendedora: se suma al talle/color de Nadin o se agrega como uno nuevo
+    for (const e of extrasPorProducto.get(p.id) || []) {
+      const igual = variantes.find((v) => claveVariante(v.talle, v.color) === e.clave);
+      if (igual) {
+        igual.stock += e.stock;
+        igual.stockPropio = e.stock;
+        igual.stockExtraId = e.id;
+      } else {
+        const precio = e.precio && e.precio > 0 ? e.precio : Math.max(...variantes.map((v) => v.precio));
+        variantes.push({ id: `${PREFIJO_VARIANTE_EXTRA}${e.id}`, sku: '', talle: e.talle, color: e.color, stock: e.stock, mayorista: 0, precio, precioAntes: null, stockPropio: e.stock, stockExtraId: e.id });
+      }
+    }
     const conStock = variantes.filter((v) => v.stock > 0);
     const totalStock = conStock.reduce((a, v) => a + v.stock, 0);
     out.push({

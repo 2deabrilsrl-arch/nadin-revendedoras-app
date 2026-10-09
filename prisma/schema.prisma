@@ -444,6 +444,7 @@ model Tienda {
   contactos        TiendaContacto[]
   promociones      TiendaPromocion[]
   carritos         TiendaCarrito[]
+  stockExtra       TiendaStockExtra[]
 }
 
 model TiendaMetodoPago {
@@ -573,6 +574,8 @@ model OrdenTiendaItem {
   precio     Float   // precio unitario cobrado a la clienta
   mayorista  Float   // costo unitario Nadin
   propio     Boolean @default(false) // producto cargado por la revendedora (no lo arma Nadin)
+  qtyPropio  Int     @default(0)     // unidades que salen del stock propio de la revendedora (no van a Nadin)
+  stockExtraId String?               // TiendaStockExtra de donde salen esas unidades
 
   orden      OrdenTienda @relation(fields: [ordenId], references: [id], onDelete: Cascade)
 
@@ -611,6 +614,26 @@ model TiendaVariantePropia {
   producto    TiendaProductoPropio @relation(fields: [productoId], references: [id], onDelete: Cascade)
 
   @@index([productoId])
+}
+
+// Stock propio de la revendedora sobre productos de Nadin: suma stock a un
+// talle/color que ya existe o agrega uno nuevo. Al vender se consume primero este stock.
+model TiendaStockExtra {
+  id         String   @id @default(cuid())
+  tiendaId   String
+  productId  String   // producto de Nadin (Tiendanube)
+  clave      String   // talle|color normalizado (para no duplicar)
+  talle      String   @default("")
+  color      String   @default("")
+  stock      Int      @default(0)
+  precio     Float?   // solo para talles/colores nuevos; null = precio del producto
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tienda     Tienda   @relation(fields: [tiendaId], references: [id], onDelete: Cascade)
+
+  @@unique([tiendaId, productId, clave])
+  @@index([tiendaId])
 }
 
 // Páginas propias de la tienda (Cómo comprar, Cambios, Envíos…)

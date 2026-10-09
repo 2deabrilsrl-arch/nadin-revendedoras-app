@@ -337,11 +337,11 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                 </button>
               </div>
 
-              {o.estado === 'pagada' && o.items.some((i: any) => i.propio) && (
+              {['pagada', 'pendiente_pago'].includes(o.estado) && o.items.some((i: any) => i.propio || i.qtyPropio > 0) && (
                 <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
-                  {o.items.every((i: any) => i.propio)
-                    ? 'Este pedido tiene solo productos tuyos: lo preparás y entregás vos.'
-                    : 'Los productos tuyos (marcados “Tuyo”) no van a Nadin: los preparás vos.'}
+                  {o.items.every((i: any) => i.propio || i.qtyPropio >= i.qty)
+                    ? 'Todo este pedido sale de tu stock: lo preparás y entregás vos.'
+                    : 'Lo marcado “De tu stock” no va a Nadin: lo preparás vos. A Nadin le pedimos solo el resto.'}
                 </p>
               )}
 
@@ -350,7 +350,8 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                   <ul className="space-y-1">
                     {o.items.map((i: any) => (
                       <li key={i.id} className="flex justify-between gap-2">
-                        <span>{i.qty} × {i.nombre} {i.talle && `· ${i.talle}`} {i.color && `· ${i.color}`}{i.propio && <span className="ml-1 rounded bg-blue-100 px-1.5 text-[10px] font-semibold text-blue-800">Tuyo</span>}</span>
+                        <span>{i.qty} × {i.nombre} {i.talle && `· ${i.talle}`} {i.color && `· ${i.color}`}{(i.propio || i.qtyPropio >= i.qty) ? <span className="ml-1 rounded bg-blue-100 px-1.5 text-[10px] font-semibold text-blue-800">De tu stock</span>
+                          : i.qtyPropio > 0 && <span className="ml-1 rounded bg-blue-100 px-1.5 text-[10px] font-semibold text-blue-800">{i.qtyPropio} de tu stock</span>}</span>
                         <span>{fmt(i.precio * i.qty)}</span>
                       </li>
                     ))}
@@ -512,11 +513,20 @@ function ProductosNadin({ onToast }: { onToast: (s: string) => void }) {
   const [q, setQ] = useState('');
   const [lista, setLista] = useState<any[] | null>(null);
   const [ocultos, setOcultos] = useState(0);
+  const [conMiStock, setConMiStock] = useState(0);
+  const [mios, setMios] = useState(false);
+  const [stockDe, setStockDe] = useState<any>(null);
 
-  const cargar = useCallback((query: string) => {
-    api(`/productos${query ? `?q=${encodeURIComponent(query)}` : ''}`).then((d) => { setLista(d.productos); setOcultos(d.ocultos); }).catch((e) => onToast(e.message));
+  const cargar = useCallback((query: string, soloMios = false) => {
+    setMios(soloMios);
+    const qs = soloMios ? '?mios=1' : query ? `?q=${encodeURIComponent(query)}` : '';
+    api(`/productos${qs}`).then((d) => { setLista(d.productos); setOcultos(d.ocultos); setConMiStock(d.conMiStock || 0); }).catch((e) => onToast(e.message));
   }, [onToast]);
   useEffect(() => { cargar(''); }, [cargar]);
+
+  if (stockDe) {
+    return <MiStockNadin producto={stockDe} onToast={onToast} onCerrar={(cambio) => { setStockDe(null); if (cambio) cargar(q, mios); }} />;
+  }
 
   async function marcar(p: any, cambios: any) {
     try {
@@ -532,30 +542,137 @@ function ProductosNadin({ onToast }: { onToast: (s: string) => void }) {
         <input className={input} placeholder="Buscá por nombre, marca o código" value={q} onChange={(e) => setQ(val(e))} />
         <button className={btn}>Buscar</button>
       </form>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => { setQ(''); cargar(''); }} className={`rounded-full px-3 py-1 text-xs font-medium ${!mios && !q ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 ring-1 ring-black/10'}`}>★ Destacados</button>
+        <button type="button" onClick={() => { setQ(''); cargar('', true); }} className={`rounded-full px-3 py-1 text-xs font-medium ${mios ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 ring-1 ring-black/10'}`}>📦 Con mi stock{conMiStock > 0 ? ` (${conMiStock})` : ''}</button>
+      </div>
       <p className="text-xs text-gray-500">
-        {q ? 'Resultados de la búsqueda.' : 'Tus destacados (aparecen en la sección “Destacados”). Buscá productos para destacar u ocultar.'}
+        {mios ? 'Productos de Nadin donde cargaste stock tuyo. Cuando te compran, se vende primero tu stock y a Nadin le pedimos solo lo que falte.'
+          : q ? 'Resultados de la búsqueda.' : 'Tus destacados (aparecen en la sección “Destacados”). Buscá productos para destacar, ocultar o cargarles tu stock.'}
         {ocultos > 0 && ` Tenés ${ocultos} producto${ocultos === 1 ? '' : 's'} oculto${ocultos === 1 ? '' : 's'}.`}
       </p>
       {!lista ? <p className="text-gray-500">Cargando…</p> : lista.length === 0 ? (
-        <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 ring-1 ring-black/5">{q ? 'No encontramos productos.' : 'Todavía no destacaste productos.'}</p>
+        <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 ring-1 ring-black/5">{mios ? 'Todavía no cargaste stock tuyo. Buscá un producto y tocá “Mi stock”.' : q ? 'No encontramos productos.' : 'Todavía no destacaste productos.'}</p>
       ) : (
         <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
           {lista.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 p-3">
+            <li key={p.id} className="flex flex-wrap items-center gap-3 p-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {p.image ? <img src={p.image} alt="" className="h-14 w-11 rounded object-cover" /> : <div className="h-14 w-11 rounded bg-gray-100" />}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{p.nombre}</p>
-                <p className="text-xs text-gray-500">{fmt(p.precio)}{!p.disponible && ' · sin stock'}</p>
+                <p className="text-xs text-gray-500">{fmt(p.precio)}{!p.disponible && ' · sin stock'}{p.miStock > 0 && <span className="ml-1 font-medium text-blue-700">· {p.miStock} tuyos</span>}</p>
               </div>
+              <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+              {!p.propio && (
+                <button type="button" onClick={() => setStockDe(p)} className={`rounded-full px-3 py-1 text-xs font-medium ${p.miStock > 0 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>📦 Mi stock</button>
+              )}
               <button type="button" onClick={() => marcar(p, { destacado: !p.destacado })}
                 className={`rounded-full px-3 py-1 text-xs font-medium ${p.destacado ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
                 {p.destacado ? '★ Destacado' : '☆ Destacar'}
               </button>
               <button type="button" onClick={() => marcar(p, { oculto: true })} className="text-xs text-gray-500 underline">Ocultar</button>
+              </div>
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+// Mi stock en un producto de Nadin: sumar unidades propias o agregar talles/colores nuevos
+function MiStockNadin({ producto, onToast, onCerrar }: { producto: any; onToast: (s: string) => void; onCerrar: (cambio: boolean) => void }) {
+  const [d, setD] = useState<any>(null);
+  const [nuevas, setNuevas] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    api(`/productos/stock?productId=${encodeURIComponent(producto.id)}`)
+      .then((x) => {
+        setD({ ...x, variantes: x.variantes.map((v: any) => ({ ...v, miStock: v.miStock ? String(v.miStock) : '' })) });
+        setNuevas(x.nuevas.map((n: any) => ({ ...n, stock: String(n.stock), precio: n.precio ? String(n.precio) : '' })));
+      })
+      .catch((e) => { onToast(e.message); onCerrar(false); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [producto.id]); // solo al abrir: no perder lo que está escribiendo si se re-renderiza
+
+  const num = (e: any) => val(e).replace(/[^0-9]/g, '');
+  const setVar = (k: number, v: string) => setD((x: any) => ({ ...x, variantes: x.variantes.map((y: any, j: number) => (j === k ? { ...y, miStock: v } : y)) }));
+  const setNueva = (k: number, campo: string, v: string) => setNuevas((x) => x.map((y, j) => (j === k ? { ...y, [campo]: v } : y)));
+
+  async function guardar() {
+    setSaving(true);
+    try {
+      const filas = [
+        ...d.variantes.map((v: any) => ({ talle: v.talle, color: v.color, stock: Number(v.miStock) || 0 })),
+        ...nuevas.map((n) => ({ talle: n.talle, color: n.color, stock: Number(n.stock) || 0, precio: n.precio ? Number(n.precio) : null })),
+      ];
+      const r = await api('/productos/stock', 'PUT', { productId: producto.id, filas });
+      onToast(r.total > 0 ? `Listo: ${r.total} unidades tuyas en este producto` : 'Listo: este producto queda solo con stock de Nadin');
+      onCerrar(true);
+    } catch (e: any) { onToast(e.message); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {producto.image ? <img src={producto.image} alt="" className="h-14 w-11 rounded object-cover" /> : null}
+          <div>
+            <h3 className="font-semibold">Mi stock · {producto.nombre}</h3>
+            <p className="text-xs text-gray-500">Cargá las unidades que ya tenés vos. En la tienda se muestra la suma con el stock de Nadin.</p>
+          </div>
+        </div>
+        <button type="button" className="text-sm text-gray-500" onClick={() => onCerrar(false)}>Cancelar</button>
+      </div>
+      <p className="rounded-xl bg-blue-50 p-3 text-xs text-blue-900">Cuando te compran, <strong>se vende primero tu stock</strong>. A Nadin le pedimos solo lo que falte.</p>
+
+      {!d ? <p className="text-gray-500">Cargando…</p> : (
+        <>
+          <div>
+            <p className="mb-2 text-sm font-medium">Talles y colores de Nadin</p>
+            <div className="overflow-hidden rounded-xl ring-1 ring-black/5">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-left text-xs text-gray-500">
+                  <tr><th className="px-3 py-2">Talle / color</th><th className="px-3 py-2 text-center">Nadin</th><th className="px-3 py-2 text-right">Tuyos</th></tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {d.variantes.map((v: any, k: number) => (
+                    <tr key={k}>
+                      <td className="px-3 py-2">{[v.talle, v.color].filter(Boolean).join(' · ') || 'Único'}</td>
+                      <td className="px-3 py-2 text-center text-gray-500">{v.stockNadin}</td>
+                      <td className="px-3 py-2 text-right"><input className={`${input} ml-auto w-20 text-right`} inputMode="numeric" placeholder="0" value={v.miStock} onChange={(e) => setVar(k, num(e))} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium">Talles o colores que Nadin no tiene</p>
+            <p className="mb-2 text-xs text-gray-500">Si tenés este producto en otro talle o color, agregalo acá. Si no ponés precio, usa el del producto.</p>
+            <div className="space-y-2">
+              {nuevas.map((n, k) => (
+                <div key={k} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_90px_110px_auto]">
+                  <input className={input} placeholder="Talle" value={n.talle} onChange={(e) => setNueva(k, 'talle', val(e))} />
+                  <input className={input} placeholder="Color" value={n.color} onChange={(e) => setNueva(k, 'color', val(e))} />
+                  <input className={input} placeholder="Stock" inputMode="numeric" value={n.stock} onChange={(e) => setNueva(k, 'stock', num(e))} />
+                  <input className={input} placeholder="Precio $" inputMode="numeric" value={n.precio} onChange={(e) => setNueva(k, 'precio', num(e))} />
+                  <button type="button" className="text-xs text-red-600" onClick={() => setNuevas((x) => x.filter((_, j) => j !== k))}>Quitar</button>
+                </div>
+              ))}
+            </div>
+            <button type="button" className={`${btnSec} mt-2`} onClick={() => setNuevas((x) => [...x, { talle: '', color: '', stock: '', precio: '' }])}>+ Talle o color</button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pb-12 sm:pb-0">
+            <button type="button" className={btn} disabled={saving} onClick={guardar}>{saving ? 'Guardando…' : 'Guardar mi stock'}</button>
+            <button type="button" className={btnSec} onClick={() => onCerrar(false)}>Cancelar</button>
+          </div>
+        </>
       )}
     </div>
   );
