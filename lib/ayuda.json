@@ -18,7 +18,7 @@
   },
   "pedidos": {
     "titulo": "Pedidos web",
-    "para": "Acá llegan las compras que te hacen en tu tienda. También te llega un mail y una notificación con cada pedido.",
+    "para": "Acá llegan las compras de tu tienda y las ventas que cargás a mano (WhatsApp, Instagram o en persona). También te llega un mail y una notificación con cada pedido de la tienda.",
     "pasos": [
       "Cada pedido nuevo aparece arriba con su estado: Esperando pago, Pagado · falta enviar a Nadin, En Nadin, Listo para entregar o Entregado.",
       "Si la clienta pagó por transferencia o efectivo, revisá que te llegó la plata, abrí el pedido y tocá Ya me pagó.",
@@ -26,12 +26,14 @@
       "Los pedidos para enviar a Nadin tienen una casilla. Tildá uno o varios (o tocá Seleccionar todos). Si la clienta te paga al retirar (efectivo), podés mandarlo igual: queda marcado Falta cobrar hasta que toques Ya me pagó.",
       "Abajo aparece el panel para enviar: elegí cómo le pagás a Nadin y cómo lo recibís, y tocá Enviar a Nadin. Todos los tildados van juntos en un solo envío. Si algo no tiene stock, te avisamos qué faltó para que se lo devuelvas a tu clienta.",
       "Lo marcado “De tu stock” (productos tuyos o tu stock cargado en Mi stock) no se manda a Nadin: preparalo vos.",
-      "Cuando lo tenés, tocá Listo para entregar. Cuando lo entregás, tocá Entregado."
+      "Cuando lo tenés, tocá Listo para entregar. Cuando lo entregás, tocá Entregado.",
+      "¿Vendiste por WhatsApp o en persona? Tocá + Venta manual: poné el nombre de la clienta, buscá el producto y tocá el talle/color, ajustá cantidad y precio si hace falta, elegí cómo pagó y la entrega, y tocá Guardar venta. Si ya te pagó, dejá tildado Ya me pagó."
     ],
     "consejos": [
       "Con el botón de WhatsApp le escribís a la clienta sin agendarla.",
       "En Marca, datos y dominio podés activar que los pedidos pagados se envíen solos a Nadin.",
-      "Abajo de los pedidos están los Carritos abandonados: personas que cargaron productos y no terminaron. Escribiles, muchas compran."
+      "Abajo de los pedidos están los Carritos abandonados: personas que cargaron productos y no terminaron. Escribiles, muchas compran.",
+      "Las ventas manuales aparecen con la etiqueta Venta manual, descuentan tu stock y se mandan a Nadin igual que las de la tienda."
     ]
   },
   "clientes": {
@@ -90,7 +92,8 @@
       "En Mis productos tocá + Nuevo producto para cargar algo tuyo: nombre, categoría, fotos (hasta 8) y variantes con talle, color, precio y stock.",
       "Elegí la categoría de la lista. Si no existe, elegí + Crear una categoría nueva.",
       "Si querés mostrarlo en oferta, completá Antes $ (oferta): aparece tachado.",
-      "Tocá Guardar."
+      "Tocá Guardar.",
+      "¿Tenés muchos productos propios? En Mis productos tocá 📊 Cargar con Excel → Descargar planilla. Completala (una fila por talle o color; obligatorios Nombre y Precio), subila con Elegir archivo, revisá el resumen y tocá Importar."
     ],
     "consejos": [
       "Con Mi stock la tienda muestra la suma de tu stock y el de Nadin. Cuando te compran se vende primero lo tuyo y a Nadin le pedimos solo lo que falte (en Pedidos web vas a ver “De tu stock”).",
@@ -98,7 +101,8 @@
       "En Mis productos tenés un buscador y, abajo, la lista Productos de Nadin con tu stock: todo lo tuyo en un solo lugar.",
       "El precio de los productos de Nadin es tu costo más tu % de ganancia (se cambia en Marca, datos y dominio).",
       "Cuando Nadin pone algo en oferta, tu costo baja y tu tienda lo muestra en oferta sola.",
-      "Los productos tuyos se venden gratis por ahora. Más adelante podría cobrarse una comisión chica (alrededor de 0,5%) sobre esas ventas."
+      "Los productos tuyos se venden gratis por ahora. Más adelante podría cobrarse una comisión chica (alrededor de 0,5%) sobre esas ventas.",
+      "Con la planilla de Excel también podés actualizar precios o stock de todo junto: si el producto ya existe (mismo nombre) se actualiza, y una celda vacía no borra lo que ya tenías."
     ]
   },
   "paginas": {
@@ -206,15 +210,15 @@
     "titulo": "Marca, datos y dominio",
     "para": "Nombre, logo, contacto, tu % de ganancia, publicar la tienda y conectar tu propio dominio.",
     "pasos": [
-      "Completá el nombre, la frase corta, el logo y la dirección de tu tienda.",
+      "Completá el nombre, la frase corta, el logo y la dirección de tu tienda (ej. lenceriasofi → lenceriasofi.mitiendanadin.com).",
       "En Precios poné tu % de ganancia sobre el costo de Nadin.",
       "Completá WhatsApp, email, ciudad y redes: aparecen en tu tienda.",
       "Tocá Guardar cambios y, cuando esté todo listo, Publicar tienda (necesitás al menos un cobro activo).",
       "Dominio propio: si compraste uno (ej. www.tumarca.com.ar), escribilo y tocá Conectar. Te mostramos qué datos cargar donde lo compraste. Cuando quede apuntando bien, se activa solo y te avisamos.",
-      "Vendé en Google e Instagram: copiá el link de tu catálogo (en esta misma pantalla) y seguí el paso a paso para cargarlo en Google Merchant Center y en el Administrador de ventas de Meta. Se actualiza solo con precios y stock."
+      "Vendé en Google e Instagram: copiá el link de tu catálogo (en esta misma pantalla) y seguí el paso a paso para cargarlo en Google Merchant Center y en el Administrador de ventas de Meta. Para verificar tu tienda en Google, pegá la etiqueta HTML en Avanzado: Google, Meta y Nadin → Verificación de Google. Se actualiza solo con precios y stock."
     ],
     "consejos": [
-      "Si no tenés dominio, tu tienda funciona igual con la dirección de Nadin.",
+      "Si no tenés dominio, tu tienda funciona igual en tunombre.mitiendanadin.com y aparece en Google.",
       "Los .com.ar se compran en nic.ar con clave fiscal."
     ]
   },
