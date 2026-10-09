@@ -153,7 +153,7 @@ function Inicio({ info, onToast }: { info: any; onToast: (s: string) => void }) 
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${t.activa ? 'bg-green-500' : 'bg-white/25'}`}>
             {t.activa ? 'Publicada' : 'Borrador (solo vos la ves)'}
           </span>
-          <a href={info.urlApp} target="_blank" className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-pink-700">Ver mi tienda</a>
+          <a href={t.activa ? info.url : info.urlApp} target="_blank" className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-pink-700">Ver mi tienda</a>
           <button
             className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold"
             onClick={() => { (globalThis as any).navigator?.clipboard?.writeText(info.url); onToast('Link copiado'); }}
@@ -483,7 +483,7 @@ function Portada({ info }: { info: any }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <a href="/dashboard/mi-tienda/disenar" className={btn}>{conBorrador ? 'Seguir editando' : 'Editar diseño'}</a>
-          <a href={info.urlApp} target="_blank" className={btnSec}>Ver tienda</a>
+          <a href={t.activa ? info.url : info.urlApp} target="_blank" className={btnSec}>Ver tienda</a>
         </div>
       </section>
     </div>

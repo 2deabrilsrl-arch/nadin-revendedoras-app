@@ -2,13 +2,49 @@
 import Link from 'next/link';
 import InstalarApp from '@/components/landing/InstalarApp';
 
+const PORTADA = process.env.TIENDAS_ROOT_DOMAIN ? `https://www.${process.env.TIENDAS_ROOT_DOMAIN}` : 'https://nadin-revendedoras-app.vercel.app/tu-tienda';
+const TITULO = 'Tu Tienda Nadin — Revendé lencería online gratis con tu propia tienda';
+const DESCRIPCION = 'Creá gratis tu tienda online de lencería con los productos de Nadin Lencería (Rosario) ya cargados. Vos ponés tu ganancia, cobrás en tu Mercado Pago y Nadin arma y envía tus pedidos a todo el país.';
+
+// Esta página sí se indexa en Google (la app no). La dirección principal es www.mitiendanadin.com.
 export const metadata = {
-  title: 'Tu Tienda Nadin — tu tienda online gratis',
-  description: 'Creá gratis tu propia tienda online con los productos de Nadin Lencería. Vos ponés tu ganancia, cobrás en tu Mercado Pago y Nadin arma tus pedidos.',
+  title: TITULO,
+  description: DESCRIPCION,
+  keywords: ['revender lencería', 'ser revendedora', 'tienda online gratis', 'lencería por mayor', 'Nadin Lencería', 'revendedoras Rosario', 'emprender desde casa', 'ropa interior por mayor'],
+  alternates: { canonical: PORTADA },
+  robots: { index: true, follow: true },
   openGraph: {
-    title: 'Tu Tienda Nadin — tu tienda online gratis',
-    description: 'Tu propia tienda online con los productos de Nadin ya cargados. Gratis para revendedoras.',
+    title: TITULO,
+    description: 'Tu propia tienda online con los productos de Nadin Lencería ya cargados. Gratis para revendedoras.',
+    url: PORTADA,
+    siteName: 'Tu Tienda Nadin',
+    locale: 'es_AR',
+    type: 'website',
   },
+};
+
+// Datos estructurados: Google entiende que Tu Tienda es de Nadin Lencería y la relaciona con su web y redes
+const JSON_LD = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': 'https://nadinlenceria.com/#org',
+      name: 'Nadin Lencería',
+      url: 'https://nadinlenceria.com',
+      email: 'nadinlenceria@gmail.com',
+      telephone: '+54 341 642-2033',
+      address: { '@type': 'PostalAddress', streetAddress: 'San Luis 1873', addressLocality: 'Rosario', addressRegion: 'Santa Fe', addressCountry: 'AR' },
+      sameAs: [
+        'https://www.instagram.com/lencerianadin',
+        'https://www.tiktok.com/@nadinlenceria',
+        'https://www.facebook.com/lenceria.nadin',
+        'https://ar.pinterest.com/lencerianadin',
+        'https://www.youtube.com/@nadinlenceriarosario',
+      ],
+    },
+    { '@type': 'WebSite', name: 'Tu Tienda Nadin', url: PORTADA, publisher: { '@id': 'https://nadinlenceria.com/#org' }, inLanguage: 'es-AR' },
+  ],
 };
 
 const WA = 'https://wa.me/5493416422033?text=' + encodeURIComponent('¡Hola Nadin! Quiero saber más sobre Tu Tienda.');
@@ -57,6 +93,7 @@ function Celular() {
 export default function TuTiendaPage() {
   return (
     <main className="min-h-screen scroll-smooth bg-white text-gray-900">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <section className="relative overflow-hidden bg-gradient-to-br from-pink-600 via-fuchsia-600 to-rose-600 text-white">
         <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10" />
         <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-white/10" />
@@ -114,7 +151,7 @@ export default function TuTiendaPage() {
       </section>
 
       <footer className="py-8 text-center text-xs text-gray-500">
-        Nadin Lencería · San Luis 1873, Rosario · <a href="https://nadinlenceria.com" className="underline">nadinlenceria.com</a>
+        Tu Tienda es un servicio de <a href="https://nadinlenceria.com" className="underline">Nadin Lencería</a> · Lencería por mayor y menor · San Luis 1873, Rosario · <a href="https://nadinlenceria.com" className="underline">nadinlenceria.com</a>
       </footer>
     </main>
   );
