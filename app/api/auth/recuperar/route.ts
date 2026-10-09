@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
 import crypto from 'crypto';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface RecuperarBody {
   email: string;
@@ -41,6 +40,7 @@ export async function POST(req: NextRequest) {
     const resetUrl = `${process.env.NEXT_PUBLIC_URL || 'https://nadin-revendedoras-app.vercel.app'}/recuperar/nueva-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
 
     // ✅ Enviar email con Resend (funciona en Vercel, sin bloqueos SMTP)
+    const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
       from: 'Nadin Lencería <noreply@nadinlenceria.com>',
       to: email,
