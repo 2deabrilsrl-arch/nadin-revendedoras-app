@@ -96,7 +96,7 @@ export async function middleware(request: NextRequest) {
   if (site) {
     // Las APIs pasan por el mismo control aunque se entre por el dominio de una tienda
     if (pathname.startsWith('/api/')) return protegerApi(request);
-    const isSeoFile = pathname === '/sitemap.xml' || pathname === '/robots.txt';
+    const isSeoFile = pathname === '/sitemap.xml' || pathname === '/robots.txt' || pathname === '/feed.xml';
     const isPassThrough =
       pathname.startsWith('/api/') ||
       pathname.startsWith('/_next/') ||

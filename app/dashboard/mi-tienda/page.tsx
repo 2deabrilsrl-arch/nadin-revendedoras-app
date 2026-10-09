@@ -767,6 +767,7 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
       </section>
 
       <DominioPropio onCambio={() => api('').then((d: any) => onSaved({ tienda: d.tienda, url: d.url })).catch(() => {})} />
+      <VenderEnGoogleYMeta url={info.url} activa={!!f.activa} />
 
       <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <h2 className="font-semibold">Precios</h2>
@@ -1413,6 +1414,49 @@ function Clientes({ onToast }: { onToast: (s: string) => void }) {
         </ul>
       )}
     </div>
+  );
+}
+
+// Catálogo para Google Shopping e Instagram/Facebook Shops (un link que se actualiza solo)
+function VenderEnGoogleYMeta({ url, activa }: { url: string; activa: boolean }) {
+  const [copiado, setCopiado] = useState(false);
+  const feed = `${String(url || '').replace(/\/$/, '')}/feed.xml`;
+  return (
+    <section className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
+      <div>
+        <h2 className="font-semibold">Vendé en Google e Instagram</h2>
+        <p className="text-sm text-gray-500">Tu catálogo listo para Google Shopping y para la tienda de Instagram y Facebook. Se actualiza solo con precios y stock.</p>
+      </div>
+      {!activa ? (
+        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Primero publicá tu tienda: el catálogo solo está disponible para tiendas publicadas.</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <input readOnly className={`${input} min-w-0 flex-1 font-mono text-xs`} value={feed} onFocus={(e) => (e.target as any).select()} />
+            <button type="button" className={btnSec} onClick={() => { (globalThis as any).navigator?.clipboard?.writeText(feed); setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}>{copiado ? '¡Copiado!' : 'Copiar link'}</button>
+          </div>
+          <details className="rounded-lg bg-gray-50 p-3 text-sm">
+            <summary className="cursor-pointer font-medium">Google Shopping: paso a paso</summary>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-gray-700">
+              <li>Entrá a <a className="text-pink-700 underline" href="https://merchants.google.com" target="_blank" rel="noopener">merchants.google.com</a> con tu cuenta de Google y creá tu cuenta de comerciante (país Argentina, moneda ARS).</li>
+              <li>Cuando te pida tu sitio web, poné la dirección de tu tienda.</li>
+              <li>Andá a <b>Productos → Agregar productos → Agregar desde un archivo → Ingresar un vínculo</b> y pegá el link de arriba. Elegí que se actualice <b>todos los días</b>.</li>
+              <li>En <b>Envío y devoluciones</b> cargá cuánto cobrás de envío.</li>
+              <li>Google revisa los productos en 1 a 3 días y empiezan a aparecer gratis en la pestaña Shopping.</li>
+            </ol>
+          </details>
+          <details className="rounded-lg bg-gray-50 p-3 text-sm">
+            <summary className="cursor-pointer font-medium">Instagram y Facebook: paso a paso</summary>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-gray-700">
+              <li>Necesitás una cuenta de Instagram profesional conectada a una página de Facebook.</li>
+              <li>Entrá a <a className="text-pink-700 underline" href="https://business.facebook.com/commerce" target="_blank" rel="noopener">business.facebook.com/commerce</a> → <b>Agregar catálogo</b> → <b>Comercio electrónico</b>.</li>
+              <li>En el catálogo: <b>Artículos → Agregar artículos → Feed de datos → Programar feed</b>, pegá el link de arriba y elegí actualización <b>diaria</b>.</li>
+              <li>Conectá el catálogo a tu Instagram (Configuración → Compras) y, cuando Meta lo apruebe, ya podés etiquetar productos en tus posts e historias.</li>
+            </ol>
+          </details>
+        </>
+      )}
+    </section>
   );
 }
 
