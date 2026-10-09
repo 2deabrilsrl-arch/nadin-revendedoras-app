@@ -121,6 +121,12 @@ export async function PUT(req: Request) {
     activa: bool(b.activa),
     metaPixelId: sOrNull(b.metaPixelId, 20),
     ga4Id: sOrNull(b.ga4Id, 20),
+    // Acepta la etiqueta <meta ...> completa o solo el código
+    googleVerificacion:
+      b.googleVerificacion === undefined
+        ? undefined
+        : (String(b.googleVerificacion || '').match(/content=["']?([A-Za-z0-9_-]{10,100})/)?.[1] ||
+            (/^[A-Za-z0-9_-]{10,100}$/.test(String(b.googleVerificacion || '').trim()) ? String(b.googleVerificacion).trim() : null)),
   };
 
   for (const k of ['logoUrl', 'bannerUrl']) {

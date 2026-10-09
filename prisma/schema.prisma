@@ -430,6 +430,7 @@ model Tienda {
   disenoBorrador    Json?    // cambios sin publicar del editor: { diseno, colorPrimario, colorSecundario, fuente }
   metaPixelId       String?
   ga4Id             String?
+  googleVerificacion String? // código de verificación de Google (Merchant Center / Search Console)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

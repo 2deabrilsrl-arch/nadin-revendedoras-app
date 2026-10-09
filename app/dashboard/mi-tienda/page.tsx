@@ -794,6 +794,7 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
           {field({ label: "Descripción para Google", k: "seoDescripcion", maxLength: 160, hint: "Hasta 160 caracteres." })}
           {field({ label: "Pixel de Meta (ID)", k: "metaPixelId", inputMode: "numeric" })}
           {field({ label: "Google Analytics 4 (G-XXXX)", k: "ga4Id" })}
+          {field({ label: "Verificación de Google", k: "googleVerificacion", hint: "Pegá la etiqueta HTML que te da Merchant Center o Search Console (<meta name=\"google-site-verification\" ...>)." })}
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!f.mostrarNadin} onChange={(e) => setF({ ...f, mostrarNadin: chk(e) })} /> Mostrar “Productos de Nadin Lencería” al pie de la tienda (opcional)</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!f.envioAutoNadin} onChange={(e) => setF({ ...f, envioAutoNadin: chk(e) })} /> Enviar a Nadin automáticamente cuando un pedido queda pago</label>
         </div>
@@ -1439,7 +1440,7 @@ function VenderEnGoogleYMeta({ url, activa }: { url: string; activa: boolean }) 
             <summary className="cursor-pointer font-medium">Google Shopping: paso a paso</summary>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-gray-700">
               <li>Entrá a <a className="text-pink-700 underline" href="https://merchants.google.com" target="_blank" rel="noopener">merchants.google.com</a> con tu cuenta de Google y creá tu cuenta de comerciante (país Argentina, moneda ARS).</li>
-              <li>Cuando te pida tu sitio web, poné la dirección de tu tienda.</li>
+              <li>Cuando te pida tu sitio web, poné la dirección de tu tienda. Para verificarla elegí <b>Etiqueta HTML</b>, copiala y pegala en <b>Avanzado: Google, Meta y Nadin → Verificación de Google</b>, guardá y tocá <b>Verificar</b> en Google.</li>
               <li>Andá a <b>Productos → Agregar productos → Agregar desde un archivo → Ingresar un vínculo</b> y pegá el link de arriba. Elegí que se actualice <b>todos los días</b>.</li>
               <li>En <b>Envío y devoluciones</b> cargá cuánto cobrás de envío.</li>
               <li>Google revisa los productos en 1 a 3 días y empiezan a aparecer gratis en la pestaña Shopping.</li>

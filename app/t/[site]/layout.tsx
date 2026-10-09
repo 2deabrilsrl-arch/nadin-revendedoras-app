@@ -24,6 +24,12 @@ const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-moderna', 
 
 const safeColor = (c: string | null | undefined, fallback: string) => (c && /^#[0-9a-f]{3,8}$/i.test(c) ? c : fallback);
 
+// Código de verificación de Google (Merchant Center / Search Console) que cargó la revendedora
+function codigoGoogle(t: unknown): string | null {
+  const c = (t as { googleVerificacion?: string | null }).googleVerificacion;
+  return c && /^[A-Za-z0-9_-]{10,100}$/.test(c) ? c : null;
+}
+
 export async function generateMetadata({ params }: { params: { site: string } }): Promise<Metadata> {
   const tienda = await getTiendaBySite(params.site);
   if (!tienda) return { title: 'Tienda no encontrada', robots: { index: false, follow: false } };
@@ -53,6 +59,7 @@ export async function generateMetadata({ params }: { params: { site: string } })
       images: tienda.bannerUrl || tienda.logoUrl ? [{ url: (tienda.bannerUrl || tienda.logoUrl) as string }] : [],
     },
     twitter: { card: 'summary_large_image', title: titulo, description: descripcion },
+    verification: codigoGoogle(tienda) ? { google: codigoGoogle(tienda)! } : undefined,
   };
 }
 
