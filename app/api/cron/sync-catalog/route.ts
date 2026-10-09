@@ -6,6 +6,11 @@ export const dynamic = 'force-dynamic'; // IMPORTANTE: Deshabilitar cache
 export const revalidate = 0; // NO cachear
 
 export async function GET(request: Request) {
+  // Vercel manda "Authorization: Bearer <CRON_SECRET>" si la variable existe
+  const secret = process.env.CRON_SECRET;
+  if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  }
   try {
     const ahora = new Date();
     console.log('\n⏰ ========================================');

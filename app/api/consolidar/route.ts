@@ -4,10 +4,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { crearConsolidacion } from '@/lib/consolidacion';
+import { usuarioEfectivo, sesionApi, prohibido } from '@/lib/auth-api';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as any;
+    body.userId = usuarioEfectivo(req, body.userId);
     const { pedidoIds, formaPago, tipoEnvio, transporteNombre, userId } = body;
 
     // Validar userId
@@ -43,10 +45,9 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json() as any;
     const { consolidacionId, pagado, userEmail } = body;
 
-    // Validar que es vendedora
-    if (!userEmail || userEmail !== 'nadinlenceria@gmail.com') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+    // Solo Nadin (rol vendedora, según la sesión; el email del body ya no alcanza)
+    if (!sesionApi(req)?.admin) return prohibido();
+    void userEmail;
 
     if (!consolidacionId) {
       return NextResponse.json({ error: 'Falta consolidacionId' }, { status: 400 });

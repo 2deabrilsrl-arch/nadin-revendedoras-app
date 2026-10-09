@@ -3,11 +3,12 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { usuarioEfectivo, sesionApi, prohibido } from '@/lib/auth-api';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json() as any;
-    const { userId } = body as any;
+    const userId = usuarioEfectivo(request, (body as any).userId);
 
     if (!userId) {
       return NextResponse.json(
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
 
     await prisma.notificacion.updateMany({
       where: {
-        usuarioId: userId,
+        userId,
         leida: false
       } as any,
       data: {

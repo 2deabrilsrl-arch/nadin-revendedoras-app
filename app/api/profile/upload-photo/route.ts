@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { usuarioEfectivo, sesionApi, prohibido } from '@/lib/auth-api';
 
 interface UploadPhotoBody {
   userId: string;
@@ -11,7 +12,8 @@ interface UploadPhotoBody {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as UploadPhotoBody;
-    const { userId, photo } = body;
+    const userId = usuarioEfectivo(req, body.userId);
+    const { photo } = body;
 
     if (!userId || !photo) {
       return NextResponse.json(

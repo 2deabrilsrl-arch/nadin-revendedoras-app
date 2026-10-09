@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { controlDuena } from '@/lib/auth-duena';
 
 // PATCH - Marcar como leída
 export async function PATCH(
@@ -11,6 +12,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(req, 'notificacion', id); if (_no) return _no; }
 
     // ✅ Usar updateMany que no falla si no existe
     const result = await prisma.notificacion.updateMany({
@@ -43,6 +45,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(req, 'notificacion', id); if (_no) return _no; }
 
     // ✅ CORRECCIÓN: Usar deleteMany en lugar de delete
     // deleteMany no falla si el registro no existe

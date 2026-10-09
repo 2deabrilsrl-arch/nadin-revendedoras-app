@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { fijarMayoristaDelCatalogo } from '@/lib/precios-servidor';
+import { usuarioEfectivo, sesionApi, prohibido } from '@/lib/auth-api';
 
 interface PedidoItem {
   productId: string | number;
@@ -28,6 +30,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json() as CreatePedidoBody;
     console.log('📦 Creando pedido:', body);
 
+    body.userId = usuarioEfectivo(req, body.userId) as string; // siempre la usuaria logueada
     const { userId, cliente, telefono, nota, items, descuentoTotal = 0 } = body;
 
     // Validaciones
@@ -51,6 +54,10 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // El costo Nadin (mayorista) se toma SIEMPRE del catálogo, nunca del navegador
+    const errPrecio = await fijarMayoristaDelCatalogo(items);
+    if (errPrecio) return NextResponse.json({ error: errPrecio }, { status: 400 });
 
     // Crear pedido con líneas
     const pedido = await prisma.pedido.create({

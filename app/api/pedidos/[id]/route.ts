@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { controlDuena } from '@/lib/auth-duena';
 
 /**
  * GET - Obtener un pedido por ID
@@ -13,6 +14,7 @@ export async function GET(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(req, 'pedido', id); if (_no) return _no; }
 
     const pedido = await prisma.pedido.findUnique({
       where: { id },
@@ -56,6 +58,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(req, 'pedido', id); if (_no) return _no; }
     const body = await req.json() as any;
 
     // CASO 1: Cambiar estado
@@ -148,6 +151,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(req, 'pedido', id); if (_no) return _no; }
 
     console.log('🗑️ Iniciando cancelación del pedido:', id);
 

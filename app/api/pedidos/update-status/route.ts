@@ -3,6 +3,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { controlDuena } from '@/lib/auth-duena';
+import { sesionApi, prohibido } from '@/lib/auth-api';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +22,9 @@ export async function POST(req: NextRequest) {
     if (!pedido) {
       return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
     }
+    { const _no = await controlDuena(req, 'pedido', pedidoId); if (_no) return _no; }
+    // Una revendedora solo puede cancelar su pedido; los demás cambios de estado los hace Nadin
+    if (!sesionApi(req)?.admin && (paidToNadin !== undefined || (orderStatus !== undefined && orderStatus !== 'cancelado'))) return prohibido();
 
     const updateData: any = {};
     const ahora = new Date();

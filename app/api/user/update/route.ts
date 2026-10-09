@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { usuarioEfectivo, sesionApi, prohibido } from '@/lib/auth-api';
 
 interface UpdateUserBody {
   userId: string;
@@ -10,7 +11,9 @@ interface UpdateUserBody {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { userId, margen, cbu, alias } = await req.json() as UpdateUserBody;
+    const datos = await req.json() as UpdateUserBody;
+    const userId = usuarioEfectivo(req, datos.userId);
+    const { margen, cbu, alias } = datos;
 
     if (!userId) {
       return NextResponse.json(

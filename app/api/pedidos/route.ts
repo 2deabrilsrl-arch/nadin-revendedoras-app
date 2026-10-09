@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { trackBrandSales } from '@/lib/brand-tracking'; // 🎖️ NUEVO
+import { usuarioEfectivo } from '@/lib/auth-api';
+import { fijarMayoristaDelCatalogo } from '@/lib/precios-servidor';
 
 // GET - Listar pedidos del usuario
 export async function GET(req: NextRequest) {
@@ -63,27 +65,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Obtener userId del localStorage o sesión
-    // Por ahora asumimos que viene en el body o en headers
-    const userData = req.headers.get('x-user-data');
-    let userId: string;
-
-    if (userData) {
-      const user = JSON.parse(userData);
-      userId = user.id;
-    } else {
-      // Si no viene en headers, intentar obtener de alguna forma
-      // Por ahora usamos un método alternativo
-      // El frontend debería enviar userId en el body
-      userId = (body as any).userId;
-      
-      if (!userId) {
-        return NextResponse.json(
-          { error: 'Usuario no autenticado' },
-          { status: 401 }
-        );
-      }
+    // La usuaria sale SIEMPRE de la sesión (Nadin puede cargar para otra pasando userId)
+    const userId = usuarioEfectivo(req, (body as any).userId);
+    if (!userId) {
+      return NextResponse.json({ error: 'Usuario no autenticado' }, { status: 401 });
     }
+    // El costo Nadin se toma del catálogo, no del navegador
+    const errPrecio = await fijarMayoristaDelCatalogo(items);
+    if (errPrecio) return NextResponse.json({ error: errPrecio }, { status: 400 });
 
     console.log('📦 Creando pedido para usuario:', userId);
     console.log('📦 Cliente:', cliente);

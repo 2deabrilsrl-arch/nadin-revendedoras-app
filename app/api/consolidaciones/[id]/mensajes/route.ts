@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { controlDuena } from '@/lib/auth-duena';
 
 /**
  * GET - Obtener mensajes de una consolidación
@@ -13,6 +14,7 @@ export async function GET(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(request, 'consolidacion', id); if (_no) return _no; }
 
     const mensajes = await prisma.consolidacionMensaje.findMany({
       where: {
@@ -46,6 +48,7 @@ export async function POST(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(request, 'consolidacion', id); if (_no) return _no; }
     const body = await request.json() as any;
 
     const { autorId, autorNombre, autorTipo, mensaje } = body;
@@ -114,6 +117,7 @@ export async function PATCH(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(request, 'consolidacion', id); if (_no) return _no; }
     const body = await request.json() as any;
 
     const { autorTipo } = body;

@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { controlDuena } from '@/lib/auth-duena';
 
 // GET - Obtener mensajes de un pedido
 export async function GET(
@@ -11,6 +12,7 @@ export async function GET(
 ) {
   try {
     const pedidoId = params.id;
+    { const _no = await controlDuena(request, 'pedido', pedidoId); if (_no) return _no; }
 
     const mensajes = await prisma.pedidoMensaje.findMany({
       where: { pedidoId },
@@ -35,6 +37,7 @@ export async function POST(
 ) {
   try {
     const pedidoId = params.id;
+    { const _no = await controlDuena(request, 'pedido', pedidoId); if (_no) return _no; }
     const body = await request.json();
     
     const {
@@ -82,6 +85,7 @@ export async function PATCH(
 ) {
   try {
     const pedidoId = params.id;
+    { const _no = await controlDuena(request, 'pedido', pedidoId); if (_no) return _no; }
     const body = await request.json();
     const { autorTipo } = body as any;
 

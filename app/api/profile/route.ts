@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { esSituacionValida, normalizarCuit } from '@/lib/fiscal';
+import { usuarioEfectivo, sesionApi, prohibido } from '@/lib/auth-api';
 
 interface UpdateProfileBody {
   userId: string;
@@ -31,7 +32,7 @@ interface UpdateProfileBody {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
+    const userId = usuarioEfectivo(req, searchParams.get('userId'));
 
     if (!userId) {
       return NextResponse.json(
@@ -92,7 +93,8 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json() as UpdateProfileBody;
-    const { userId, ...updateData } = body;
+    const { userId: userIdBody, ...updateData } = body;
+    const userId = usuarioEfectivo(req, userIdBody);
 
     if (!userId) {
       return NextResponse.json(

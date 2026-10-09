@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendConsolidacionEmail } from '@/lib/email';
 import { dragonfishActivo } from '@/lib/consolidacion';
+import { usuarioEfectivo } from '@/lib/auth-api';
 
 // GET: Obtener consolidaciones de usuario
 export async function GET(req: NextRequest) {
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as any;
+    body.userId = usuarioEfectivo(req, body.userId);
     const { 
       userId, 
       pedidoIds, 
@@ -111,13 +113,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    void totalMayorista; void totalVenta; void ganancia;
+    const tot = pedidos.reduce((a, p) => {
+      for (const l of p.lineas) { a.mayorista += l.mayorista * l.qty; a.venta += l.venta * l.qty; }
+      return a;
+    }, { mayorista: 0, venta: 0 });
+
     const consolidacion = await prisma.consolidacion.create({
       data: {
         userId,
         pedidoIds: JSON.stringify(pedidoIds),
-        totalMayorista: totalMayorista || 0,
-        totalVenta: totalVenta || 0,
-        ganancia: ganancia || 0,
+        // Totales calculados con las líneas guardadas (no con lo que manda el navegador)
+        totalMayorista: tot.mayorista,
+        totalVenta: tot.venta,
+        ganancia: tot.venta - tot.mayorista,
         descuentoTotal: 0,
         formaPago: formaPago || 'pendiente',
         tipoEnvio: tipoEnvio || 'pendiente',

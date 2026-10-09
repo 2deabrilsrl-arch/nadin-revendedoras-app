@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { controlDuena } from '@/lib/auth-duena';
 
 export async function GET(
   req: NextRequest,
@@ -10,6 +11,7 @@ export async function GET(
 ) {
   try {
     const { id } = params;
+    { const _no = await controlDuena(req, 'consolidacion', id); if (_no) return _no; }
 
     const consolidacion = await prisma.consolidacion.findUnique({
       where: { id },
