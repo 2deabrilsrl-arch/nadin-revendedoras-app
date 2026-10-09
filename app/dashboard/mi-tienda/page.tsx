@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { reducirImagen } from '@/components/tienda/reducirImagen';
 import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
+import ImportarProductos from '@/components/tienda/ImportarProductos';
 import Link from 'next/link';
 import { CheckCircle2, Circle } from 'lucide-react';
 
@@ -1037,6 +1038,7 @@ function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: s
   const [deNadin, setDeNadin] = useState<any[]>([]); // productos de Nadin con stock propio cargado
   const [editando, setEditando] = useState<any | null>(null);
   const [stockDe, setStockDe] = useState<any>(null);
+  const [importando, setImportando] = useState(false);
   const [q, setQ] = useState('');
 
   const cargar = useCallback(() => {
@@ -1047,6 +1049,9 @@ function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: s
 
   if (editando) {
     return <EditorProductoPropio inicial={editando} slug={slug} onToast={onToast} onCerrar={(cambio) => { setEditando(null); if (cambio) cargar(); }} />;
+  }
+  if (importando) {
+    return <ImportarProductos productos={lista || []} onToast={onToast} onCerrar={(cambio) => { setImportando(false); if (cambio) cargar(); }} />;
   }
   if (stockDe) {
     return <MiStockNadin producto={stockDe} onToast={onToast} onCerrar={(cambio) => { setStockDe(null); if (cambio) cargar(); }} />;
@@ -1068,8 +1073,9 @@ function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: s
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" className={btn} onClick={() => setEditando({ ...PRODUCTO_VACIO })}>+ Nuevo producto</button>
+        <button type="button" className={btnSec} disabled={!lista} onClick={() => setImportando(true)}>📊 Cargar con Excel</button>
         {total > 0 && (
-          <input className={`${input} min-w-0 flex-1`} placeholder="Buscar (nombre, categoría o código)" value={q} onChange={(e) => setQ(val(e))} />
+          <input className={`${input} min-w-0 basis-full sm:basis-0 sm:flex-1`} placeholder="Buscar (nombre, categoría o código)" value={q} onChange={(e) => setQ(val(e))} />
         )}
       </div>
       {!lista ? <p className="text-gray-500">Cargando…</p> : total === 0 ? (
