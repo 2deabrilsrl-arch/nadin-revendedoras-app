@@ -176,7 +176,8 @@ export default async function TiendaLayout({ children, params }: { children: Rea
       data-sf={diseno.listado.segundaFoto ? '1' : '0'}
       style={{ ['--t-primary' as any]: primary, ['--t-secondary' as any]: secondary, ['--t-font-title' as any]: fontVar }}
     >
-      <style>{ESTILOS_CSS}</style>
+      {/* dangerouslySetInnerHTML: como texto, React escapa las comillas en el servidor y la hidratación falla */}
+      <style dangerouslySetInnerHTML={{ __html: ESTILOS_CSS }} />
 
       <TiendaCartProvider tiendaId={tienda.id} tiendaSlug={tienda.slug} prefix={prefix}>
         {!tienda.activa && esDuena && (
