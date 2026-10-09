@@ -106,7 +106,8 @@ export default function TuTiendaPage() {
             ))}
           </ol>
           <div className="mt-10 text-center">
-            <Link href="/registro" className="inline-block rounded-full bg-pink-600 px-8 py-3.5 text-sm font-bold text-white shadow-lg hover:bg-pink-700">Crear mi tienda gratis</Link>
+            <Link href="/registro" className="mr-2 inline-block rounded-full bg-pink-600 px-8 py-3.5 text-sm font-bold text-white shadow-lg hover:bg-pink-700">Crear mi tienda gratis</Link>
+            <a href="/manual-tu-tienda.pdf" target="_blank" rel="noopener" className="mt-4 inline-block rounded-full border-2 border-pink-600 px-6 py-3 text-sm font-bold text-pink-700 hover:bg-pink-50">📘 Ver el manual completo (PDF)</a>
             <p className="mt-4 text-sm text-gray-600">¿Dudas? <a href={WA} target="_blank" rel="noopener" className="font-semibold text-pink-700 underline">Escribinos por WhatsApp</a></p>
           </div>
         </div>

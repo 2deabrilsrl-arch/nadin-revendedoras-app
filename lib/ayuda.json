@@ -25,7 +25,7 @@
       "Si pagó con Mercado Pago, el pedido se marca pagado solo.",
       "Los pedidos para enviar a Nadin tienen una casilla. Tildá uno o varios (o tocá Seleccionar todos). Si la clienta te paga al retirar (efectivo), podés mandarlo igual: queda marcado Falta cobrar hasta que toques Ya me pagó.",
       "Abajo aparece el panel para enviar: elegí cómo le pagás a Nadin y cómo lo recibís, y tocá Enviar a Nadin. Todos los tildados van juntos en un solo envío. Si algo no tiene stock, te avisamos qué faltó para que se lo devuelvas a tu clienta.",
-      "Los productos tuyos (marcados como Tuyo) no se mandan a Nadin: preparalos vos.",
+      "Lo marcado “De tu stock” (productos tuyos o tu stock cargado en Mi stock) no se manda a Nadin: preparalo vos.",
       "Cuando lo tenés, tocá Listo para entregar. Cuando lo entregás, tocá Entregado."
     ],
     "consejos": [
@@ -243,6 +243,7 @@
       "Tocá Descargar PDF para guardarla o mandarla por WhatsApp."
     ],
     "consejos": [
+      "¿Querés todo junto, con imágenes? Bajá el manual completo: nadin-revendedoras-app.vercel.app/manual",
       "¿Seguís con dudas? Escribinos por WhatsApp a Nadin."
     ]
   }
