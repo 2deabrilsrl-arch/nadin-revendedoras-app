@@ -1032,16 +1032,30 @@ const PRODUCTO_VACIO = { nombre: '', categoria: '', descripcion: '', imagenes: [
 
 function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: string }) {
   const [lista, setLista] = useState<any[] | null>(null);
+  const [deNadin, setDeNadin] = useState<any[]>([]); // productos de Nadin con stock propio cargado
   const [editando, setEditando] = useState<any | null>(null);
+  const [stockDe, setStockDe] = useState<any>(null);
+  const [q, setQ] = useState('');
 
   const cargar = useCallback(() => {
     api('/propios').then((d) => setLista(d.productos)).catch((e) => onToast(e.message));
+    api('/productos?mios=1').then((d) => setDeNadin(d.productos || [])).catch(() => setDeNadin([]));
   }, [onToast]);
   useEffect(() => { cargar(); }, [cargar]);
 
   if (editando) {
     return <EditorProductoPropio inicial={editando} slug={slug} onToast={onToast} onCerrar={(cambio) => { setEditando(null); if (cambio) cargar(); }} />;
   }
+  if (stockDe) {
+    return <MiStockNadin producto={stockDe} onToast={onToast} onCerrar={(cambio) => { setStockDe(null); if (cambio) cargar(); }} />;
+  }
+
+  // Búsqueda por nombre, categoría o código (sin importar mayúsculas ni acentos)
+  const norm = (x: any) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const t = norm(q.trim());
+  const propios = (lista || []).filter((p) => !t || norm(`${p.nombre} ${p.categoria} ${(p.variantes || []).map((v: any) => v.sku || '').join(' ')}`).includes(t));
+  const nadin = deNadin.filter((p) => !t || norm(p.nombre).includes(t));
+  const total = (lista?.length || 0) + deNadin.length;
 
   return (
     <div className="space-y-4">
@@ -1050,30 +1064,61 @@ function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: s
         <p className="mt-1">Cargá lo que vendés por tu cuenta (accesorios, carteras, lo que quieras). Aparecen en tu tienda junto a los de Nadin y se cobran igual. Esos pedidos los preparás y entregás vos: no se mandan a Nadin.</p>
         <p className="mt-2 text-xs text-blue-800">Gratis por tiempo limitado. Más adelante podría aplicarse una comisión chica (alrededor del 0,5%) sobre las ventas de productos propios; te avisaríamos antes. No se permiten productos ilegales, falsificados, medicamentos, armas ni contenido para adultos.</p>
       </div>
-      <button type="button" className={btn} onClick={() => setEditando({ ...PRODUCTO_VACIO })}>+ Nuevo producto</button>
-      {!lista ? <p className="text-gray-500">Cargando…</p> : lista.length === 0 ? (
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={btn} onClick={() => setEditando({ ...PRODUCTO_VACIO })}>+ Nuevo producto</button>
+        {total > 0 && (
+          <input className={`${input} min-w-0 flex-1`} placeholder="Buscar (nombre, categoría o código)" value={q} onChange={(e) => setQ(val(e))} />
+        )}
+      </div>
+      {!lista ? <p className="text-gray-500">Cargando…</p> : total === 0 ? (
         <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 ring-1 ring-black/5">Todavía no cargaste productos propios.</p>
       ) : (
-        <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
-          {lista.map((p) => {
-            const precios = p.variantes.map((v: any) => v.precio);
-            const stock = p.variantes.reduce((a: number, v: any) => a + v.stock, 0);
-            return (
-              <li key={p.id} className="flex items-center gap-3 p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {p.imagenes?.[0] ? <img src={p.imagenes[0]} alt="" className="h-14 w-11 rounded object-cover" /> : <div className="h-14 w-11 rounded bg-gray-100" />}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{p.nombre}{!p.activo && <span className="ml-2 text-xs text-gray-400">(oculto)</span>}</p>
-                  <p className="text-xs text-gray-500">{precios.length ? fmt(Math.min(...precios)) : '-'} · {stock} en stock · {p.categoria}</p>
-                </div>
-                <button type="button" className={btnSec} onClick={() => setEditando({
-                  ...p,
-                  variantes: p.variantes.map((v: any) => ({ ...v, precio: String(v.precio), precioAntes: v.precioAntes ? String(v.precioAntes) : '', stock: String(v.stock), sku: v.sku || '' })),
-                })}>Editar</button>
-              </li>
-            );
-          })}
-        </ul>
+        <>
+          {t && propios.length === 0 && nadin.length === 0 && (
+            <p className="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 ring-1 ring-black/5">No encontramos productos con “{q}”.</p>
+          )}
+          {propios.length > 0 && (
+            <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+              {propios.map((p) => {
+                const precios = p.variantes.map((v: any) => v.precio);
+                const stock = p.variantes.reduce((a: number, v: any) => a + v.stock, 0);
+                return (
+                  <li key={p.id} className="flex items-center gap-3 p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {p.imagenes?.[0] ? <img src={p.imagenes[0]} alt="" className="h-14 w-11 rounded object-cover" /> : <div className="h-14 w-11 rounded bg-gray-100" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{p.nombre}{!p.activo && <span className="ml-2 text-xs text-gray-400">(oculto)</span>}</p>
+                      <p className="text-xs text-gray-500">{precios.length ? fmt(Math.min(...precios)) : '-'} · {stock} en stock · {p.categoria}</p>
+                    </div>
+                    <button type="button" className={btnSec} onClick={() => setEditando({
+                      ...p,
+                      variantes: p.variantes.map((v: any) => ({ ...v, precio: String(v.precio), precioAntes: v.precioAntes ? String(v.precioAntes) : '', stock: String(v.stock), sku: v.sku || '' })),
+                    })}>Editar</button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {nadin.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-gray-700">Productos de Nadin con tu stock</p>
+              <p className="text-xs text-gray-500">Unidades tuyas que cargaste en productos de Nadin. Cuando te compran, se vende primero lo tuyo.</p>
+              <ul className="divide-y divide-gray-100 rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+                {nadin.map((p) => (
+                  <li key={p.id} className="flex items-center gap-3 p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {p.image ? <img src={p.image} alt="" className="h-14 w-11 rounded object-cover" /> : <div className="h-14 w-11 rounded bg-gray-100" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{p.nombre}</p>
+                      <p className="text-xs text-gray-500">{fmt(p.precio)} · <span className="font-medium text-blue-700">{p.miStock} tuyos</span> · De Nadin</p>
+                    </div>
+                    <button type="button" className={btnSec} onClick={() => setStockDe(p)}>📦 Mi stock</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
