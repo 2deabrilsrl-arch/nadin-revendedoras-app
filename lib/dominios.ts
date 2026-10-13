@@ -60,6 +60,33 @@ export function planDominio(d: string): { principal: string; redirige: string | 
   return { principal: d, redirige: null };
 }
 
+/**
+ * ¿El dominio está registrado (comprado por alguien)? Se pregunta por DNS público (DNS sobre HTTPS).
+ * true = existe, false = no existe (nadie lo compró), null = no se pudo saber (no bloquea).
+ */
+export async function dominioRegistrado(raiz: string): Promise<boolean | null> {
+  const fuentes = [
+    { url: `https://dns.google/resolve?name=${encodeURIComponent(raiz)}&type=NS`, headers: {} as Record<string, string> },
+    { url: `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(raiz)}&type=NS`, headers: { accept: 'application/dns-json' } },
+  ];
+  for (const f of fuentes) {
+    try {
+      const r = await fetch(f.url, <any>{ headers: f.headers, cache: 'no-store', signal: (AbortSignal as any).timeout(5000) });
+      if (!r.ok) continue;
+      const j: any = await r.json();
+      if (j.Status === 3) return false; // NXDOMAIN: no existe
+      if (j.Status === 0) return true;
+    } catch {
+      /* probamos con la otra fuente */
+    }
+  }
+  return null;
+}
+
+/** Texto para la revendedora cuando el dominio todavía no está comprado. */
+export const MSJ_NO_COMPRADO =
+  'Ese dominio todavía no está comprado. Primero compralo (por ejemplo en Vercel, Hostinger o, si es .com.ar, en nic.ar) y después volvé acá a conectarlo.';
+
 async function vercel(path: string, init: RequestInit = {}) {
   const sep = path.includes('?') ? '&' : '?';
   const r = await fetch(`https://api.vercel.com${path}${sep}teamId=${TEAM()}`, <any>{
@@ -169,12 +196,15 @@ export async function revisarDominioTienda(tiendaId: string): Promise<EstadoDomi
 }
 
 /** Conecta un dominio nuevo a la tienda (queda pendiente hasta que apunte bien). */
-export async function conectarDominio(tiendaId: string, input: string): Promise<{ error?: string; estado?: EstadoDominio | null }> {
+export async function conectarDominio(tiendaId: string, input: string): Promise<{ error?: string; code?: string; estado?: EstadoDominio | null }> {
   if (!dominioConfigurado()) return { error: 'El dominio propio todavía no está habilitado. Avisale a Nadin.' };
   const d = normalizarDominio(input);
   const err = validarDominio(d);
   if (err) return { error: err };
   const { principal, redirige } = planDominio(d);
+
+  // Antes de tocar Vercel: ¿lo compró? (si no existe, no lo cargamos y la mandamos a comprarlo)
+  if ((await dominioRegistrado(dominioRaiz(principal))) === false) return { error: MSJ_NO_COMPRADO, code: 'NO_COMPRADO' };
 
   const t = await prisma.tienda.findUnique({ where: { id: tiendaId }, select: { dominioPropio: true, dominioPendiente: true } });
   if (!t) return { error: 'Tienda no encontrada' };
@@ -193,15 +223,24 @@ export async function conectarDominio(tiendaId: string, input: string): Promise<
     if (e2) console.warn('Dominio raíz no agregado', redirige, e2);
   }
   // Si tenía otro dominio, recién ahora lo saca de Vercel
-  if (anterior && anterior !== principal) await quitarDominioVercel(anterior);
+  if (anterior && anterior !== principal) await quitarDominioVercel(anterior, dominioRaiz(anterior) !== dominioRaiz(principal));
   await prisma.tienda.update({ where: { id: tiendaId }, data: { dominioPendiente: principal, dominioPropio: anterior === principal ? t.dominioPropio : null } });
   return { estado: await revisarDominioTienda(tiendaId) };
 }
 
-async function quitarDominioVercel(dominio: string) {
+async function quitarDominioVercel(dominio: string, borrarDeLaCuenta = true) {
   const { principal, redirige } = planDominio(dominio);
   if (redirige) await quitarDeVercel(redirige);
   await quitarDeVercel(principal);
+  // También lo sacamos de la lista de dominios de la cuenta (si no es uno comprado en Vercel),
+  // para que no queden dominios sueltos. Si otro proyecto lo usa, Vercel no lo borra.
+  if (!borrarDeLaCuenta) return;
+  const raiz = dominioRaiz(principal);
+  const info = await vercel(`/v5/domains/${raiz}`).catch(() => null);
+  const dom = info?.data?.domain;
+  if (info?.ok && dom && !dom.boughtAt && dom.serviceType !== 'zeit.world') {
+    await vercel(`/v6/domains/${raiz}`, { method: 'DELETE' }).catch(() => null);
+  }
 }
 
 export async function desconectarDominio(tiendaId: string) {

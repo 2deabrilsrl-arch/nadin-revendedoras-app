@@ -1484,12 +1484,28 @@ function VenderEnGoogleYMeta({ url, activa }: { url: string; activa: boolean }) 
 // Dominio propio (alta automática en Vercel)
 // ---------------------------------------------------------------------
 
+// Dónde comprar un dominio (si lo que escribió no existe, o si pregunta)
+function DondeComprar({ dominio }: { dominio?: string }) {
+  return (
+    <div className={`mt-2 space-y-2 rounded-lg p-3 text-xs ${dominio ? 'bg-amber-50 text-amber-900' : 'bg-gray-50 text-gray-700'}`}>
+      {dominio && <p className="text-sm font-semibold">“{dominio}” todavía no está comprado. Primero compralo y después volvé acá a conectarlo.</p>}
+      <ul className="list-disc space-y-1 pl-4">
+        <li><strong>Vercel</strong> (vercel.com → Domains → Buy): .com a unos <strong>USD 12 por año</strong>, se paga con tarjeta. Es donde funciona tu tienda, así que es lo más directo.</li>
+        <li><strong>NIC Argentina</strong> (nic.ar): para <strong>.com.ar</strong>, alrededor de <strong>$8.500 por año</strong>. Necesitás CUIT/CUIL y clave fiscal nivel 2. Después lo delegás a ns1.vercel-dns.com y ns2.vercel-dns.com.</li>
+        <li><strong>Hostinger</strong>: .com con promo el primer año; mirá cuánto sale renovarlo.</li>
+      </ul>
+      <p><strong>No hace falta pagar hosting</strong>: tu tienda ya está alojada en Nadin. Si al comprar te ofrecen hosting o email, destildalo.</p>
+    </div>
+  );
+}
+
 function DominioPropio({ onCambio }: { onCambio: () => void }) {
   const [d, setD] = useState<any>(null);
   const [texto, setTexto] = useState('');
   const [cargando, setCargando] = useState(false);
   const [err, setErr] = useState('');
   const [copiado, setCopiado] = useState('');
+  const [noComprado, setNoComprado] = useState('');
 
   const revisar = useCallback(async () => {
     setCargando(true);
@@ -1502,12 +1518,16 @@ function DominioPropio({ onCambio }: { onCambio: () => void }) {
   async function conectar() {
     setCargando(true);
     setErr('');
+    setNoComprado('');
     try {
       const r = await api('/dominio', 'POST', { dominio: texto });
       setD({ habilitado: true, estado: r.estado });
       setTexto('');
       onCambio();
-    } catch (e: any) { setErr(e.message); }
+    } catch (e: any) {
+      if (e.code === 'NO_COMPRADO') setNoComprado(texto.trim());
+      else setErr(e.message);
+    }
     setCargando(false);
   }
 
@@ -1542,7 +1562,13 @@ function DominioPropio({ onCambio }: { onCambio: () => void }) {
             <input className={input} placeholder="www.tudominio.com.ar" value={texto} onChange={(ev) => setTexto(val(ev))} inputMode="url" autoCapitalize="none" />
             <button className={btn} disabled={cargando || !texto.trim()} onClick={conectar}>{cargando ? 'Conectando…' : 'Conectar'}</button>
           </div>
-          <p className="text-xs text-gray-500">¿No tenés dominio? Los .com.ar se compran en <a href="https://nic.ar" target="_blank" rel="noopener" className="underline">nic.ar</a> (necesitás clave fiscal). Después volvé acá.</p>
+          {noComprado ? <DondeComprar dominio={noComprado} /> : (
+            <details className="text-xs text-gray-500">
+              <summary className="cursor-pointer">¿Todavía no tenés dominio? Dónde comprarlo</summary>
+              <DondeComprar />
+            </details>
+          )}
+          <p className="text-xs text-gray-500">Es opcional: sin dominio propio tu tienda funciona igual en tunombre.mitiendanadin.com.</p>
         </>
       )}
 
@@ -1578,7 +1604,8 @@ function DominioPropio({ onCambio }: { onCambio: () => void }) {
               <details className="rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
                 <summary className="cursor-pointer font-semibold">Paso a paso (NIC.ar y otros)</summary>
                 <ol className="mt-2 list-decimal space-y-1 pl-4">
-                  <li>Entrá al panel donde compraste el dominio (DonWeb, Hostinger, GoDaddy, Cloudflare, etc.). Si lo compraste en NIC.ar, NIC.ar no tiene panel de DNS: usá el de tu hosting o creá una cuenta gratis en Cloudflare y delegá el dominio ahí desde NIC.ar.</li>
+                  <li><strong>Si lo compraste en NIC.ar</strong> (no tiene panel de DNS): entrá a nic.ar → <strong>Mis dominios</strong> → tu dominio → <strong>Delegar</strong>, y cargá <span className="font-mono">ns1.vercel-dns.com</span> y <span className="font-mono">ns2.vercel-dns.com</span>. Con eso no hace falta cargar los datos de la tabla; esperá unas horas y tocá Revisar ahora.</li>
+                  <li>Si lo compraste en otro lado, entrá a ese panel (Vercel, Hostinger, GoDaddy, DonWeb, Cloudflare, etc.).</li>
                   <li>Buscá la sección <strong>DNS</strong>, <strong>Zona DNS</strong> o <strong>Registros DNS</strong>.</li>
                   <li>Por cada fila de la tabla de arriba, agregá un registro con ese <strong>Tipo</strong>, <strong>Nombre</strong> y <strong>Valor</strong>. Si ya existe uno con el mismo nombre y tipo, editalo o borralo (por ejemplo, el que apuntaba a Tiendanube).</li>
                   <li>Guardá y volvé acá. Tocá <strong>Revisar ahora</strong>. Puede tardar de unos minutos a 24 horas; te avisamos con una notificación cuando quede funcionando.</li>

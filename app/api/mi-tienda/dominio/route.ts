@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   if (!ctx) return noAuth();
   const b: any = await req.json().catch(() => ({}));
   const r = await conectarDominio(ctx.tienda.id, String(b.dominio || ''));
-  if (r.error) return bad(r.error);
+  if (r.error) return r.code ? NextResponse.json({ error: r.error, code: r.code }, { status: 400 }) : bad(r.error);
   return NextResponse.json({ ok: true, estado: r.estado });
 }
 
