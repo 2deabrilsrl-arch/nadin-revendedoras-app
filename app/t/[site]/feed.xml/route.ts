@@ -35,7 +35,9 @@ export async function GET(_req: Request, { params }: { params: { site: string } 
   const tienda = await getTiendaBySite(params.site);
   if (!tienda || !tienda.activa) return new Response('Not found', { status: 404 });
   const base = getTiendaBaseUrl(tienda);
-  const productos = (await getCatalogoTienda(tienda)).filter((p) => p.disponible && p.image);
+  // Solo productos con foto real (los que no tienen foto en Tiendanube vienen con /placeholder.png y Google los rechaza)
+  const esFoto = (u: string) => /^https:\/\/\S+$/i.test(String(u || ''));
+  const productos = (await getCatalogoTienda(tienda)).filter((p) => p.disponible && esFoto(p.image));
 
   // Descripciones (las de Nadin vienen del catálogo; las propias, de su tabla)
   const idsNadin = productos.filter((p) => !p.propio).map((p) => p.id);
@@ -55,7 +57,7 @@ export async function GET(_req: Request, { params }: { params: { site: string } 
     const link = `${base}${productPath(p)}`;
     const texto = limpio(desc.get(p.id) || `${p.nombre}. Comprá online en ${tienda.nombre}.`).slice(0, 4900);
     const categoria = p.category.split('>').map((c) => c.trim()).filter(Boolean).join(' > ');
-    const extra = p.images.slice(1, 10).map((u) => `<g:additional_image_link>${esc(u)}</g:additional_image_link>`).join('');
+    const extra = p.images.filter(esFoto).filter((u) => u !== p.image).slice(0, 9).map((u) => `<g:additional_image_link>${esc(u)}</g:additional_image_link>`).join('');
     const marca = p.brand || tienda.nombre;
     for (const v of p.variantes) {
       const conOferta = !!(v.precioAntes && v.precioAntes > v.precio);
