@@ -2,7 +2,7 @@
 // Formato RSS 2.0 con el espacio "g:" de Google; Meta acepta el mismo archivo.
 // Un ítem por talle/color, agrupados por producto (item_group_id).
 import { prisma } from '@/lib/prisma';
-import { getTiendaBySite, getCatalogoTienda, getTiendaBaseUrl, productPath, stripHtml, esIdPropio, PREFIJO_PROPIO } from '@/lib/tienda';
+import { getTiendaBySite, getCatalogoTienda, getTiendaBaseUrl, productPath, stripHtml, esIdPropio, PREFIJO_PROPIO, adaptarDescripcionTienda } from '@/lib/tienda';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -46,9 +46,9 @@ export async function GET(_req: Request, { params }: { params: { site: string } 
     prisma.tiendaProducto.findMany({ where: { tiendaId: tienda.id, descripcion: { not: null } }, select: { productId: true, descripcion: true } }),
   ]);
   const desc = new Map<string, string>();
-  for (const d of descNadin) desc.set(d.productId, stripHtml(d.descripcion));
+  for (const d of descNadin) desc.set(d.productId, stripHtml(adaptarDescripcionTienda(d.descripcion, tienda.nombre)));
   for (const d of descPropios) desc.set(`${PREFIJO_PROPIO}${d.id}`, d.descripcion || '');
-  for (const o of overrides) desc.set(o.productId, stripHtml(o.descripcion));
+  for (const o of overrides) desc.set(o.productId, stripHtml(adaptarDescripcionTienda(o.descripcion, tienda.nombre)));
 
   const items: string[] = [];
   for (const p of productos) {

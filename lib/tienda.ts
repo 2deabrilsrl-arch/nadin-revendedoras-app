@@ -100,6 +100,21 @@ export function stripHtml(html: string | null | undefined): string {
     .trim();
 }
 
+/**
+ * Las descripciones de Nadin terminan con "Enviamos a todo el país 🚚 — Comprá con confianza en
+ * Nadin Lencería, mayoristas desde 2011." En la tienda de una revendedora eso confunde a la clienta:
+ * lo cambiamos por el nombre de su tienda (y sacamos lo de "envíos a todo el país", que depende de ella).
+ */
+export function adaptarDescripcionTienda(html: string | null | undefined, nombreTienda: string): string {
+  const nombre = String(nombreTienda || 'nuestra tienda').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } as any)[c]);
+  const cierre = `Comprá con confianza en ${nombre}.`;
+  return String(html || '')
+    // Párrafo final completo: <p><strong>Enviamos a todo el país 🚚</strong> — Comprá con confianza en Nadin…</p>
+    .replace(/<p>\s*(?:<strong>)?\s*Enviamos a todo el pa(?:í|i|&iacute;)s[^<]*(?:<\/strong>)?\s*(?:&mdash;|—|-)?\s*Compr(?:á|a|&aacute;) con confianza en Nadin Lencer(?:í|i|&iacute;)a,?\s*mayoristas desde 2011\.?\s*<\/p>/gi, `<p>${cierre}</p>`)
+    // Por si aparece suelta en otro formato
+    .replace(/Compr(?:á|a|&aacute;) con confianza en Nadin Lencer(?:í|i|&iacute;)a,?\s*mayoristas desde 2011\.?/gi, cierre);
+}
+
 /** HTML de TN reducido a etiquetas seguras (evita scripts / estilos inyectados). */
 export function sanitizeHtml(html: string | null | undefined): string {
   if (!html) return '';
@@ -377,7 +392,7 @@ export async function getProductoTienda(tienda: TiendaConUser, productId: string
     prisma.catalogoCache.findUnique({ where: { productId }, select: { descripcion: true } }),
     prisma.tiendaProducto.findUnique({ where: { tiendaId_productId: { tiendaId: tienda.id, productId } } }),
   ]);
-  return { ...p, descripcionHtml: sanitizeHtml(ov?.descripcion || row?.descripcion || '') };
+  return { ...p, descripcionHtml: sanitizeHtml(adaptarDescripcionTienda(ov?.descripcion || row?.descripcion || '', tienda.nombre)) };
 }
 
 // ---------------------------------------------------------------------

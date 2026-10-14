@@ -102,7 +102,8 @@
       "El precio de los productos de Nadin es tu costo más tu % de ganancia (se cambia en Marca, datos y dominio).",
       "Cuando Nadin pone algo en oferta, tu costo baja y tu tienda lo muestra en oferta sola.",
       "Los productos tuyos se venden gratis por ahora. Más adelante podría cobrarse una comisión chica (alrededor de 0,5%) sobre esas ventas.",
-      "Con la planilla de Excel también podés actualizar precios o stock de todo junto: si el producto ya existe (mismo nombre) se actualiza, y una celda vacía no borra lo que ya tenías."
+      "Con la planilla de Excel también podés actualizar precios o stock de todo junto: si el producto ya existe (mismo nombre) se actualiza, y una celda vacía no borra lo que ya tenías.",
+      "En tu tienda, las descripciones de los productos de Nadin terminan con “Comprá con confianza en” + el nombre de tu tienda (no aparece Nadin ni “envíos a todo el país”)."
     ]
   },
   "paginas": {
