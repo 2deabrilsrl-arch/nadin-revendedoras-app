@@ -7,6 +7,7 @@ import { reducirImagen } from '@/components/tienda/reducirImagen';
 import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
 import ImportarProductos from '@/components/tienda/ImportarProductos';
 import VentaManual from '@/components/tienda/VentaManual';
+import GuiaDns from '@/components/tienda/GuiaDns';
 import Link from 'next/link';
 import { CheckCircle2, Circle } from 'lucide-react';
 
@@ -1489,10 +1490,18 @@ function DondeComprar({ dominio }: { dominio?: string }) {
   return (
     <div className={`mt-2 space-y-2 rounded-lg p-3 text-xs ${dominio ? 'bg-amber-50 text-amber-900' : 'bg-gray-50 text-gray-700'}`}>
       {dominio && <p className="text-sm font-semibold">“{dominio}” todavía no está comprado. Primero compralo y después volvé acá a conectarlo.</p>}
+      <p className="font-semibold">Recomendado: comprarlo en Vercel (.com, unos USD 12 por año)</p>
+      <ol className="list-decimal space-y-1 pl-4">
+        <li>Entrá a <strong>vercel.com/signup</strong> y creá una cuenta gratis (plan <strong>Hobby</strong>). Podés entrar con tu mail o con Google.</li>
+        <li>Arriba tocá <strong>Domains</strong> → <strong>Buy</strong> (Comprar).</li>
+        <li>Escribí el nombre que querés (ej. <strong>lenceriasofi.com</strong>) y tocá buscar. Si está libre, tocá <strong>Buy</strong>.</li>
+        <li>Completá tus datos y pagá con tarjeta (en dólares). No hace falta comprar nada más.</li>
+        <li>Volvé acá, escribí <strong>www.</strong> + tu dominio y tocá <strong>Conectar</strong>. Después elegí <strong>Vercel</strong> en "¿Dónde compraste tu dominio?" y seguí los pasos.</li>
+      </ol>
+      <p className="font-semibold">Otras opciones</p>
       <ul className="list-disc space-y-1 pl-4">
-        <li><strong>Vercel</strong> (vercel.com → Domains → Buy): .com a unos <strong>USD 12 por año</strong>, se paga con tarjeta. Es donde funciona tu tienda, así que es lo más directo.</li>
-        <li><strong>NIC Argentina</strong> (nic.ar): para <strong>.com.ar</strong>, alrededor de <strong>$8.500 por año</strong>. Necesitás CUIT/CUIL y clave fiscal nivel 2. Después lo delegás a ns1.vercel-dns.com y ns2.vercel-dns.com.</li>
-        <li><strong>Hostinger</strong>: .com con promo el primer año; mirá cuánto sale renovarlo.</li>
+        <li><strong>NIC Argentina</strong> (nic.ar): para <strong>.com.ar</strong>, alrededor de <strong>$8.500 por año</strong>. Necesitás CUIT/CUIL y clave fiscal nivel 2.</li>
+        <li><strong>Hostinger</strong>, <strong>GoDaddy</strong> o <strong>DonWeb</strong>: suelen tener promo el primer año, pero la renovación es más cara. Miralo antes de pagar.</li>
       </ul>
       <p><strong>No hace falta pagar hosting</strong>: tu tienda ya está alojada en Nadin. Si al comprar te ofrecen hosting o email, destildalo.</p>
     </div>
@@ -1601,16 +1610,7 @@ function DominioPropio({ onCambio }: { onCambio: () => void }) {
                   </tbody>
                 </table>
               </div>
-              <details className="rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
-                <summary className="cursor-pointer font-semibold">Paso a paso (NIC.ar y otros)</summary>
-                <ol className="mt-2 list-decimal space-y-1 pl-4">
-                  <li><strong>Si lo compraste en NIC.ar</strong> (no tiene panel de DNS): entrá a nic.ar → <strong>Mis dominios</strong> → tu dominio → <strong>Delegar</strong>, y cargá <span className="font-mono">ns1.vercel-dns.com</span> y <span className="font-mono">ns2.vercel-dns.com</span>. Con eso no hace falta cargar los datos de la tabla; esperá unas horas y tocá Revisar ahora.</li>
-                  <li>Si lo compraste en otro lado, entrá a ese panel (Vercel, Hostinger, GoDaddy, DonWeb, Cloudflare, etc.).</li>
-                  <li>Buscá la sección <strong>DNS</strong>, <strong>Zona DNS</strong> o <strong>Registros DNS</strong>.</li>
-                  <li>Por cada fila de la tabla de arriba, agregá un registro con ese <strong>Tipo</strong>, <strong>Nombre</strong> y <strong>Valor</strong>. Si ya existe uno con el mismo nombre y tipo, editalo o borralo (por ejemplo, el que apuntaba a Tiendanube).</li>
-                  <li>Guardá y volvé acá. Tocá <strong>Revisar ahora</strong>. Puede tardar de unos minutos a 24 horas; te avisamos con una notificación cuando quede funcionando.</li>
-                </ol>
-              </details>
+              <GuiaDns dominio={e.dominio} registros={e.registros} />
             </div>
           )}
 
