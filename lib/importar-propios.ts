@@ -17,6 +17,7 @@ export const COLUMNAS = [
   { k: 'talle', titulo: 'Talle', alias: ['talle', 'talla', 'tamano', 'medida', 'modelo', 'opcion 1'] },
   { k: 'color', titulo: 'Color', alias: ['color', 'opcion 2', 'variante'] },
   { k: 'precio', titulo: 'Precio', alias: ['precio', 'precio de venta', 'precio venta', 'precio final', 'valor'] },
+  { k: 'costo', titulo: 'Costo (lo que te costó)', alias: ['costo', 'costo (lo que te costo)', 'precio de compra', 'precio costo', 'costo unitario', 'compra'] },
   { k: 'precioAntes', titulo: 'Precio antes (tachado)', alias: ['precio antes', 'precio antes (tachado)', 'precio tachado', 'precio anterior', 'precio sin descuento', 'precio de lista'] },
   { k: 'stock', titulo: 'Stock', alias: ['stock', 'cantidad', 'unidades', 'disponible'] },
   { k: 'sku', titulo: 'Código', alias: ['codigo', 'sku', 'cod', 'codigo de barras', 'ean', 'referencia'] },
@@ -104,7 +105,7 @@ const fotos = (v: unknown) =>
 type VarianteExistente = { id: string; talle: string; color: string };
 export type ProductoExistente = { id: string; nombre: string; variantes: VarianteExistente[] };
 
-export type VariantePlan = { id?: string; talle: string; color: string; precio?: number; precioAntes?: number | null; stock?: number; sku?: string | null };
+export type VariantePlan = { id?: string; talle: string; color: string; precio?: number; precioAntes?: number | null; costo?: number | null; stock?: number; sku?: string | null };
 export type ProductoPlan = {
   id?: string; // si existe
   nombre: string;
@@ -132,6 +133,7 @@ export function planificar(filas: FilaImport[], existentes: ProductoExistente[])
     if (!nombre) { errores.push({ fila: f.fila, motivo: 'Falta el nombre.' }); continue; }
     const precio = numeroAr(f.precio);
     const precioAntes = numeroAr(f.precioAntes);
+    const costo = numeroAr(f.costo);
     const stock = numeroAr(f.stock);
     if (f.precio !== undefined && (precio === null || precio <= 0)) { errores.push({ fila: f.fila, motivo: `Precio inválido: "${f.precio}".` }); continue; }
     if (f.stock !== undefined && (stock === null || stock < 0)) { errores.push({ fila: f.fila, motivo: `Stock inválido: "${f.stock}".` }); continue; }
@@ -171,6 +173,7 @@ export function planificar(filas: FilaImport[], existentes: ProductoExistente[])
       g.variantes.push(v);
     }
     if (precio !== null) v.precio = Math.round(precio);
+    if (costo !== null) v.costo = costo > 0 ? Math.round(costo) : null;
     if (precioAntes !== null) v.precioAntes = precioAntes > (v.precio ?? 0) ? Math.round(precioAntes) : null;
     if (stock !== null) v.stock = Math.min(99999, Math.floor(stock));
     if (f.sku !== undefined) v.sku = txt(f.sku, 60) || null;

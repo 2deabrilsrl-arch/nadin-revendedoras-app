@@ -43,6 +43,7 @@ export interface Cotizacion {
   envioCosto: number;
   total: number;
   totalMayorista: number;
+  costoPropio: number; // costo de lo que sale del stock de la revendedora
   cupon: { id: string; codigo: string; tipo: string } | null;
   cuponError: string | null;
   envio: { id: string; tipo: string; nombre: string; pideDireccion: boolean } | null;
@@ -101,6 +102,8 @@ export async function cotizar(
   const subtotal = lineas.reduce((a, l) => a + l.precio * l.qty, 0);
   // Costo Nadin: solo las unidades que arma Nadin
   const totalMayorista = lineas.reduce((a, l) => a + (l.propio ? 0 : l.mayorista * (l.qty - l.qtyPropio)), 0);
+  // Costo de lo que pone ella: productos propios (su costo cargado) y su stock sobre productos de Nadin (lo que le costó a Nadin)
+  const costoPropio = lineas.reduce((a, l) => a + (l.propio ? l.mayorista * l.qty : l.mayorista * l.qtyPropio), 0);
 
   // Promociones automáticas (3x2, % off…)
   const promoRes = aplicarPromos(lineas, byId as any, await getPromosActivas(tienda.id));
@@ -151,7 +154,7 @@ export async function cotizar(
   }
 
   const total = Math.max(0, subtotal - descuentoPromo - descuentoCupon - descuentoPago + envioCosto);
-  return { lineas, errores, subtotal, descuentoPromo, promos: promoRes.detalle, descuentoCupon, descuentoPago, envioCosto, total, totalMayorista, cupon, cuponError, envio, pago };
+  return { lineas, errores, subtotal, descuentoPromo, promos: promoRes.detalle, descuentoCupon, descuentoPago, envioCosto, total, totalMayorista, costoPropio, cupon, cuponError, envio, pago };
 }
 
 // ---------------------------------------------------------------------

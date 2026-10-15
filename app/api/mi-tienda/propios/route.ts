@@ -23,6 +23,7 @@ function limpiar(b: any) {
       color: txt(v.color, 40),
       precio: Math.round(Number(v.precio) || 0),
       precioAntes: Number(v.precioAntes) > Number(v.precio) ? Math.round(Number(v.precioAntes)) : null,
+      costo: Number(v.costo) > 0 ? Math.min(Math.round(Number(v.costo)), 99999999) : null,
       stock: Math.max(0, Math.min(99999, Math.floor(Number(v.stock) || 0))),
       sku: txt(v.sku, 60) || null,
     }))

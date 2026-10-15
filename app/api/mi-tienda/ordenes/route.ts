@@ -85,6 +85,7 @@ export async function POST(req: Request) {
       descuentoPromo: 0,
       total,
       totalMayorista: c.totalMayorista,
+      costoPropio: c.costoPropio,
       clienteNombre: nombre,
       clienteEmail: email || null,
       clienteTelefono: telefono || '-',

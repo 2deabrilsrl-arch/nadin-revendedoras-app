@@ -305,7 +305,9 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
         igual.stockExtraId = e.id;
       } else {
         const precio = e.precio && e.precio > 0 ? e.precio : Math.max(...variantes.map((v) => v.precio));
-        variantes.push({ id: `${PREFIJO_VARIANTE_EXTRA}${e.id}`, sku: '', talle: e.talle, color: e.color, stock: e.stock, mayorista: 0, precio, precioAntes: null, stockPropio: e.stock, stockExtraId: e.id });
+        // Costo estimado: lo mismo que Nadin cobra por ese producto (lo compró a Nadin)
+        const costoNadin = Math.max(0, ...variantes.map((v) => v.mayorista || 0));
+        variantes.push({ id: `${PREFIJO_VARIANTE_EXTRA}${e.id}`, sku: '', talle: e.talle, color: e.color, stock: e.stock, mayorista: costoNadin, precio, precioAntes: null, stockPropio: e.stock, stockExtraId: e.id });
       }
     }
     const conStock = variantes.filter((v) => v.stock > 0);
@@ -338,7 +340,7 @@ export async function getCatalogoTienda(tienda: TiendaConUser): Promise<Producto
         talle: v.talle || '',
         color: v.color || '',
         stock: Math.max(0, v.stock),
-        mayorista: 0,
+        mayorista: v.costo && v.costo > 0 ? v.costo : 0, // en productos propios: lo que le costó a ella
         precio: v.precio,
         precioAntes: v.precioAntes && v.precioAntes > v.precio ? v.precioAntes : null,
       }));

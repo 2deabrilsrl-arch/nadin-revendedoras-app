@@ -537,6 +537,7 @@ model OrdenTienda {
   cuponCodigo     String?
   total           Float
   totalMayorista  Float
+  costoPropio     Float     @default(0) // costo de lo que sale del stock de la revendedora (productos propios / su stock)
   clienteNombre   String
   clienteEmail    String?
   clienteTelefono String
@@ -610,6 +611,7 @@ model TiendaVariantePropia {
   color       String  @default("")  // opción 2
   precio      Float
   precioAntes Float?  // precio tachado (oferta)
+  costo       Float?  // lo que le costó a la revendedora (para calcular su ganancia)
   stock       Int     @default(0)
   sku         String?
 

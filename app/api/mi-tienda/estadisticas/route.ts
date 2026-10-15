@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     prisma.tiendaStatDia.findMany({ where: { tiendaId, fecha: { gte: desde } } }),
     prisma.ordenTienda.findMany({
       where: { tiendaId, createdAt: { gte: desdeOrdenes } },
-      select: { createdAt: true, estado: true, total: true, envioCosto: true, totalMayorista: true, items: { select: { productId: true, nombre: true, qty: true, precio: true, imagen: true } } },
+      select: { createdAt: true, estado: true, total: true, envioCosto: true, totalMayorista: true, costoPropio: true, items: { select: { productId: true, nombre: true, qty: true, precio: true, imagen: true } } },
     }),
     prisma.tiendaStatProducto.groupBy({ by: ['productId'], where: { tiendaId, fecha: { gte: desde } }, _sum: { vistas: true }, orderBy: { _sum: { vistas: 'desc' } }, take: 5 }),
   ]);
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     if (!PAGADAS.includes(o.estado)) continue;
     pagados++;
     ventas += o.total;
-    ganancia += o.total - o.envioCosto - o.totalMayorista;
+    ganancia += o.total - o.envioCosto - o.totalMayorista - (o.costoPropio || 0);
     if (porDia[f]) porDia[f].ventas += o.total;
     for (const it of o.items) {
       const v = vendidos.get(it.productId) || { productId: it.productId, nombre: it.nombre, imagen: it.imagen, unidades: 0, total: 0 };
@@ -60,8 +60,12 @@ export async function GET(req: Request) {
   const propios = await prisma.tiendaProductoPropio.findMany({ where: { tiendaId, id: { in: ids.filter((i) => i.startsWith('pp')).map((i) => i.slice(2)) } }, select: { id: true, nombre: true, imagenes: true } });
   for (const p of propios) nombres.set(`pp${p.id}`, { nombre: p.nombre, imagen: ((p.imagenes as any[]) || [])[0] || '' });
 
+  // Productos propios sin costo cargado: su ganancia se calcula como si no le hubieran costado nada
+  const sinCosto = await prisma.tiendaVariantePropia.count({ where: { costo: null, producto: { tiendaId, activo: true } } });
+
   return NextResponse.json({
     dias,
+    sinCosto,
     totales: { visitas, vistasProducto, pedidos, pagados, ventas, ganancia, conversion: visitas ? Math.round((pagados / visitas) * 1000) / 10 : 0 },
     porDia: Object.values(porDia),
     masVistos: vistos.map((v) => ({ productId: v.productId, vistas: v._sum.vistas || 0, ...(nombres.get(v.productId) || { nombre: 'Producto', imagen: '' }) })),

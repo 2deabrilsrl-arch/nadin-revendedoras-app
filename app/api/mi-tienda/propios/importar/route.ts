@@ -50,7 +50,7 @@ export async function POST(req: Request) {
             descripcion: p.descripcion || null,
             imagenes: p.imagenes || [],
             variantes: {
-              create: p.variantes.map((v) => ({ talle: v.talle, color: v.color, precio: v.precio!, precioAntes: v.precioAntes ?? null, stock: v.stock ?? 0, sku: v.sku ?? null })),
+              create: p.variantes.map((v) => ({ talle: v.talle, color: v.color, precio: v.precio!, precioAntes: v.precioAntes ?? null, costo: v.costo ?? null, stock: v.stock ?? 0, sku: v.sku ?? null })),
             },
           },
         });
@@ -66,12 +66,13 @@ export async function POST(req: Request) {
             const cambios: any = {};
             if (v.precio !== undefined) cambios.precio = v.precio;
             if (v.precioAntes !== undefined) cambios.precioAntes = v.precioAntes;
+            if (v.costo !== undefined) cambios.costo = v.costo;
             if (v.stock !== undefined) cambios.stock = v.stock;
             if (v.sku !== undefined) cambios.sku = v.sku;
             if (v.id) {
               if (Object.keys(cambios).length) await tx.tiendaVariantePropia.updateMany({ where: { id: v.id, productoId: id }, data: cambios });
             } else {
-              await tx.tiendaVariantePropia.create({ data: { productoId: id, talle: v.talle, color: v.color, precio: v.precio!, precioAntes: v.precioAntes ?? null, stock: v.stock ?? 0, sku: v.sku ?? null } });
+              await tx.tiendaVariantePropia.create({ data: { productoId: id, talle: v.talle, color: v.color, precio: v.precio!, precioAntes: v.precioAntes ?? null, costo: v.costo ?? null, stock: v.stock ?? 0, sku: v.sku ?? null } });
             }
           }
         }, { timeout: 20000 });

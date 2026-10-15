@@ -35,20 +35,20 @@ export default function ImportarProductos({ productos, onToast, onCerrar }: { pr
       for (const p of productos) {
         p.variantes.forEach((v: any, i: number) => {
           filasXls.push([
-            p.nombre, v.talle || '', v.color || '', Number(v.precio) || '', v.precioAntes ? Number(v.precioAntes) : '', Number(v.stock) || 0, v.sku || '',
+            p.nombre, v.talle || '', v.color || '', Number(v.precio) || '', v.costo ? Number(v.costo) : '', v.precioAntes ? Number(v.precioAntes) : '', Number(v.stock) || 0, v.sku || '',
             i === 0 ? p.categoria || '' : '', i === 0 ? p.descripcion || '' : '', i === 0 ? (p.imagenes || []).join(' ') : '',
           ]);
         });
       }
       if (!filasXls.length) {
         filasXls.push(
-          ['Cartera Milán', '', 'Negro', 25000, '', 3, 'CAR-01', 'Accesorios > Carteras', 'Cartera de cuero ecológico con cierre.', ''],
-          ['Cartera Milán', '', 'Suela', 25000, '', 2, 'CAR-02', '', '', ''],
-          ['Medias soquete pack x3', 'Único', 'Surtido', 4500, 5500, 10, '', 'Accesorios > Medias', '', ''],
+          ['Cartera Milán', '', 'Negro', 25000, 14000, '', 3, 'CAR-01', 'Accesorios > Carteras', 'Cartera de cuero ecológico con cierre.', ''],
+          ['Cartera Milán', '', 'Suela', 25000, 14000, '', 2, 'CAR-02', '', '', ''],
+          ['Medias soquete pack x3', 'Único', 'Surtido', 4500, 2500, 5500, 10, '', 'Accesorios > Medias', '', ''],
         );
       }
       await writeExcelFile([titulos, ...filasXls.map((r) => r.map((value) => ({ value })))], {
-        columns: [30, 10, 12, 12, 14, 8, 12, 24, 40, 30].map((width) => ({ width })),
+        columns: [30, 10, 12, 12, 14, 14, 8, 12, 24, 40, 30].map((width) => ({ width })),
         stickyRowsCount: 1,
       } as any).toFile(productos.length ? 'mis-productos.xlsx' : 'planilla-productos.xlsx');
     } catch (e: any) {
@@ -118,7 +118,7 @@ export default function ImportarProductos({ productos, onToast, onCerrar }: { pr
         </p>
         <ul className="list-disc space-y-1 pl-5 text-sm text-gray-600">
           <li><b>Una fila por cada talle o color.</b> Las filas con el mismo nombre forman un solo producto.</li>
-          <li>Obligatorios: <b>Nombre</b> y <b>Precio</b>. Lo demás es opcional.</li>
+          <li>Obligatorios: <b>Nombre</b> y <b>Precio</b>. Lo demás es opcional. En <b>Costo</b> poné lo que te costó: así ves tu ganancia real en Estadísticas.</li>
           <li>Si el producto ya existe (mismo nombre), se actualiza. Una celda vacía no borra lo que ya tenías.</li>
           <li>Las fotos podés agregarlas después desde “Editar” (o pegar links https en la columna Fotos).</li>
         </ul>

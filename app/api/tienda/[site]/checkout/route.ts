@@ -71,6 +71,7 @@ export async function POST(req: Request, { params }: { params: { site: string } 
           cuponCodigo: c.cupon?.codigo || null,
           total: c.total,
           totalMayorista: c.totalMayorista,
+          costoPropio: c.costoPropio,
           clienteNombre: nombre,
           clienteEmail: email || null,
           clienteTelefono: telefono,

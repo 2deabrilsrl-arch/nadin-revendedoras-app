@@ -8,6 +8,7 @@ import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
 import ImportarProductos from '@/components/tienda/ImportarProductos';
 import VentaManual from '@/components/tienda/VentaManual';
 import GuiaDns from '@/components/tienda/GuiaDns';
+import { calcularPrecioVenta } from '@/lib/precios';
 import Link from 'next/link';
 import { CheckCircle2, Circle } from 'lucide-react';
 
@@ -324,7 +325,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
       <ul className="space-y-3">
         {ordenes.map((o) => {
           const est = ESTADOS[o.estado] || { label: o.estado, color: 'bg-gray-100' };
-          const ganancia = o.total - o.envioCosto - o.totalMayorista;
+          const ganancia = o.total - o.envioCosto - o.totalMayorista - (o.costoPropio || 0);
           const marcada = sel.includes(o.id);
           return (
             <li key={o.id} className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ${marcada ? 'ring-2 ring-pink-400' : 'ring-black/5'}`}>
@@ -378,7 +379,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                     {o.cuponCodigo && <p>Cupón: {o.cuponCodigo}</p>}
                     {o.descuento > 0 && <p>Descuentos: −{fmt(o.descuento)}</p>}
                     {o.nota && <p>Nota: {o.nota}</p>}
-                    <p>Costo Nadin: {fmt(o.totalMayorista)}</p>
+                    <p>Costo Nadin: {fmt(o.totalMayorista)}{o.costoPropio > 0 && ` · Costo de lo tuyo: ${fmt(o.costoPropio)}`}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {!o.pagadaAt && o.estado !== 'cancelada' && (
@@ -1045,7 +1046,7 @@ function Cupones({ onToast }: { onToast: (s: string) => void }) {
 // Mis productos: lo que la revendedora vende por su cuenta (no es de Nadin)
 // ---------------------------------------------------------------------
 
-const PRODUCTO_VACIO = { nombre: '', categoria: '', descripcion: '', imagenes: [] as string[], activo: true, destacado: false, variantes: [{ talle: '', color: '', precio: '', precioAntes: '', stock: '', sku: '' }] as any[] };
+const PRODUCTO_VACIO = { nombre: '', categoria: '', descripcion: '', imagenes: [] as string[], activo: true, destacado: false, variantes: [{ talle: '', color: '', costo: '', precio: '', precioAntes: '', stock: '', sku: '' }] as any[] };
 
 function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: string }) {
   const [lista, setLista] = useState<any[] | null>(null);
@@ -1114,7 +1115,7 @@ function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: s
                     </div>
                     <button type="button" className={btnSec} onClick={() => setEditando({
                       ...p,
-                      variantes: p.variantes.map((v: any) => ({ ...v, precio: String(v.precio), precioAntes: v.precioAntes ? String(v.precioAntes) : '', stock: String(v.stock), sku: v.sku || '' })),
+                      variantes: p.variantes.map((v: any) => ({ ...v, precio: String(v.precio), precioAntes: v.precioAntes ? String(v.precioAntes) : '', costo: v.costo ? String(v.costo) : '', stock: String(v.stock), sku: v.sku || '' })),
                     })}>Editar</button>
                   </li>
                 );
@@ -1148,6 +1149,11 @@ function MisProductos({ onToast, slug }: { onToast: (s: string) => void; slug: s
 
 function EditorProductoPropio({ inicial, slug, onToast, onCerrar }: { inicial: any; slug: string; onToast: (s: string) => void; onCerrar: (cambio: boolean) => void }) {
   const [f, setF] = useState<any>(inicial);
+  // Su % de ganancia (el mismo que usa para los productos de Nadin), para sugerir el precio desde el costo
+  const [margen, setMargen] = useState<number | null>(null);
+  useEffect(() => {
+    api('').then((d: any) => setMargen(Number(d.tienda?.margen ?? d.margenUsuaria) || null)).catch(() => {});
+  }, []);
   // Categorías existentes de la tienda (las de Nadin + las propias ya creadas)
   const [cats, setCats] = useState<string[]>([]);
   const [nuevaCat, setNuevaCat] = useState(false);
@@ -1183,7 +1189,7 @@ function EditorProductoPropio({ inicial, slug, onToast, onCerrar }: { inicial: a
     if (!f.categoria) return onToast('Elegí una categoría.');
     setSaving(true);
     try {
-      const body = { ...f, variantes: f.variantes.map((v: any) => ({ ...v, precio: Number(v.precio), precioAntes: v.precioAntes ? Number(v.precioAntes) : null, stock: Number(v.stock) })) };
+      const body = { ...f, variantes: f.variantes.map((v: any) => ({ ...v, precio: Number(v.precio), precioAntes: v.precioAntes ? Number(v.precioAntes) : null, costo: v.costo ? Number(v.costo) : null, stock: Number(v.stock) })) };
       await api('/propios', f.id ? 'PUT' : 'POST', body);
       onToast('Producto guardado');
       onCerrar(true);
@@ -1261,21 +1267,36 @@ function EditorProductoPropio({ inicial, slug, onToast, onCerrar }: { inicial: a
 
       <div>
         <p className="text-sm">Variantes y precios</p>
-        <p className="mb-2 text-xs text-gray-500">Si no tiene talles ni colores, dejá esos campos vacíos y cargá una sola fila.</p>
+        <p className="mb-2 text-xs text-gray-500">Si no tiene talles ni colores, dejá esos campos vacíos y cargá una sola fila. En <strong>Costo $</strong> poné lo que te costó a vos: así tus estadísticas muestran tu ganancia real{margen ? ` y podés calcular el precio con tu ${margen}%` : ''}.</p>
+        {margen && f.variantes.some((v: any) => Number(v.costo) > 0) && (
+          <button type="button" className={`${btnSec} mb-2`} onClick={() => setF((x: any) => ({ ...x, variantes: x.variantes.map((v: any) => (Number(v.costo) > 0 ? { ...v, precio: String(calcularPrecioVenta(Number(v.costo), margen)) } : v)) }))}>
+            Calcular precios con mi {margen}% de ganancia
+          </button>
+        )}
         <div className="space-y-2">
           {f.variantes.map((v: any, k: number) => (
-            <div key={v.id || k} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_100px_100px_80px_1fr_auto]">
+            <div key={v.id || k}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_90px_90px_90px_70px_1fr_auto]">
               <input className={input} placeholder="Talle / tamaño" value={v.talle} onChange={(e) => setVar(k, 'talle', val(e))} />
               <input className={input} placeholder="Color / modelo" value={v.color} onChange={(e) => setVar(k, 'color', val(e))} />
+              <input className={input} placeholder="Costo $" title="Lo que te costó a vos (opcional, no se muestra en la tienda)" inputMode="numeric" value={v.costo || ''} onChange={(e) => setVar(k, 'costo', val(e).replace(/[^0-9]/g, ''))} />
               <input className={input} placeholder="Precio $" inputMode="numeric" value={v.precio} onChange={(e) => setVar(k, 'precio', val(e).replace(/[^0-9]/g, ''))} />
               <input className={input} placeholder="Antes $ (oferta)" title="Precio tachado (opcional)" inputMode="numeric" value={v.precioAntes || ''} onChange={(e) => setVar(k, 'precioAntes', val(e).replace(/[^0-9]/g, ''))} />
               <input className={input} placeholder="Stock" inputMode="numeric" value={v.stock} onChange={(e) => setVar(k, 'stock', val(e).replace(/[^0-9]/g, ''))} />
               <input className={input} placeholder="Código (opcional)" value={v.sku || ''} onChange={(e) => setVar(k, 'sku', val(e))} />
               <button type="button" className="text-xs text-red-600" disabled={f.variantes.length === 1} onClick={() => setF((x: any) => ({ ...x, variantes: x.variantes.filter((_: any, j: number) => j !== k) }))}>Quitar</button>
             </div>
+            {Number(v.costo) > 0 && Number(v.precio) > 0 && (
+              <p className={`mt-1 text-xs ${Number(v.precio) > Number(v.costo) ? 'text-green-700' : 'text-red-700'}`}>
+                {Number(v.precio) > Number(v.costo)
+                  ? `Ganás ${fmt(Number(v.precio) - Number(v.costo))} por unidad (${Math.round(((Number(v.precio) - Number(v.costo)) / Number(v.costo)) * 100)}% sobre el costo)`
+                  : 'Ojo: el precio es menor o igual al costo, perdés plata.'}
+              </p>
+            )}
+            </div>
           ))}
         </div>
-        <button type="button" className={`${btnSec} mt-2`} onClick={() => setF((x: any) => ({ ...x, variantes: [...x.variantes, { talle: '', color: '', precio: x.variantes[x.variantes.length - 1]?.precio || '', precioAntes: '', stock: '', sku: '' }] }))}>+ Variante</button>
+        <button type="button" className={`${btnSec} mt-2`} onClick={() => setF((x: any) => ({ ...x, variantes: [...x.variantes, { talle: '', color: '', costo: x.variantes[x.variantes.length - 1]?.costo || '', precio: x.variantes[x.variantes.length - 1]?.precio || '', precioAntes: '', stock: '', sku: '' }] }))}>+ Variante</button>
       </div>
 
       <div className="flex flex-wrap gap-4 text-sm">
@@ -1657,6 +1678,11 @@ function Estadisticas({ onToast }: { onToast: (s: string) => void }) {
             {tarjeta('Ventas', fmt(d.totales.ventas), `Ganancia ${fmt(d.totales.ganancia)}`)}
             {tarjeta('Conversión', `${d.totales.conversion}%`, 'de las visitas compró')}
           </div>
+          {d.sinCosto > 0 && (
+            <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+              Tenés {d.sinCosto} talle{d.sinCosto === 1 ? '' : 's'}/color{d.sinCosto === 1 ? '' : 'es'} de tus productos propios <strong>sin costo cargado</strong>: en la ganancia se cuentan como si no te hubieran costado nada. Cargalo en Productos → Mis productos → Editar (campo <strong>Costo $</strong>) o con la planilla de Excel.
+            </p>
+          )}
 
           <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5">
             <p className="mb-3 text-sm font-medium">Visitas por día</p>
