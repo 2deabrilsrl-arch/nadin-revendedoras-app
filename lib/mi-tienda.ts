@@ -47,6 +47,24 @@ async function ensureTienda(user: SessionUser) {
   });
 }
 
+/** Lista "Empezá acá": qué pasos tiene hechos la tienda (ver lib/pasos-tienda.ts). */
+export async function progresoTienda(tienda: { id: string; nombre: string; logoUrl: string | null; whatsapp: string | null; diseno: unknown; activa: boolean }) {
+  const [cobros, entregas, destacados, propios] = await Promise.all([
+    prisma.tiendaMetodoPago.count({ where: { tiendaId: tienda.id, activo: true } }),
+    prisma.tiendaEnvio.count({ where: { tiendaId: tienda.id, activo: true } }),
+    prisma.tiendaProducto.count({ where: { tiendaId: tienda.id, destacado: true } }),
+    prisma.tiendaProductoPropio.count({ where: { tiendaId: tienda.id } }),
+  ]);
+  return {
+    marca: !!(tienda.nombre && tienda.logoUrl && tienda.whatsapp),
+    diseno: tienda.diseno != null,
+    productos: destacados + propios > 0,
+    cobros: cobros > 0,
+    entregas: entregas > 0,
+    publicada: !!tienda.activa,
+  };
+}
+
 export const s = (v: any, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : undefined);
 export const sOrNull = (v: any, max: number) => {
   if (v === null) return null;

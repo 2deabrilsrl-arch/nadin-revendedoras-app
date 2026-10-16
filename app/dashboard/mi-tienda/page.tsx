@@ -1,13 +1,15 @@
 'use client';
 
 // Panel "Mi Tienda Web" de la revendedora
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { reducirImagen } from '@/components/tienda/reducirImagen';
 import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
 import ImportarProductos from '@/components/tienda/ImportarProductos';
 import VentaManual from '@/components/tienda/VentaManual';
 import GuiaDns from '@/components/tienda/GuiaDns';
+import AvisoPublicar, { BotonPublicar, PasoAPaso } from '@/components/tienda/AvisoPublicar';
+import { PASOS_TIENDA, estadoPasos } from '@/lib/pasos-tienda';
 import { calcularPrecioVenta } from '@/lib/precios';
 import Link from 'next/link';
 import { CheckCircle2, Circle } from 'lucide-react';
@@ -72,6 +74,27 @@ function MiTienda() {
     cargar();
   }, [cargar]);
 
+  // El aviso de "te falta publicar" se actualiza al cambiar de sección o al guardar algo
+  const refrescarProgreso = useCallback(() => {
+    api('').then((d: any) => setInfo((i: any) => (i ? { ...i, progreso: d.progreso, tienda: { ...i.tienda, activa: d.tienda.activa } } : i))).catch(() => {});
+  }, []);
+  const primera = useRef(true);
+  useEffect(() => {
+    if (primera.current) { primera.current = false; return; }
+    refrescarProgreso();
+  }, [tab, refrescarProgreso]);
+  const avisar = useCallback((m: string) => { setToast(m); refrescarProgreso(); }, [refrescarProgreso]);
+
+  const publicar = useCallback(async () => {
+    try {
+      const d = await api('', 'PUT', { activa: true });
+      setInfo((i: any) => ({ ...i, tienda: { ...i.tienda, ...d.tienda }, url: d.url, progreso: { ...i.progreso, publicada: true } }));
+      setToast('¡Listo! Tu tienda está publicada 🎉');
+    } catch (e: any) {
+      setToast(e.message);
+    }
+  }, []);
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 3500);
@@ -100,7 +123,8 @@ function MiTienda() {
   const t = info.tienda;
   return (
     <div className="mx-auto max-w-5xl pb-24">
-      {tab === 'inicio' && <Inicio info={info} onToast={setToast} />}
+      {tab !== 'inicio' && !t.activa && <AvisoPublicar progreso={info.progreso || {}} tab={tab} onPublicar={publicar} />}
+      {tab === 'inicio' && <Inicio info={info} onToast={setToast} onPublicar={publicar} />}
 
       {tab === 'pedidos' && (
         <div className="space-y-8">
@@ -108,14 +132,14 @@ function MiTienda() {
           <CarritosAbandonados tiendaNombre={t.nombre} />
         </div>
       )}
-      {tab === 'productos' && <ProductosTienda onToast={setToast} slug={t.slug} />}
+      {tab === 'productos' && <ProductosTienda onToast={avisar} slug={t.slug} />}
       {tab === 'paginas' && <Paginas onToast={setToast} urlApp={info.urlApp} />}
       {tab === 'clientes' && <Clientes onToast={setToast} />}
       {tab === 'estadisticas' && <Estadisticas onToast={setToast} />}
       {tab === 'portada' && <Portada info={info} />}
-      {tab === 'diseno' && <Diseno info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); setToast('Guardado'); }} />}
-      {tab === 'pagos' && <Pagos onToast={setToast} />}
-      {tab === 'envios' && <Envios onToast={setToast} />}
+      {tab === 'diseno' && <Diseno key={String(!!t.activa)} info={info} onSaved={(d: any) => { setInfo({ ...info, ...d }); avisar('Guardado'); }} />}
+      {tab === 'pagos' && <Pagos onToast={avisar} />}
+      {tab === 'envios' && <Envios onToast={avisar} />}
       {tab === 'cupones' && <Cupones onToast={setToast} />}
 
       {toast && (
@@ -131,21 +155,15 @@ function MiTienda() {
 // Inicio: resumen + lista "Empezá acá"
 // ---------------------------------------------------------------------
 
-const PASOS_INICIO: { k: string; titulo: string; texto: string; tab: string }[] = [
-  { k: 'marca', titulo: 'Poné tu nombre, logo y WhatsApp', texto: 'Así tus clientas reconocen tu tienda y te pueden escribir.', tab: 'diseno' },
-  { k: 'diseno', titulo: 'Elegí el diseño', texto: 'Plantilla, colores, fotos del carrusel y secciones.', tab: 'portada' },
-  { k: 'productos', titulo: 'Destacá productos o cargá los tuyos', texto: 'Los de Nadin ya están cargados. Elegí cuáles mostrar primero.', tab: 'productos' },
-  { k: 'cobros', titulo: 'Activá cómo te pagan', texto: 'Transferencia, Mercado Pago, link de pago o efectivo.', tab: 'pagos' },
-  { k: 'entregas', titulo: 'Activá cómo entregás', texto: 'Envío a domicilio, correo o retiro.', tab: 'envios' },
-  { k: 'publicada', titulo: 'Publicá tu tienda', texto: 'En Marca, datos y dominio → Publicar tienda.', tab: 'diseno' },
-];
-
-function Inicio({ info, onToast }: { info: any; onToast: (s: string) => void }) {
+function Inicio({ info, onToast, onPublicar }: { info: any; onToast: (s: string) => void; onPublicar: () => Promise<void> }) {
   const t = info.tienda;
   const prog = info.progreso || {};
   const res = info.resumen || {};
-  const hechos = PASOS_INICIO.filter((p) => prog[p.k]).length;
-  const completo = hechos === PASOS_INICIO.length;
+  const est = estadoPasos(prog);
+  const hechos = est.hechos;
+  const completo = hechos === PASOS_TIENDA.length;
+  // Paso que se abre con el paso a paso: el que sigue (si ya puede publicar, el próximo recomendado)
+  const abierto = est.puedePublicar ? est.faltan.find((x) => x.k !== 'publicada')?.k : est.siguiente?.k;
 
   return (
     <div className="space-y-5">
@@ -193,14 +211,34 @@ function Inicio({ info, onToast }: { info: any; onToast: (s: string) => void }) 
         <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-black/5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="font-semibold">Empezá acá</h2>
-            <span className="text-xs text-gray-500">{hechos} de {PASOS_INICIO.length} listos</span>
+            <span className="text-xs text-gray-500">{hechos} de {PASOS_TIENDA.length} listos</span>
           </div>
           <div className="mb-4 h-2 overflow-hidden rounded-full bg-gray-100">
-            <div className="h-full rounded-full bg-pink-500 transition-all" style={{ width: `${(hechos / PASOS_INICIO.length) * 100}%` }} />
+            <div className="h-full rounded-full bg-pink-500 transition-all" style={{ width: `${(hechos / PASOS_TIENDA.length) * 100}%` }} />
           </div>
+          {est.puedePublicar && (
+            <div className="mb-4 space-y-2 rounded-xl bg-green-50 p-3 ring-1 ring-green-200">
+              <p className="text-sm font-semibold text-green-900">¡Tu tienda ya se puede publicar!</p>
+              <p className="text-xs text-green-900">Ya tenés un medio de cobro activo. {est.faltan.length > 1 && 'Lo que falta de la lista lo podés completar después.'}</p>
+              <BotonPublicar onPublicar={onPublicar} />
+            </div>
+          )}
           <ol className="space-y-2">
-            {PASOS_INICIO.map((p, i) => {
+            {PASOS_TIENDA.map((p, i) => {
               const ok = !!prog[p.k];
+              if (!ok && p.k === abierto) {
+                return (
+                  <li key={p.k} className="space-y-2 rounded-xl bg-pink-50 p-3 ring-1 ring-pink-200">
+                    <p className="flex items-start gap-3 text-sm font-semibold text-gray-900">
+                      <Circle className="mt-0.5 h-5 w-5 shrink-0 text-pink-400" />
+                      <span>{i + 1}. {p.titulo}{p.obligatorio && <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 text-[11px] font-semibold text-pink-700">Obligatorio para publicar</span>}</span>
+                    </p>
+                    <div className="pl-8"><PasoAPaso paso={p} /></div>
+                    <div className="pl-8"><Link href={`/dashboard/mi-tienda?tab=${p.tab}`} className={`${btn} inline-block`}>{p.boton} →</Link></div>
+                  </li>
+                );
+              }
+              if (!ok && p.k === 'publicada' && est.puedePublicar) return null;
               return (
                 <li key={p.k}>
                   <Link href={`/dashboard/mi-tienda?tab=${p.tab}`} className={`flex items-start gap-3 rounded-xl p-3 transition ${ok ? 'bg-green-50/60' : 'bg-gray-50 hover:bg-pink-50'}`}>

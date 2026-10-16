@@ -10,6 +10,7 @@ import { LogOut, Menu, X, ExternalLink } from 'lucide-react';
 import NotificacionesRevendedora from '@/components/NotificacionesRevendedora';
 import FloatingCart from '@/components/FloatingCart';
 import AyudaSeccion from '@/components/AyudaSeccion';
+import { AvisoTiendaBarra } from '@/components/tienda/AvisoPublicar';
 import { MENU, itemActual } from '@/lib/menu-revendedora';
 
 function MenuLateral({ onNavegar }: { onNavegar?: () => void }) {
@@ -158,6 +159,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Contenido */}
       <main className="min-h-screen p-4 sm:p-6 lg:pl-[calc(15rem+1.5rem)]">
         <Suspense fallback={null}><BarraSeccion /></Suspense>
+        {/* En Mi Tienda el aviso es más completo (con el paso a paso); acá, una franja */}
+        <AvisoTiendaBarra visible={!(pathname || '').startsWith('/dashboard/mi-tienda') && !(pathname || '').startsWith('/dashboard/ayuda')} />
         {children}
       </main>
 

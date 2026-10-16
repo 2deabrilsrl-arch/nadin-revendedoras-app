@@ -1,7 +1,7 @@
 // GET: datos de mi tienda (la crea en borrador la primera vez) · PUT: guardar diseño y datos
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getUserAndTienda, noAuth, bad, s, sOrNull, num, bool, RESERVED_SLUGS } from '@/lib/mi-tienda';
+import { getUserAndTienda, noAuth, bad, s, sOrNull, num, bool, RESERVED_SLUGS, progresoTienda } from '@/lib/mi-tienda';
 import { slugify, getTiendaBaseUrl, PREVIEW_COOKIE } from '@/lib/tienda';
 import { normalizarDiseno } from '@/lib/tienda-diseno';
 
@@ -15,25 +15,15 @@ export async function GET() {
   const { tienda, user } = ctx;
   const inicioMes = new Date(); inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
   const hace7 = new Date(Date.now() - 7 * 864e5);
-  const [cobros, entregas, destacados, propios, pendientes, ventasMes, visitas7] = await Promise.all([
-    prisma.tiendaMetodoPago.count({ where: { tiendaId: tienda.id, activo: true } }),
-    prisma.tiendaEnvio.count({ where: { tiendaId: tienda.id, activo: true } }),
-    prisma.tiendaProducto.count({ where: { tiendaId: tienda.id, destacado: true } }),
-    prisma.tiendaProductoPropio.count({ where: { tiendaId: tienda.id } }),
+  const [progreso, pendientes, ventasMes, visitas7] = await Promise.all([
+    progresoTienda(tienda),
     prisma.ordenTienda.count({ where: { tiendaId: tienda.id, estado: { in: ['pendiente_pago', 'pagada'] } } }),
     prisma.ordenTienda.aggregate({ where: { tiendaId: tienda.id, pagadaAt: { gte: inicioMes }, estado: { not: 'cancelada' } }, _sum: { total: true }, _count: true }),
     prisma.tiendaStatDia.aggregate({ where: { tiendaId: tienda.id, fecha: { gte: hace7 } }, _sum: { visitas: true } }),
   ]);
   return NextResponse.json({
     // Lista "Empezá acá" y resumen de la pantalla de Inicio
-    progreso: {
-      marca: !!(tienda.nombre && tienda.logoUrl && tienda.whatsapp),
-      diseno: tienda.diseno != null,
-      productos: destacados + propios > 0,
-      cobros: cobros > 0,
-      entregas: entregas > 0,
-      publicada: !!tienda.activa,
-    },
+    progreso,
     resumen: {
       pendientes,
       ventasMes: ventasMes._sum.total || 0,
