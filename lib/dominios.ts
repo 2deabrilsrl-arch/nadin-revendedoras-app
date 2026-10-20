@@ -89,13 +89,20 @@ export const MSJ_NO_COMPRADO =
 
 async function vercel(path: string, init: RequestInit = {}) {
   const sep = path.includes('?') ? '&' : '?';
-  const r = await fetch(`https://api.vercel.com${path}${sep}teamId=${TEAM()}`, <any>{
-    ...init,
-    headers: { Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`, 'Content-Type': 'application/json', ...(init.headers || {}) },
-    cache: 'no-store',
-  });
-  const data: any = await r.json().catch(() => ({}));
-  return { ok: r.ok, status: r.status, data };
+  // Con un dominio mal delegado Vercel puede tardar mucho en responder (revisa el DNS en vivo):
+  // cortamos a los 8 segundos para no dejar colgada la pantalla.
+  try {
+    const r = await fetch(`https://api.vercel.com${path}${sep}teamId=${TEAM()}`, <any>{
+      ...init,
+      headers: { Authorization: `Bearer ${process.env.VERCEL_API_TOKEN}`, 'Content-Type': 'application/json', ...(init.headers || {}) },
+      cache: 'no-store',
+      signal: (AbortSignal as any).timeout(8000),
+    });
+    const data: any = await r.json().catch(() => ({}));
+    return { ok: r.ok, status: r.status, data };
+  } catch {
+    return { ok: false, status: 0, data: {} as any };
+  }
 }
 
 async function agregarEnVercel(name: string, redirect?: string) {
@@ -171,8 +178,7 @@ export async function revisarDominioTienda(tiendaId: string): Promise<EstadoDomi
 
   const { principal, redirige } = planDominio(dominio);
   const raiz = dominioRaiz(principal);
-  const a = await chequearUno(principal, raiz);
-  const b = redirige ? await chequearUno(redirige, raiz) : null;
+  const [a, b] = await Promise.all([chequearUno(principal, raiz), redirige ? chequearUno(redirige, raiz) : Promise.resolve(null)]);
   const registros = [...(b?.registros || []), ...a.registros];
   const activo = a.ok; // el principal es el que importa; el raíz solo redirige
 
