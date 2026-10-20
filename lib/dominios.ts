@@ -204,7 +204,10 @@ export async function conectarDominio(tiendaId: string, input: string): Promise<
   const { principal, redirige } = planDominio(d);
 
   // Antes de tocar Vercel: ¿lo compró? (si no existe, no lo cargamos y la mandamos a comprarlo)
-  if ((await dominioRegistrado(dominioRaiz(principal))) === false) return { error: MSJ_NO_COMPRADO, code: 'NO_COMPRADO' };
+  // Excepción .ar: en NIC un dominio recién comprado no existe en internet hasta que se delega,
+  // así que no podemos distinguir "no comprado" de "comprado sin delegar". Lo dejamos conectar.
+  const raiz = dominioRaiz(principal);
+  if (!raiz.endsWith('.ar') && (await dominioRegistrado(raiz)) === false) return { error: MSJ_NO_COMPRADO, code: 'NO_COMPRADO' };
 
   const t = await prisma.tienda.findUnique({ where: { id: tiendaId }, select: { dominioPropio: true, dominioPendiente: true } });
   if (!t) return { error: 'Tienda no encontrada' };

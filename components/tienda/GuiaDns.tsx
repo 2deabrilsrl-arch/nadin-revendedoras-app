@@ -82,8 +82,11 @@ export default function GuiaDns({ dominio, registros }: { dominio: string; regis
     pasos = [
       <>Entrá a <strong>nic.ar</strong> → <strong>Ingresar</strong> con tu CUIT/CUIL y clave fiscal.</>,
       <>Andá a <strong>Mis dominios</strong> y elegí <strong>{raiz}</strong>.</>,
-      <>Tocá <strong>Delegar</strong> (o <strong>Modificar delegación</strong>).</>,
-      <>En <strong>Host 1</strong> poné <Copiable v="ns1.vercel-dns.com" /> y en <strong>Host 2</strong> <Copiable v="ns2.vercel-dns.com" />. Dejá vacíos los campos de IP. Confirmá.</>,
+      <>Al lado de tu dominio tocá <strong>Delegar</strong>.</>,
+      <>Si ya hay delegaciones cargadas (de otro hosting o de Tiendanube), borralas.</>,
+      <>Tocá <strong>Añadir una nueva delegación</strong>, en <strong>Host</strong> pegá <Copiable v="ns1.vercel-dns.com" /> y tocá el ícono de guardar.</>,
+      <>Otra vez <strong>Añadir una nueva delegación</strong>, pegá <Copiable v="ns2.vercel-dns.com" /> y guardá. <strong>Ojo:</strong> es <strong>ns1</strong> y <strong>ns2</strong>, con números (el celular a veces los cambia por letras). Mejor tocá el dato para copiarlo y pegalo.</>,
+      <>Dejá vacíos los campos de IP y tocá <strong>Ejecutar cambios</strong>.</>,
       <>Listo: <strong>no hace falta cargar la tabla de arriba</strong>, Vercel se encarga. La delegación de NIC tarda unas horas.</>,
       FINAL,
     ];
