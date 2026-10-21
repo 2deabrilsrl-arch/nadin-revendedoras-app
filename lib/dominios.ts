@@ -168,6 +168,20 @@ async function chequearUno(name: string, raiz: string): Promise<{ ok: boolean; v
   return { ok: apunta && verificado, verificado, registros };
 }
 
+/**
+ * Si la revendedora delegó el dominio a ns1/ns2.vercel-dns.com (ej. NIC.ar), Vercel tiene que
+ * "hostear" la zona DNS; si no, sus nameservers rechazan las consultas y el dominio no anda.
+ * Vercel no la activa sola para dominios agregados a un proyecto, así que la activamos acá.
+ */
+async function activarZonaSiDelego(raiz: string) {
+  const info = await vercel(`/v5/domains/${raiz}`);
+  const dom = info.data?.domain;
+  if (!info.ok || !dom || dom.zone) return;
+  const ns: string[] = dom.nameservers || [];
+  if (!ns.length || !ns.every((n) => /\.vercel-dns\.com\.?$/i.test(n))) return;
+  await vercel(`/v3/domains/${raiz}`, { method: 'PATCH', body: JSON.stringify({ op: 'update', zone: true }) });
+}
+
 /** Revisa cómo está el dominio y, si ya apunta bien, lo activa en la tienda. */
 export async function revisarDominioTienda(tiendaId: string): Promise<EstadoDominio | null> {
   const t = await prisma.tienda.findUnique({ where: { id: tiendaId }, select: { id: true, userId: true, nombre: true, dominioPropio: true, dominioPendiente: true } });
@@ -178,6 +192,7 @@ export async function revisarDominioTienda(tiendaId: string): Promise<EstadoDomi
 
   const { principal, redirige } = planDominio(dominio);
   const raiz = dominioRaiz(principal);
+  await activarZonaSiDelego(raiz);
   const [a, b] = await Promise.all([chequearUno(principal, raiz), redirige ? chequearUno(redirige, raiz) : Promise.resolve(null)]);
   const registros = [...(b?.registros || []), ...a.registros];
   const activo = a.ok; // el principal es el que importa; el raíz solo redirige
