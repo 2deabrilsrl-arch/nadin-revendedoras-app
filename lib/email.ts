@@ -603,3 +603,8 @@ export async function sendMensajeNotificacion(data: {
     throw error;
   }
 }
+
+/** Aviso interno para Nadin (problemas que hay que revisar a mano). */
+export async function sendAvisoNadin(subject: string, html: string) {
+  await transporter.sendMail({ from: process.env.FROM_EMAIL, to: 'nadinlenceria@gmail.com', subject, html });
+}

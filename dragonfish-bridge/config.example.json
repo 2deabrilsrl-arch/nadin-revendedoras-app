@@ -3,7 +3,7 @@
   "BridgeSecret": "PEGAR_ACA_EL_MISMO_VALOR_QUE_DRAGONFISH_BRIDGE_SECRET_EN_VERCEL",
   "VercelBypass": "",
 
-  "DfUrl": "http://localhost:8008",
+  "DfUrl": "http://localhost:8010",
   "DfIdCliente": "TNMAYO",
   "DfToken": "PEGAR_ACA_EL_TOKEN_DEL_CLIENTE_REST_API",
   "DfBaseDeDatos": "NADIN25",

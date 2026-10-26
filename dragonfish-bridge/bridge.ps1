@@ -6,7 +6,7 @@
   3. Genera el Remito (o Pedido) en la REST API local de Dragonfish.
   4. Le informa a la app el número de comprobante (o el error).
 
-  No abre puertos: solo hace pedidos salientes a la app (https) y a localhost:8008.
+  No abre puertos: solo hace pedidos salientes a la app (https) y a localhost:8010.
   Configuración en config.json (ver config.example.json). Log en logs\bridge-AAAAMMDD.log
 
   Para ver cómo está cargado un cliente en Dragonfish:  .\bridge.ps1 -VerCliente 30401574
@@ -41,7 +41,8 @@ function Get-ErrorBody($err) {
 }
 
 function Invoke-Json($method, $url, $headers, $body) {
-  $params = @{ Method = $method; Uri = $url; Headers = $headers; ContentType = 'application/json; charset=utf-8'; UseBasicParsing = $true }
+  # Tope de 90 segundos por llamada: si algo no responde, falla y se informa (no se queda colgado)
+  $params = @{ Method = $method; Uri = $url; Headers = $headers; ContentType = 'application/json; charset=utf-8'; UseBasicParsing = $true; TimeoutSec = 90 }
   if ($null -ne $body) { $params.Body = [System.Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 10)) }
   return Invoke-RestMethod @params
 }
@@ -183,7 +184,16 @@ try {
   if ($lista.Count -eq 0) { Remove-Item $Lock -ErrorAction SilentlyContinue; exit 0 }
   Log "Pendientes: $($lista.Count)"
 
-  $dfs = Get-DfSession
+  try { $dfs = Get-DfSession }
+  catch {
+    # No se pudo hablar con Dragonfish: se avisa a la app (sigue en cola, la app manda un mail a Nadin)
+    $msg = "No me pude conectar con Dragonfish en $($Cfg.DfUrl): $(Get-ErrorBody $_). Revisá que Dragonfish esté abierto y el puerto en config.json (DfUrl)."
+    Log "ERROR $msg"
+    if (-not $Cfg.DryRun) {
+      foreach ($c in $lista) { try { Informar $c.id $false $null $msg $false @{ conexion = $true } } catch { Log "No se pudo informar el error: $(Get-ErrorBody $_)" } }
+    }
+    return
+  }
   $Df = $dfs.Url
   $DfHeaders = $dfs.Headers
 

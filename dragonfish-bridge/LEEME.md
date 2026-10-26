@@ -1,6 +1,6 @@
 # Puente App Revendedoras → Dragonfish
 
-Corre en la **Servidora** (donde está Dragonfish y su REST API en `localhost:8008`).
+Corre en la **Servidora** (donde está Dragonfish y su REST API en `localhost:8010`; antes era 8008 — si Dragonfish se actualiza y cambia el puerto, corregí `DfUrl` en config.json).
 Cada 2 minutos toma las consolidaciones nuevas de la app y genera el **Remito** en Dragonfish.
 
 - Cliente Dragonfish = DNI de la revendedora (igual que la integración con Tiendanube). Si no existe, se crea.
