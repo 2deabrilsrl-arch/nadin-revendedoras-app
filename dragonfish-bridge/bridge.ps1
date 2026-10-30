@@ -116,14 +116,18 @@ function Resolver-Articulo($dfs, $art, $ref) {
   if ($CodigosArticulo.ContainsKey($art)) { return $CodigosArticulo[$art] }
   $real = $art
   if ($art -match '_') {
-    try {
-      if ((Get-StockArticulo $dfs $art).Count -eq 0) {
-        # Primero "___" = un espacio (lo que hace Tiendanube); por las dudas, después cada "_" = un espacio
-        foreach ($alt in @(($art -replace '___', ' '), ($art -replace '_', ' ')) | Select-Object -Unique) {
-          if ($alt -ne $art -and (Get-StockArticulo $dfs $alt).Count -gt 0) { $real = $alt; Log "[$ref] artículo $art -> '$alt' (Tiendanube cambia espacios por ___)"; break }
-        }
+    # Tal cual; si no existe, "___" = un espacio (lo que hace Tiendanube); por las dudas, cada "_" = un espacio.
+    # Ojo: cuando el artículo no existe, Dragonfish responde 404 (no una lista vacía).
+    foreach ($cand in @($art, ($art -replace '___', ' '), ($art -replace '_', ' ')) | Select-Object -Unique) {
+      $hay = $false
+      try { $hay = (Get-StockArticulo $dfs $cand).Count -gt 0 }
+      catch { $e = Get-ErrorBody $_; if ($e -notmatch 'HTTP 404') { Log "[$ref] no pude verificar el código '$cand': $e" } }
+      if ($hay) {
+        $real = $cand
+        if ($cand -ne $art) { Log "[$ref] artículo $art -> '$cand' (Tiendanube cambia espacios por ___)" }
+        break
       }
-    } catch { Log "[$ref] no pude verificar el código de $($art): $(Get-ErrorBody $_)" }
+    }
   }
   $CodigosArticulo[$art] = $real
   return $real
