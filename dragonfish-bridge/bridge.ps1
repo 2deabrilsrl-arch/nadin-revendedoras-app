@@ -109,8 +109,8 @@ function Get-StockArticulo($dfs, $articulo) {
   return $mapa
 }
 
-# Código real del artículo en Dragonfish. Tiendanube no acepta espacios en el SKU y los cambia por "_"
-# (ej. "ACC-CINTA   BIFAZ" llega como "ACC-CINTA___BIFAZ"): si el código tal cual no existe, se prueba con espacios.
+# Código real del artículo en Dragonfish. Tiendanube no acepta espacios en el SKU y cambia cada espacio
+# por "___" (ej. "ACC-CINTA BIFAZ" llega como "ACC-CINTA___BIFAZ"): si el código tal cual no existe, se prueba con espacios.
 $CodigosArticulo = @{}
 function Resolver-Articulo($dfs, $art, $ref) {
   if ($CodigosArticulo.ContainsKey($art)) { return $CodigosArticulo[$art] }
@@ -118,8 +118,10 @@ function Resolver-Articulo($dfs, $art, $ref) {
   if ($art -match '_') {
     try {
       if ((Get-StockArticulo $dfs $art).Count -eq 0) {
-        $alt = $art -replace '_', ' '
-        if ((Get-StockArticulo $dfs $alt).Count -gt 0) { $real = $alt; Log "[$ref] artículo $art -> '$alt' (Tiendanube cambia espacios por _)" }
+        # Primero "___" = un espacio (lo que hace Tiendanube); por las dudas, después cada "_" = un espacio
+        foreach ($alt in @(($art -replace '___', ' '), ($art -replace '_', ' ')) | Select-Object -Unique) {
+          if ($alt -ne $art -and (Get-StockArticulo $dfs $alt).Count -gt 0) { $real = $alt; Log "[$ref] artículo $art -> '$alt' (Tiendanube cambia espacios por ___)"; break }
+        }
       }
     } catch { Log "[$ref] no pude verificar el código de $($art): $(Get-ErrorBody $_)" }
   }
