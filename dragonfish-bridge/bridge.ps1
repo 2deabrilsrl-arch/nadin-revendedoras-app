@@ -109,6 +109,24 @@ function Get-StockArticulo($dfs, $articulo) {
   return $mapa
 }
 
+# Código real del artículo en Dragonfish. Tiendanube no acepta espacios en el SKU y los cambia por "_"
+# (ej. "ACC-CINTA   BIFAZ" llega como "ACC-CINTA___BIFAZ"): si el código tal cual no existe, se prueba con espacios.
+$CodigosArticulo = @{}
+function Resolver-Articulo($dfs, $art, $ref) {
+  if ($CodigosArticulo.ContainsKey($art)) { return $CodigosArticulo[$art] }
+  $real = $art
+  if ($art -match '_') {
+    try {
+      if ((Get-StockArticulo $dfs $art).Count -eq 0) {
+        $alt = $art -replace '_', ' '
+        if ((Get-StockArticulo $dfs $alt).Count -gt 0) { $real = $alt; Log "[$ref] artículo $art -> '$alt' (Tiendanube cambia espacios por _)" }
+      }
+    } catch { Log "[$ref] no pude verificar el código de $($art): $(Get-ErrorBody $_)" }
+  }
+  $CodigosArticulo[$art] = $real
+  return $real
+}
+
 # Saca del remito lo que no tiene stock (Dragonfish no deja vender en negativo).
 # Devuelve @{ Lineas = <las que van>; Faltantes = <lo que no hay> }
 function Ajustar-PorStock($dfs, $lineas, $ref) {
@@ -319,6 +337,9 @@ try {
         }
       }
 
+      # Código real de cada artículo en Dragonfish (los "_" del SKU pueden ser espacios)
+      foreach ($l in @($c.lineas)) { $l.articulo = Resolver-Articulo $dfs ("" + $l.articulo) $c.referencia }
+
       # Stock: lo que no hay se saca del remito y se le avisa a la revendedora (no se frena todo el envío)
       $lineasEnviar = @($c.lineas)
       $faltantes = @()
@@ -368,6 +389,11 @@ try {
             $lineasEnviar = @($aj.Lineas); $faltantes = @($aj.Faltantes)
             if ($lineasEnviar.Count -eq 0) { break }
             continue
+          }
+          # Dragonfish a veces rechaza con 400 sin explicar: casi siempre es un artículo/color/talle que no existe
+          if ($err -match 'HTTP 400') {
+            $arts = (@($lineasEnviar) | ForEach-Object { "$($_.articulo) $($_.color) $($_.talle)" }) -join '; '
+            throw "Dragonfish rechazó el remito ($err). Revisá que existan estos artículos con ese color y talle: $arts"
           }
           throw
         }
