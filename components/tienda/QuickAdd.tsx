@@ -40,7 +40,7 @@ export default function QuickAdd({ productId, nombre, imagen, variantes }: { pro
       {listo && (
         <div className="fixed inset-x-3 bottom-4 z-[60] mx-auto flex max-w-md items-center justify-between gap-3 rounded-[var(--t-radius)] bg-gray-900 px-4 py-3 text-sm text-white shadow-xl sm:inset-x-auto sm:right-6" role="status">
           <span>Agregado al carrito{listo !== 'Agregado' ? ` (${listo})` : ''}</span>
-          <a href={`${prefix}/carrito`} className="font-semibold underline underline-offset-4">Ver carrito</a>
+          <a href={`${prefix}/carrito`} className="font-semibold underline underline-offset-4">Finalizar compra</a>
         </div>
       )}
 

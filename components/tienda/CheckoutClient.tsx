@@ -70,6 +70,15 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
     return () => clearTimeout(t);
   }, [apiBase, carritoToken, cliente, items]);
 
+  // En el celular hay una barra fija abajo: subimos el botón de WhatsApp para que no la tape
+  const hayItems = items.length > 0;
+  useEffect(() => {
+    const g: any = globalThis as any;
+    const raiz: any = g.document?.documentElement;
+    raiz?.style.setProperty('--t-barra', hayItems && g.innerWidth < 1024 ? '84px' : '0px');
+    return () => raiz?.style.setProperty('--t-barra', '0px');
+  }, [hayItems]);
+
   const payloadItems = useMemo(() => items.map((i) => ({ productId: i.productId, variantId: i.variantId, qty: i.qty })), [items]);
 
   useEffect(() => {
@@ -86,6 +95,17 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
 
   const envioSel = config?.envios.find((e) => e.id === envioId);
   const pagoSel = config?.pagos.find((p) => p.id === pagoId);
+
+  // Barra fija del celular: lleva a lo que falta completar (datos, entrega, pago) o al botón final
+  const datosOk = cliente.nombre.trim().length >= 2 && cliente.telefono.replace(/\D/g, '').length >= 8;
+  function irAFinalizar() {
+    const g: any = globalThis as any;
+    const doc = g.document;
+    const destino = !datosOk ? 'tc-datos' : (config?.envios.length && !envioId) ? 'tc-entrega' : !pagoId ? 'tc-pago' : 'tc-finalizar';
+    const el = doc?.getElementById(destino);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (destino === 'tc-datos') setTimeout(() => (doc?.querySelector('#tc-datos input') as any)?.focus?.(), 400);
+  }
 
   async function confirmar(e: React.FormEvent) {
     e.preventDefault();
@@ -120,8 +140,17 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
   const input = 'w-full rounded-[var(--t-btn-radius)] border border-gray-300 px-3 py-2.5 outline-none focus:border-[var(--t-primary)]';
 
   return (
-    <form onSubmit={confirmar} className="grid gap-8 lg:grid-cols-[1fr_380px]">
+    <form onSubmit={confirmar} className="grid gap-8 pb-24 lg:grid-cols-[1fr_380px] lg:pb-0">
       <div className="space-y-8">
+        {/* Muchas clientas mandaban captura del carrito en vez de terminar la compra */}
+        <div className="flex gap-3 rounded-[var(--t-radius)] border-2 p-4 text-sm" style={{ borderColor: 'var(--t-primary)' }} role="note">
+          <span className="text-xl" aria-hidden="true">🛍️</span>
+          <p>
+            <strong>Para hacer tu pedido</strong> completá tus datos más abajo y tocá <strong>Finalizar compra</strong>.
+            Así le llega directo a la tienda con todo el detalle. <span className="text-gray-600">No hace falta mandar captura del carrito.</span>
+          </p>
+        </div>
+
         {/* Productos */}
         <section>
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Tu pedido</h2>
@@ -153,7 +182,7 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
         </section>
 
         {/* Datos */}
-        <section>
+        <section id="tc-datos" className="scroll-mt-24">
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Tus datos</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm">Nombre y apellido *<input required className={input} value={cliente.nombre} onChange={(e) => setCliente({ ...cliente, nombre: (e.target as any).value })} autoComplete="name" /></label>
@@ -164,7 +193,7 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
         </section>
 
         {/* Entrega */}
-        <section>
+        <section id="tc-entrega" className="scroll-mt-24">
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Entrega</h2>
           {!config ? <p className="text-sm text-gray-500">Cargando…</p> : config.envios.length === 0 ? (
             <p className="text-sm text-gray-600">Coordinamos la entrega por WhatsApp.</p>
@@ -196,7 +225,7 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
         </section>
 
         {/* Pago */}
-        <section>
+        <section id="tc-pago" className="scroll-mt-24">
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-gray-900">Pago</h2>
           {!config ? <p className="text-sm text-gray-500">Cargando…</p> : config.pagos.length === 0 ? (
             <p className="text-sm text-red-700">Esta tienda todavía no configuró medios de pago.</p>
@@ -245,13 +274,30 @@ export default function CheckoutClient({ apiBase, terminosHref, privacidadHref =
         </label>
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
         <button
+          id="tc-finalizar"
           type="submit"
           disabled={enviando || !pagoId || (!!config?.envios.length && !envioId) || !!cot?.errores?.length}
-          className="t-btn w-full"
+          className="t-btn w-full scroll-mt-24 py-3 text-base"
         >
-          {enviando ? 'Procesando…' : pagoSel?.tipo === 'mercadopago' ? 'Pagar con Mercado Pago' : 'Confirmar pedido'}
+          {enviando ? 'Procesando…' : pagoSel?.tipo === 'mercadopago' ? 'Finalizar compra y pagar' : 'Finalizar compra'}
         </button>
+        {(!pagoId || (!!config?.envios.length && !envioId)) && !enviando && (
+          <p className="text-center text-xs text-gray-500">Elegí {!!config?.envios.length && !envioId ? 'la entrega' : ''}{!!config?.envios.length && !envioId && !pagoId ? ' y ' : ''}{!pagoId ? 'cómo pagás' : ''} para finalizar.</p>
+        )}
       </aside>
+
+      {/* Celular: barra fija abajo con el total y el botón (el resumen queda al final de la página) */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-xl items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-500">{items.reduce((a, i) => a + i.qty, 0)} producto{items.reduce((a, i) => a + i.qty, 0) === 1 ? '' : 's'} · Total</p>
+            <p className="text-lg font-bold leading-tight">{formatPrecio(cot?.total ?? items.reduce((a, i) => a + i.precio * i.qty, 0))}</p>
+          </div>
+          <button type="button" onClick={irAFinalizar} className="t-btn shrink-0 px-5 py-3 text-base">
+            Finalizar compra
+          </button>
+        </div>
+      </div>
     </form>
   );
 }

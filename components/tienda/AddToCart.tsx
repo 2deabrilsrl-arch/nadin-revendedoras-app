@@ -156,7 +156,7 @@ export default function AddToCart({
       {agregado && (
         <div className="flex items-center justify-between gap-3 rounded-[var(--t-radius)] bg-gray-50 p-3 text-sm" role="status">
           <span>Lo agregaste al carrito.</span>
-          <a href={`${prefix}/carrito`} className="font-semibold underline underline-offset-4">Ir a comprar</a>
+          <a href={`${prefix}/carrito`} className="font-semibold underline underline-offset-4">Finalizar compra</a>
         </div>
       )}
     </div>
