@@ -28,6 +28,29 @@ const API_SOLO_NADIN: RegExp[] = [
   /^\/api\/consolidaciones\/[^/]+\/(estado|access-token|armado-iniciado)(\/|$)/,
 ];
 
+// Usuarias bloqueadas por Nadin: el middleware no puede leer la base, así que pide la lista
+// a /api/auth/bloqueados y la guarda 1 minuto. Si falla, no bloquea a nadie (no corta la app).
+let bloqueadosCache: { at: number; ids: Set<string> } = { at: 0, ids: new Set() };
+async function estaBloqueada(request: NextRequest, uid: string): Promise<boolean> {
+  if (Date.now() - bloqueadosCache.at > 60_000) {
+    try {
+      const r = await fetch(new URL('/api/auth/bloqueados', request.url), {
+        headers: { 'x-clave-interna': process.env.SESSION_SECRET || process.env.NEXTAUTH_SECRET || '' },
+        cache: 'no-store',
+      } as any);
+      const d: any = r.ok ? await r.json() : null;
+      bloqueadosCache = { at: Date.now(), ids: new Set(Array.isArray(d?.ids) ? d.ids : []) };
+    } catch {
+      bloqueadosCache = { at: Date.now() - 50_000, ids: bloqueadosCache.ids }; // reintenta en 10 s
+    }
+  }
+  return bloqueadosCache.ids.has(uid);
+}
+function sinSesion(res: NextResponse) {
+  res.cookies.set(SESSION_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
+  return res;
+}
+
 const jsonError = (status: number, error: string, code?: string) =>
   NextResponse.json(code ? { error, code } : { error }, { status });
 
@@ -44,6 +67,7 @@ async function protegerApi(request: NextRequest): Promise<NextResponse> {
     return NextResponse.next({ request: { headers } });
   }
   if (!sesion) return jsonError(401, 'Tenés que iniciar sesión de nuevo.', 'NO_SESSION');
+  if (await estaBloqueada(request, sesion.uid)) return sinSesion(jsonError(401, 'Tu cuenta está suspendida.', 'NO_SESSION'));
   const esNadin = sesion.rol === 'vendedora';
   if (!esNadin) {
     if (API_SOLO_NADIN.some((r) => r.test(pathname))) return jsonError(403, 'No tenés permiso para esto.');
@@ -134,6 +158,7 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
     const sesion = await verificarSesionEdge(request.cookies.get(SESSION_COOKIE)?.value);
     if (!sesion) return NextResponse.redirect(new URL('/login', request.url));
+    if (await estaBloqueada(request, sesion.uid)) return sinSesion(NextResponse.redirect(new URL('/login?suspendida=1', request.url)));
     const esNadin = sesion.rol === 'vendedora';
     if (esNadin && pathname.startsWith('/dashboard') && !pathname.startsWith('/dashboard/admin')) return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     if (!esNadin && pathname.startsWith('/admin')) return NextResponse.redirect(new URL('/dashboard/mi-tienda', request.url));

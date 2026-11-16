@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
       where: { email }
     });
 
-    if (!user) {
-      // Por seguridad, no revelamos si el email existe o no
+    if (!user || (user as any).bloqueado) {
+      // Por seguridad, no revelamos si el email existe o no (ni si la cuenta está bloqueada)
       return NextResponse.json(
         { message: 'Si el email existe, recibirás instrucciones para recuperar tu contraseña' },
         { status: 200 }

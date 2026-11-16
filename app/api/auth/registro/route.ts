@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { datosBloqueados } from '@/lib/bloqueos';
 import bcrypt from 'bcryptjs';
 
 interface RegistroBody {
@@ -14,6 +15,11 @@ interface RegistroBody {
 export async function POST(req: NextRequest) {
   try {
     const { email, password, name, dni, telefono, handle } = await req.json() as RegistroBody;
+
+    // Usuaria bloqueada por Nadin que intenta crear otra cuenta con su email, DNI o teléfono
+    if (await datosBloqueados({ email, dni, telefono })) {
+      return NextResponse.json({ error: 'No pudimos crear la cuenta. Comunicate con Nadin Lencería.' }, { status: 403 });
+    }
 
     // Validar que no exista el email
     const existingUser = await prisma.user.findUnique({

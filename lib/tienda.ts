@@ -159,10 +159,10 @@ export async function getTiendaBySite(site: string) {
   const tienda = await prisma.tienda.findFirst({
     where: isHost ? { OR: [{ dominioPropio: { in: [s, alt] } }, { dominioPendiente: { in: [s, alt] } }] } : { slug: s },
     include: {
-      user: { select: { id: true, margen: true, name: true, telefono: true } },
+      user: { select: { id: true, margen: true, name: true, telefono: true, bloqueado: true } },
     },
   });
-  if (!tienda) return null;
+  if (!tienda || tienda.user?.bloqueado) return null; // dueña bloqueada por Nadin: la tienda no existe
   return aplicarBorrador(tienda);
 }
 

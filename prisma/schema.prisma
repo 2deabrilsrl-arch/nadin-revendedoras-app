@@ -33,6 +33,9 @@ model User {
   youtube          String?
   website          String?
   rol              String           @default("revendedora")
+  bloqueado        Boolean          @default(false)
+  bloqueadoMotivo  String?
+  bloqueadoAt      DateTime?
   // Datos fiscales para el cliente en Dragonfish (CF = Consumidor Final con DNI)
   situacionFiscal  String           @default("CF")
   cuit             String?

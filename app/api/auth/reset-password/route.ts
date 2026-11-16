@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       where: { email },
     });
 
-    if (!user) {
+    if (!user || (user as any).bloqueado) {
       return NextResponse.json(
         { error: 'Link inválido o expirado' },
         { status: 400 }

@@ -75,7 +75,9 @@ export async function getSessionUser() {
   if (!session) return null;
   const user = await prisma.user.findUnique({
     where: { id: session.uid },
-    select: { id: true, email: true, name: true, handle: true, margen: true, rol: true, telefono: true },
+    select: { id: true, email: true, name: true, handle: true, margen: true, rol: true, telefono: true, bloqueado: true },
   });
-  return user;
+  if (!user || user.bloqueado) return null; // bloqueada por Nadin: como si no tuviera sesión
+  const { bloqueado: _b, ...resto } = user;
+  return resto;
 }

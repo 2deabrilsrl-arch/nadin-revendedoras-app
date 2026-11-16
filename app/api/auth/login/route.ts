@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { attachSessionCookie } from '@/lib/session';
+import { MSJ_BLOQUEADA } from '@/lib/bloqueos';
 
 interface LoginBody {
   email: string;
@@ -23,6 +24,10 @@ export async function POST(req: NextRequest) {
       );
     }
     
+    if ((user as any).bloqueado) {
+      return NextResponse.json({ error: MSJ_BLOQUEADA, code: 'BLOQUEADA' }, { status: 403 });
+    }
+
     // 🔥 IMPORTANTE: Devolver objeto "user" completo CON ROL
     const res = NextResponse.json({
       user: {
