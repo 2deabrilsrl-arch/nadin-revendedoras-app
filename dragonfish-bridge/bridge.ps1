@@ -41,10 +41,22 @@ function Get-ErrorBody($err) {
 }
 
 function Invoke-Json($method, $url, $headers, $body) {
-  # Tope de 90 segundos por llamada: si algo no responde, falla y se informa (no se queda colgado)
-  $params = @{ Method = $method; Uri = $url; Headers = $headers; ContentType = 'application/json; charset=utf-8'; UseBasicParsing = $true; TimeoutSec = 90 }
+  # Tope de 90 segundos por llamada: si algo no responde, falla y se informa (no se queda colgado).
+  # Sin keep-alive: la API de Dragonfish (desde la actualización al puerto 8010) cierra las conexiones
+  # reutilizadas y Windows tira "Se ha terminado la conexión: Error inesperado de recepción".
+  $params = @{ Method = $method; Uri = $url; Headers = $headers; ContentType = 'application/json'; UseBasicParsing = $true; TimeoutSec = 90; DisableKeepAlive = $true }
   if ($null -ne $body) { $params.Body = [System.Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 10)) }
-  return Invoke-RestMethod @params
+  for ($i = 1; $i -le 3; $i++) {
+    try { return Invoke-RestMethod @params }
+    catch {
+      # Solo se reintenta si se cortó la conexión (no si Dragonfish respondió un error), y nunca al
+      # grabar un remito/pedido/cliente: si Dragonfish lo grabó antes de cortar, se duplicaría
+      $corte = (-not $_.Exception.Response) -and ($_.Exception.Message -match '(?i)conexi|connection|recepci|receive')
+      $seguro = ($method -eq 'GET') -or ($url -match '/Autenticar$')
+      if (-not $corte -or -not $seguro -or $i -eq 3) { throw }
+      Start-Sleep -Seconds (2 * $i)
+    }
+  }
 }
 
 function Get-DfSession {
