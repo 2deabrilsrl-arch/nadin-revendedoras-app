@@ -60,5 +60,6 @@ export async function GET(req: Request) {
     });
   }
 
-  return NextResponse.json({ consolidaciones: out });
+  // charset explícito: PowerShell 5 lee como Latin-1 si no viene, y los acentos/ñ llegaban rotos a Dragonfish
+  return NextResponse.json({ consolidaciones: out }, { headers: { 'Content-Type': 'application/json; charset=utf-8' } });
 }

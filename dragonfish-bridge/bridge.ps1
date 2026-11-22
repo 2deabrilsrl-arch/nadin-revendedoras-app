@@ -314,11 +314,14 @@ try {
       if (-not $existe) {
         if ($codFijo) { throw "El código de Dragonfish $codFijo cargado para $($rev.name) no existe" }
         if (-not $Cfg.CrearClientes) { throw "El cliente $codCliente no existe en Dragonfish" }
+        $telCliente = ("" + $rev.telefono) -replace '\D', ''
+        if ($telCliente.Length -gt 15) { $telCliente = $telCliente.Substring($telCliente.Length - 15) }
         $base = @{
           Codigo = $codCliente
           Pais = 'AR'
           EMail = $rev.email
-          Movil = $rev.telefono
+          # Teléfono solo con números (los "+54 9 341 ..." con espacios y guiones pueden hacer fallar el alta)
+          Movil = $telCliente
           ListaDePrecio = $Cfg.ListaDePrecios
         }
         if ($Cfg.Vendedor) { $base.Vendedor = $Cfg.Vendedor }
@@ -348,7 +351,8 @@ try {
         }
         if ($Cfg.DryRun) { Log "[$($c.referencia)] (prueba) crearía cliente: $($base | ConvertTo-Json -Compress)" }
         else {
-          Invoke-Json 'POST' "$Df/Cliente/" $DfHeaders $base | Out-Null
+          try { Invoke-Json 'POST' "$Df/Cliente/" $DfHeaders $base | Out-Null }
+          catch { throw "Dragonfish no dejó crear el cliente $codCliente ($(Get-ErrorBody $_)). Datos enviados: $($base | ConvertTo-Json -Compress)" }
           $chk = Invoke-Json 'GET' "$Df/Cliente/$codCliente/" $DfHeaders $null
           if (-not $chk -or (("" + $chk.Codigo).Trim() -ne $codCliente)) { throw "Dragonfish no devolvió el cliente $codCliente después de crearlo" }
           Log "[$($c.referencia)] cliente $codCliente creado: $($chk.Nombre) (SF=$($chk.SituacionFiscal) Doc=$($chk.TipoDocumento) $($chk.NroDocumento) CUIT=$($chk.CUIT))"
