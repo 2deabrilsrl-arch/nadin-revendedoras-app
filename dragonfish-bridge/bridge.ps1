@@ -308,7 +308,18 @@ try {
             break
           }
         }
-        catch { if (-not ((Get-ErrorBody $_) -match '(HTTP 40[04]|\b40[04]\b)')) { throw } }
+        catch {
+          $e = Get-ErrorBody $_
+          if ($e -match '(HTTP 404|\b404\b)') { continue }   # no existe con este código
+          # 400 al LEER un cliente: existe pero Dragonfish no lo puede devolver (pasa con clientes cargados
+          # a mano, por ejemplo sin mail o sin lista de precios). Se usa igual ese código.
+          if ($e -match '(HTTP 400|\b400\b)') {
+            $existe = $true; $codCliente = $cand
+            Log "[$($c.referencia)] cliente $cand existe (Dragonfish no lo puede mostrar: HTTP 400), lo uso igual"
+            break
+          }
+          throw
+        }
       }
       if (-not $existe) { Log "[$($c.referencia)] no está con ninguno de estos códigos: $($candidatos -join ', ')" }
       if (-not $existe) {
@@ -351,11 +362,19 @@ try {
         }
         if ($Cfg.DryRun) { Log "[$($c.referencia)] (prueba) crearía cliente: $($base | ConvertTo-Json -Compress)" }
         else {
+          $creado = $true
           try { Invoke-Json 'POST' "$Df/Cliente/" $DfHeaders $base | Out-Null }
-          catch { throw "Dragonfish no dejó crear el cliente $codCliente ($(Get-ErrorBody $_)). Datos enviados: $($base | ConvertTo-Json -Compress)" }
-          $chk = Invoke-Json 'GET' "$Df/Cliente/$codCliente/" $DfHeaders $null
-          if (-not $chk -or (("" + $chk.Codigo).Trim() -ne $codCliente)) { throw "Dragonfish no devolvió el cliente $codCliente después de crearlo" }
-          Log "[$($c.referencia)] cliente $codCliente creado: $($chk.Nombre) (SF=$($chk.SituacionFiscal) Doc=$($chk.TipoDocumento) $($chk.NroDocumento) CUIT=$($chk.CUIT))"
+          catch {
+            $e = Get-ErrorBody $_
+            # 400 al crear: casi siempre es que ya existe (cargado a mano). Se sigue con ese código;
+            # si de verdad no existe, el remito va a fallar y se informa.
+            if ($e -notmatch '(HTTP 400|\b400\b)') { throw "Dragonfish no dejó crear el cliente $codCliente ($e). Datos enviados: $($base | ConvertTo-Json -Compress)" }
+            Log "[$($c.referencia)] Dragonfish no dejó crear el cliente $codCliente (HTTP 400): seguramente ya existe, sigo con ese código"
+            $creado = $false
+          }
+          $chk = $null
+          if ($creado) { try { $chk = Invoke-Json 'GET' "$Df/Cliente/$codCliente/" $DfHeaders $null } catch { } }
+          if ($creado) { Log "[$($c.referencia)] cliente $codCliente creado: $($chk.Nombre) (SF=$($chk.SituacionFiscal) Doc=$($chk.TipoDocumento) $($chk.NroDocumento) CUIT=$($chk.CUIT))" }
         }
       }
 
