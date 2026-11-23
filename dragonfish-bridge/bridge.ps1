@@ -311,12 +311,12 @@ try {
         catch {
           $e = Get-ErrorBody $_
           if ($e -match '(HTTP 404|\b404\b)') { continue }   # no existe con este código
-          # 400 al LEER un cliente: existe pero Dragonfish no lo puede devolver (pasa con clientes cargados
-          # a mano, por ejemplo sin mail o sin lista de precios). Se usa igual ese código.
+          # 400 al LEER un cliente: la API de Dragonfish tiene un error interno al mostrar clientes
+          # ("Additional text encountered after finished reading JSON content"), exista o no.
+          # No sabemos si existe: se intenta crear con el código del DNI/CUIT y, si el alta da 400, ya existe.
           if ($e -match '(HTTP 400|\b400\b)') {
-            $existe = $true; $codCliente = $cand
-            Log "[$($c.referencia)] cliente $cand existe (Dragonfish no lo puede mostrar: HTTP 400), lo uso igual"
-            break
+            Log "[$($c.referencia)] Dragonfish no pudo mostrar el cliente $cand (HTTP 400, error de la API de Zoo Logic)"
+            continue
           }
           throw
         }
