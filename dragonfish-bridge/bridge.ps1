@@ -44,8 +44,12 @@ function Invoke-Json($method, $url, $headers, $body) {
   # Tope de 90 segundos por llamada: si algo no responde, falla y se informa (no se queda colgado).
   # Sin keep-alive: la API de Dragonfish (desde la actualización al puerto 8010) cierra las conexiones
   # reutilizadas y Windows tira "Se ha terminado la conexión: Error inesperado de recepción".
-  $params = @{ Method = $method; Uri = $url; Headers = $headers; ContentType = 'application/json'; UseBasicParsing = $true; TimeoutSec = 90; DisableKeepAlive = $true }
-  if ($null -ne $body) { $params.Body = [System.Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 10)) }
+  $params = @{ Method = $method; Uri = $url; Headers = $headers; UseBasicParsing = $true; TimeoutSec = 90; DisableKeepAlive = $true }
+  # El Content-Type va solo cuando hay datos: en un GET sin cuerpo la API de Dragonfish puede responder 400/404
+  if ($null -ne $body) {
+    $params.ContentType = 'application/json; charset=utf-8'
+    $params.Body = [System.Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 10))
+  }
   for ($i = 1; $i -le 3; $i++) {
     try { return Invoke-RestMethod @params }
     catch {
