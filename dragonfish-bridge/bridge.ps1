@@ -113,12 +113,27 @@ function Get-SituacionCuit($sit) {
 
 # Stock actual en Dragonfish de un artículo: devuelve @{ "COLOR|TALLE" = stock }
 function Get-StockArticulo($dfs, $articulo) {
-  $q = [uri]::EscapeDataString($articulo)
-  $url = "$($dfs.Url)/ConsultaStockYPrecios/?query=$q&exacto=true&stockcero=true&limit=500"
-  $res = Invoke-Json 'GET' $url $dfs.Headers $null
+  $mapa = Get-StockConsulta $dfs $articulo $articulo $true
+  # La búsqueda exacta de Dragonfish a veces no encuentra códigos con espacio (ej. "XY-501 J"):
+  # en ese caso se busca por la parte de antes del espacio y se filtra el código exacto acá.
+  if ($mapa.Count -eq 0 -and $articulo.Trim() -match '\s') {
+    $prefijo = ($articulo.Trim() -split '\s+')[0]
+    try { $mapa = Get-StockConsulta $dfs $articulo $prefijo $false }
+    catch { $e = Get-ErrorBody $_; if ($e -notmatch 'HTTP 404') { throw } }
+  }
+  return $mapa
+}
+
+function Get-StockConsulta($dfs, $articulo, $query, $exacto) {
+  $q = [uri]::EscapeDataString($query)
+  $ex = if ($exacto) { '&exacto=true' } else { '' }
+  $url = "$($dfs.Url)/ConsultaStockYPrecios/?query=$q$ex&stockcero=true&limit=500"
   $mapa = @{}
+  try { $res = Invoke-Json 'GET' $url $dfs.Headers $null }
+  catch { $e = Get-ErrorBody $_; if ($exacto -and $e -match 'HTTP 404') { return $mapa }; throw }
+  $buscado = (($articulo.Trim()) -replace '\s+', ' ').ToUpper()
   foreach ($r in @($res.Resultados)) {
-    if ((("" + $r.Articulo).Trim()).ToUpper() -ne $articulo.Trim().ToUpper()) { continue }
+    if (((("" + $r.Articulo).Trim()) -replace '\s+', ' ').ToUpper() -ne $buscado) { continue }
     $k = (("" + $r.Color).Trim() + '|' + ("" + $r.Talle).Trim()).ToUpper()
     $mapa[$k] = [double]$r.Stock
   }
