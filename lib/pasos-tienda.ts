@@ -36,7 +36,7 @@ export const PASOS_TIENDA: PasoTienda[] = [
   {
     k: 'diseno',
     titulo: 'Elegí el diseño',
-    texto: 'Plantilla, colores, fotos del carrusel y secciones.',
+    texto: 'Ya te dejamos uno armado. Si querés, cambiá plantilla, colores y fotos.',
     tab: 'portada',
     boton: 'Ir a Diseño',
     pasos: [
@@ -49,7 +49,7 @@ export const PASOS_TIENDA: PasoTienda[] = [
   {
     k: 'productos',
     titulo: 'Destacá productos o cargá los tuyos',
-    texto: 'Los de Nadin ya están cargados. Elegí cuáles mostrar primero.',
+    texto: 'Ya destacamos los más vendidos de Nadin. Cambialos por los que más te gusten.',
     tab: 'productos',
     boton: 'Ir a Productos',
     pasos: [

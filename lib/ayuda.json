@@ -11,6 +11,7 @@
       "Desde Inicio tocá Copiar link o Compartir por WhatsApp y mandalo a tus clientas, a tus estados y a tu Instagram."
     ],
     "consejos": [
+      "Tu tienda ya viene armada: con un diseño listo, los productos más vendidos de Nadin destacados y la entrega a coordinar. Solo te falta activar un cobro y publicar. Si querés, después cambiás lo que quieras.",
       "La lista Empezá acá de la pantalla de Inicio te marca qué te falta: el paso que te toca se abre con el paso a paso y un botón que te lleva directo.",
       "Mientras la tienda esté en borrador, arriba de cada pantalla ves un aviso con el próximo paso. Lo podés achicar con Achicar.",
       "Los productos de Nadin ya aparecen solos en tu tienda, con stock actualizado y tu ganancia sumada.",
@@ -23,6 +24,7 @@
     "pasos": [
       "Cada pedido nuevo aparece arriba con su estado: Esperando pago, Pagado · falta enviar a Nadin, En Nadin, Listo para entregar o Entregado.",
       "Si la clienta pagó por transferencia o efectivo, revisá que te llegó la plata, abrí el pedido y tocá Ya me pagó.",
+      "Si un pedido lleva 2 días sin pagarse, aparece el botón 💬 Recordarle por WhatsApp con el mensaje ya escrito para tu clienta. Si a los 7 días sigue sin pagarse, se cancela solo (salvo los de efectivo al retirar). Si después te paga, abrilo y tocá Ya me pagó: vuelve. Si paga por Mercado Pago, vuelve solo.",
       "Si pagó con Mercado Pago, el pedido se marca pagado solo.",
       "Los pedidos para enviar a Nadin tienen una casilla. Tildá uno o varios (o tocá Seleccionar todos). Si la clienta te paga al retirar (efectivo), podés mandarlo igual: queda marcado Falta cobrar hasta que toques Ya me pagó.",
       "Abajo aparece el panel para enviar: elegí cómo le pagás a Nadin y cómo lo recibís, y tocá Enviar a Nadin. Todos los tildados van juntos en un solo envío. Si algo no tiene stock, te avisamos qué faltó para que se lo devuelvas a tu clienta.",
@@ -33,7 +35,8 @@
     "consejos": [
       "El pedido te llega cuando la clienta toca Finalizar compra en el carrito. Si te manda captura del carrito, pedile que toque Finalizar compra y complete sus datos: así te llega con todo el detalle.",
       "Con el botón de WhatsApp le escribís a la clienta sin agendarla.",
-      "En Marca, datos y dominio podés activar que los pedidos pagados se envíen solos a Nadin.",
+      "Si un pedido queda pagado y no lo mandás a Nadin en 24 horas, te avisamos por notificación y mail. Tocá el aviso: los pedidos pagados ya quedan tildados y solo tenés que tocar Enviar a Nadin.",
+      "Envío automático a Nadin: en Marca, datos y dominio → Envío automático a Nadin elegí cómo le pagás a Nadin y cómo recibís, y tocá Activar. Desde ahí, cada pedido que queda pago se manda solo.",
       "Abajo de los pedidos están los Carritos abandonados: personas que cargaron productos y no terminaron. Escribiles, muchas compran.",
       "Las ventas manuales aparecen con la etiqueta Venta manual, descuentan tu stock y se mandan a Nadin igual que las de la tienda."
     ]
@@ -220,6 +223,7 @@
       "En Precios poné tu % de ganancia sobre el costo de Nadin.",
       "Completá WhatsApp, email, ciudad y redes: aparecen en tu tienda.",
       "Tocá Guardar cambios y, cuando esté todo listo, Publicar tienda (necesitás al menos un cobro activo).",
+      "Envío automático a Nadin (opcional): elegí cómo le pagás a Nadin y cómo recibís los pedidos y tocá Activar envío automático. Cada pedido que queda pago (por Mercado Pago o cuando tocás Ya me pagó) se manda solo a Nadin. Lo podés apagar cuando quieras.",
       "Dominio propio (opcional): primero compralo (recomendado: Vercel, .com unos USD 12 por año; o nic.ar para .com.ar, unos $8.500 por año con clave fiscal; no hace falta hosting). Después escribilo y tocá Conectar: si todavía no está comprado, te avisamos. En ¿Dónde compraste tu dominio? elegí el lugar (Vercel, NIC.ar, Hostinger, GoDaddy, DonWeb, Cloudflare u otro) y seguí el paso a paso con los datos para copiar. Cuando apunte bien, se activa solo y te avisamos.",
       "Vendé en Google e Instagram: copiá el link de tu catálogo (en esta misma pantalla) y seguí el paso a paso para cargarlo en Google Merchant Center y en el Administrador de ventas de Meta. Para verificar tu tienda en Google, pegá la etiqueta HTML en Avanzado: Google, Meta y Nadin → Verificación de Google. Se actualiza solo con precios y stock."
     ],

@@ -262,6 +262,9 @@ export async function crearPreferenciaMP(
       failure: `${base}/pedido/${orden.token}`,
     },
     auto_return: 'approved',
+    // Los pedidos sin pagar se cancelan solos a los 7 días: el link de pago vence igual
+    expires: true,
+    expiration_date_to: new Date(Date.now() + DIAS_CANCELA_SIN_PAGO * 864e5).toISOString(),
     notification_url: `${appUrl()}/api/webhooks/mercadopago?orden=${orden.id}`,
   };
   const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
@@ -280,7 +283,9 @@ export async function crearPreferenciaMP(
 /** Consulta un pago en MP con el token de la revendedora y, si está aprobado, marca la orden como pagada. */
 export async function verificarPagoMP(ordenId: string, paymentId: string): Promise<boolean> {
   const orden = await prisma.ordenTienda.findUnique({ where: { id: ordenId } });
-  if (!orden || orden.pagadaAt || orden.estado === 'cancelada') return false;
+  if (!orden || orden.pagadaAt) return false;
+  // Una cancelada a mano no se reactiva; una cancelada sola por falta de pago, sí (pagó tarde)
+  if (orden.estado === 'cancelada' && !orden.canceladaAuto) return false;
   const cfg = await getMpConfig(orden.tiendaId);
   if (!cfg?.accessToken) return false;
   const res = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(paymentId)}`, {
@@ -293,9 +298,18 @@ export async function verificarPagoMP(ordenId: string, paymentId: string): Promi
     String(pay.external_reference) === orden.id &&
     Number(pay.transaction_amount) >= Math.round(orden.total) - 1;
   if (!ok) return false;
+  if (orden.estado === 'cancelada') {
+    await prisma.ordenTienda.update({ where: { id: orden.id }, data: { estado: 'pendiente_pago', canceladaAt: null, canceladaAuto: false } });
+  }
   await marcarPagada(orden.id, String(pay.id));
   return true;
 }
+
+/** Pedido web sin pagar: a los 2 días se sugiere recordarle a la clienta y a los 7 se cancela solo */
+export const DIAS_RECORDAR_PAGO = 2;
+export const DIAS_CANCELA_SIN_PAGO = 7;
+/** Medios que se cobran al entregar: esos pedidos no se cancelan solos */
+export const PAGOS_AL_ENTREGAR = ['efectivo'];
 
 // ---------------------------------------------------------------------
 // Ciclo de vida de la orden

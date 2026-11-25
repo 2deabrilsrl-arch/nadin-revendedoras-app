@@ -429,6 +429,10 @@ model Tienda {
   nadinFormaPago    String?  // última forma de pago a Nadin usada (efectivo, transferencia, mercadopago, tarjeta)
   nadinTipoEnvio    String?  // retiro | envio
   nadinTransporte   String?  // nombre del transporte si es envío
+  envioAutoPreguntadoAt DateTime? // ya vio la pregunta del envío automático (lo activó o dijo "ahora no")
+  armadaInicialAt   DateTime? // se le cargó diseño y destacados de entrada (una sola vez)
+  recordatorioPublicarAt DateTime? // último aviso de "tu tienda está lista para publicar"
+  recordatoriosPublicar Int  @default(0)
   diseno            Json?    // portada: anuncio, slides, beneficios, estilo
   disenoBorrador    Json?    // cambios sin publicar del editor: { diseno, colorPrimario, colorSecundario, fuente }
   metaPixelId       String?
@@ -554,6 +558,9 @@ model OrdenTienda {
   enviadaNadinAt  DateTime?
   canceladaAt     DateTime?
   arrepentimiento Boolean   @default(false)
+  recordatorioNadinAt DateTime? // último aviso a la revendedora de "pagado y sin enviar a Nadin"
+  recordatoriosNadin Int     @default(0)
+  canceladaAuto   Boolean   @default(false) // cancelada sola por falta de pago (7 días)
   origen          String    @default("web") // web | manual (venta cargada a mano por la revendedora)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

@@ -61,6 +61,12 @@ export default function NotificacionesRevendedora({ userId }: { userId: string }
     // Cerrar dropdown
     setMostrarDropdown(false);
     
+    // Avisos con un link a una pantalla de la app (ej. "tenés pedidos para enviar a Nadin")
+    try {
+      const link = JSON.parse(notif.metadata || '{}').link;
+      if (typeof link === 'string' && link.startsWith('/')) { router.push(link); return; }
+    } catch { /* metadata vieja */ }
+
     // ✅ CORREGIDO: Navegar al chat correcto
     if (notif.tipo === 'mensaje_vendedora') {
       try {

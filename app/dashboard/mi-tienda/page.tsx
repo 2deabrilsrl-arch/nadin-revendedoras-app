@@ -7,6 +7,7 @@ import { reducirImagen } from '@/components/tienda/reducirImagen';
 import { SelectorProductos } from '@/components/tienda/editor/EditorDiseno';
 import ImportarProductos from '@/components/tienda/ImportarProductos';
 import VentaManual from '@/components/tienda/VentaManual';
+import { EnvioAutoPopup, EnvioAutoSeccion } from '@/components/tienda/EnvioAutoNadin';
 import GuiaDns from '@/components/tienda/GuiaDns';
 import AvisoPublicar, { BotonPublicar, PasoAPaso } from '@/components/tienda/AvisoPublicar';
 import { PASOS_TIENDA, estadoPasos } from '@/lib/pasos-tienda';
@@ -56,6 +57,7 @@ function MiTienda() {
   const [error, setError] = useState('');
   const [sinSesion, setSinSesion] = useState(false);
   const [toast, setToast] = useState('');
+  const [popupEnvioCerrado, setPopupEnvioCerrado] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -141,6 +143,15 @@ function MiTienda() {
       {tab === 'pagos' && <Pagos onToast={avisar} />}
       {tab === 'envios' && <Envios onToast={avisar} />}
       {tab === 'cupones' && <Cupones onToast={setToast} />}
+
+      {/* Una sola vez, a las que ya publicaron: ¿mandar solos a Nadin los pedidos pagos? */}
+      {t.activa && !t.envioAutoNadin && !t.envioAutoPreguntadoAt && !popupEnvioCerrado && (
+        <EnvioAutoPopup tienda={t} onCerrar={(nt, msg) => {
+          setPopupEnvioCerrado(true);
+          if (nt) setInfo((i: any) => ({ ...i, tienda: { ...i.tienda, ...nt } }));
+          if (msg) setToast(msg);
+        }} />
+      )}
 
       {toast && (
         <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm text-white shadow-lg" role="status">
@@ -292,6 +303,16 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
 
   const cargar = useCallback(() => api('/ordenes').then((d) => setOrdenes(d.ordenes)).catch(() => setOrdenes([])), []);
   useEffect(() => { cargar(); }, [cargar]);
+  // Desde el aviso "tenés pedidos pagados sin enviar" (?enviar=1): ya quedan tildados los pagados, listo para un toque
+  const preseleccion = useRef(false);
+  useEffect(() => {
+    if (!ordenes || preseleccion.current) return;
+    preseleccion.current = true;
+    const q = new URLSearchParams((globalThis as any).location?.search || '');
+    if (q.get('enviar') !== '1') return;
+    const ids = ordenes.filter((o) => o.paraEnviar && o.pagadaAt).map((o) => o.id);
+    if (ids.length) setSel(ids);
+  }, [ordenes]);
 
   async function accion(id: string, a: string, confirmar?: string) {
     if (confirmar && !(globalThis as any).confirm(confirmar)) return;
@@ -357,6 +378,12 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
             onClick={() => setSel(sel.length === paraEnviar.length ? [] : paraEnviar.map((o) => o.id))}>
             {sel.length === paraEnviar.length ? 'Quitar selección' : 'Seleccionar todos'}
           </button>
+          {!tienda.envioAutoNadin && (
+            <p className="w-full text-xs">
+              ¿Querés que se manden solos cuando quedan pagos?{' '}
+              <Link href="/dashboard/mi-tienda?tab=diseno#envio-auto" className="font-semibold underline">Activá el envío automático</Link>
+            </p>
+          )}
         </div>
       )}
 
@@ -381,6 +408,12 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                     {!o.pagadaAt && !['pendiente_pago', 'cancelada'].includes(o.estado) && (
                       <span className="ml-1 mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Falta cobrar</span>
                     )}
+                    {o.estado === 'pendiente_pago' && o.cancelaAt && (
+                      <span className="ml-1 mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Se cancela sola el {new Date(o.cancelaAt).toLocaleDateString('es-AR')}</span>
+                    )}
+                    {o.estado === 'cancelada' && o.canceladaAuto && (
+                      <span className="ml-1 mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">No se pagó en {DIAS_SIN_PAGO} días</span>
+                    )}
                     {o.origen === 'manual' && <span className="ml-1 mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">Venta manual</span>}
                     {o.arrepentimiento && <span className="ml-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Pidió arrepentimiento</span>}
                   </div>
@@ -390,6 +423,8 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                   </div>
                 </button>
               </div>
+
+              {o.recordarPago && <RecordarPago orden={o} tiendaNombre={tienda.nombre} />}
 
               {['pagada', 'pendiente_pago'].includes(o.estado) && o.items.some((i: any) => i.propio || i.qtyPropio > 0) && (
                 <p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
@@ -420,7 +455,7 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
                     <p>Costo Nadin: {fmt(o.totalMayorista)}{o.costoPropio > 0 && ` · Costo de lo tuyo: ${fmt(o.costoPropio)}`}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {!o.pagadaAt && o.estado !== 'cancelada' && (
+                    {!o.pagadaAt && (o.estado !== 'cancelada' || o.canceladaAuto) && (
                       <button className={btnSec} disabled={!!busy} onClick={() => accion(o.id, 'marcar_pagada', '¿Confirmás que ya recibiste el pago?')}>Ya me pagó</button>
                     )}
                     {['pagada', 'enviada_nadin'].includes(o.estado) && (
@@ -443,6 +478,33 @@ function Pedidos({ onToast, tienda, onTienda }: { onToast: (s: string) => void; 
       {sel.length > 0 && (
         <EnviarNadin tienda={tienda} busy={busy === 'enviar'} cantidad={sel.length} costo={costoSel} sinCobrar={sinCobrar} onEnviar={enviarSeleccionados} onCancelar={() => setSel([])} />
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Pedido sin pagar hace 2 días o más: recordarle a la clienta por WhatsApp (mensaje ya escrito)
+// ---------------------------------------------------------------------
+
+const DIAS_SIN_PAGO = 7;
+
+function waClienta(tel: string, texto: string) {
+  const n = String(tel || '').replace(/\D/g, '');
+  if (n.length < 6) return '';
+  return `https://wa.me/${n.length === 10 ? `549${n}` : n}?text=${encodeURIComponent(texto)}`;
+}
+
+function RecordarPago({ orden: o, tiendaNombre }: { orden: any; tiendaNombre: string }) {
+  const nombre = String(o.clienteNombre || '').split(' ')[0];
+  const texto = `¡Hola ${nombre}! Te escribo de ${tiendaNombre} por tu pedido #${o.numero} de ${fmt(o.total)}. ¿Pudiste hacer el pago? Si te quedó alguna duda o querés cambiar algo, avisame y lo vemos. ¡Así te lo reservo! 💕`;
+  const href = waClienta(o.clienteTelefono, texto);
+  const dias = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 864e5);
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+      <p className="flex-1">Hace {dias} días que espera el pago.{o.cancelaAt ? ` Si no paga, se cancela solo el ${new Date(o.cancelaAt).toLocaleDateString('es-AR')}.` : ''}</p>
+      {href
+        ? <a href={href} target="_blank" rel="noopener" className="rounded-lg bg-green-600 px-3 py-1.5 font-semibold text-white">💬 Recordarle por WhatsApp</a>
+        : <span className="text-amber-800">(no dejó un teléfono válido)</span>}
     </div>
   );
 }
@@ -759,6 +821,8 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
     try {
       const body = { ...f, ...extra, margen: f.margen === '' ? null : Number(f.margen) };
       delete body.id; delete body.diseno; delete body.userId; delete body.dominioPropio; delete body.dominioPendiente; delete body.createdAt; delete body.updatedAt;
+      // El envío automático se guarda en su propio apartado
+      delete body.envioAutoNadin; delete body.nadinFormaPago; delete body.nadinTipoEnvio; delete body.nadinTransporte;
       const d = await api('', 'PUT', body);
       setF({ ...d.tienda, margen: d.tienda.margen ?? '' });
       onSaved({ tienda: d.tienda, url: d.url, urlApp: `/t/${d.tienda.slug}` });
@@ -850,9 +914,10 @@ function Diseno({ info, onSaved }: { info: any; onSaved: (d: any) => void }) {
           {field({ label: "Google Analytics 4 (G-XXXX)", k: "ga4Id" })}
           {field({ label: "Verificación de Google", k: "googleVerificacion", hint: "Pegá la etiqueta HTML que te da Merchant Center o Search Console (<meta name=\"google-site-verification\" ...>)." })}
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!f.mostrarNadin} onChange={(e) => setF({ ...f, mostrarNadin: chk(e) })} /> Mostrar “Productos de Nadin Lencería” al pie de la tienda (opcional)</label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!f.envioAutoNadin} onChange={(e) => setF({ ...f, envioAutoNadin: chk(e) })} /> Enviar a Nadin automáticamente cuando un pedido queda pago</label>
         </div>
       </details>
+
+      <EnvioAutoSeccion tienda={info.tienda} onGuardado={(nt) => onSaved({ tienda: { ...info.tienda, ...nt }, url: info.url, urlApp: info.urlApp })} />
 
       {err && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{err}</p>}
       <div className="sticky bottom-20 flex justify-end">

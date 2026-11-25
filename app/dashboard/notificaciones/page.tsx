@@ -197,6 +197,7 @@ export default function NotificacionesPage() {
                 }`}
                 onClick={() => {
                   if (!notif.leida) marcarComoLeida(notif.id);
+                  if (typeof metadata.link === 'string' && metadata.link.startsWith('/')) { (globalThis as any).location.href = metadata.link; return; }
                   if (esNotificacionMensaje) irAConversacion(notif);
                 }}
               >

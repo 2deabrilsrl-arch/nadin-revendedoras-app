@@ -2,10 +2,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserAndTienda, noAuth, bad } from '@/lib/mi-tienda';
-import { vaANadin, cotizar, marcarPagada } from '@/lib/tienda-checkout';
+import { vaANadin, cotizar, marcarPagada, DIAS_RECORDAR_PAGO, DIAS_CANCELA_SIN_PAGO, PAGOS_AL_ENTREGAR } from '@/lib/tienda-checkout';
 import { getTiendaBySite } from '@/lib/tienda';
 
 export const dynamic = 'force-dynamic';
+
+/** Pedido web sin pagar: cuándo conviene recordarle a la clienta y cuándo se cancela solo */
+function sinPagar(o: { estado: string; pedidoId: string | null; pagadaAt: Date | null; origen: string; metodoPagoTipo: string; createdAt: Date }) {
+  if (o.estado !== 'pendiente_pago' || o.pedidoId || o.pagadaAt) return { recordarPago: false, cancelaAt: null };
+  const edad = Date.now() - o.createdAt.getTime();
+  const seCancela = o.origen === 'web' && !PAGOS_AL_ENTREGAR.includes(o.metodoPagoTipo);
+  return {
+    recordarPago: edad >= DIAS_RECORDAR_PAGO * 864e5,
+    cancelaAt: seCancela ? new Date(o.createdAt.getTime() + DIAS_CANCELA_SIN_PAGO * 864e5) : null,
+  };
+}
 
 export async function GET(req: Request) {
   const ctx = await getUserAndTienda();
@@ -26,6 +37,7 @@ export async function GET(req: Request) {
     paraEnviar:
       (['pagada', 'pendiente_pago'].includes(o.estado) && !o.pedidoId && o.items.some(vaANadin)) ||
       (o.estado === 'enviada_nadin' && !!o.pedidoId && estadoPedido.get(o.pedidoId) === 'pendiente'),
+    ...sinPagar(o),
   }));
   const pendientesEnvio = conEstado.filter((o) => o.paraEnviar && o.estado !== 'pendiente_pago').length;
   return NextResponse.json({ ordenes: conEstado, pendientesEnvio });

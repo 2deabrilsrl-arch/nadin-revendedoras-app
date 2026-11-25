@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { getUserAndTienda, noAuth, bad, s, sOrNull, num, bool, RESERVED_SLUGS, progresoTienda } from '@/lib/mi-tienda';
 import { slugify, getTiendaBaseUrl, PREVIEW_COOKIE } from '@/lib/tienda';
 import { normalizarDiseno } from '@/lib/tienda-diseno';
+import { FORMAS_PAGO_NADIN, TIPOS_ENVIO_NADIN } from '@/lib/consolidacion';
 
 export const dynamic = 'force-dynamic';
 const MARGEN_MINIMO = Number(process.env.TIENDA_MARGEN_MINIMO || 0);
@@ -139,6 +140,28 @@ export async function PUT(req: Request) {
       if (taken) return bad('Esa dirección ya la usa otra tienda.');
       data.slug = slug;
     }
+  }
+
+  // Cómo le paga a Nadin y cómo recibe (lo usa el envío automático y el botón "Enviar a Nadin")
+  if (b.nadinFormaPago !== undefined) {
+    const v = String(b.nadinFormaPago || '').toLowerCase();
+    if (v && !(FORMAS_PAGO_NADIN as readonly string[]).includes(v)) return bad('Elegí cómo le pagás a Nadin.');
+    data.nadinFormaPago = v || null;
+  }
+  if (b.nadinTipoEnvio !== undefined) {
+    const v = String(b.nadinTipoEnvio || '').toLowerCase();
+    if (v && !(TIPOS_ENVIO_NADIN as readonly string[]).includes(v)) return bad('Elegí cómo recibís los pedidos de Nadin.');
+    data.nadinTipoEnvio = v || null;
+  }
+  if (b.nadinTransporte !== undefined) data.nadinTransporte = s(b.nadinTransporte, 80) || null;
+  if (b.envioAutoPreguntado === true) data.envioAutoPreguntadoAt = new Date();
+  if (data.envioAutoNadin === true) {
+    const forma = data.nadinFormaPago !== undefined ? data.nadinFormaPago : tienda.nadinFormaPago;
+    const tipo = data.nadinTipoEnvio !== undefined ? data.nadinTipoEnvio : tienda.nadinTipoEnvio;
+    const transp = data.nadinTransporte !== undefined ? data.nadinTransporte : tienda.nadinTransporte;
+    if (!forma || !tipo) return bad('Para el envío automático elegí cómo le pagás a Nadin y cómo recibís los pedidos.');
+    if (tipo === 'envio' && !transp) return bad('Indicá el transporte.');
+    data.envioAutoPreguntadoAt = data.envioAutoPreguntadoAt || new Date();
   }
 
   if (data.activa === true) {

@@ -17,7 +17,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   try {
     switch (accion) {
       case 'marcar_pagada':
-        if (orden.pagadaAt || orden.estado === 'cancelada') return bad('El pedido ya figura como pagado.');
+        if (orden.pagadaAt) return bad('El pedido ya figura como pagado.');
+        if (orden.estado === 'cancelada') {
+          // Cancelado solo por falta de pago y al final pagó (ej. transferencia tarde): vuelve
+          if (!orden.canceladaAuto) return bad('Este pedido está cancelado.');
+          await prisma.ordenTienda.update({ where: { id: orden.id }, data: { estado: 'pendiente_pago', canceladaAt: null, canceladaAuto: false } });
+        }
         await marcarPagada(orden.id);
         break;
       case 'enviar_nadin':
